@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model evaluationlog {
+  id                                String   @id
+  graderId                          String
+  targetId                          String
+  rubricId                          String
+  createdAt                         DateTime @default(now())
+  user_evaluationlog_graderIdTouser user     @relation("evaluationlog_graderIdTouser", fields: [graderId], references: [id], onDelete: Cascade, map: "EvaluationLog_graderId_fkey")
+  rubric                            rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "EvaluationLog_rubricId_fkey")
+  user_evaluationlog_targetIdTouser user     @relation("evaluationlog_targetIdTouser", fields: [targetId], references: [id], onDelete: Cascade, map: "EvaluationLog_targetId_fkey")
+
+  @@unique([graderId, targetId, rubricId], map: "EvaluationLog_graderId_targetId_rubricId_key")
+  @@index([rubricId], map: "EvaluationLog_rubricId_fkey")
+  @@index([targetId], map: "EvaluationLog_targetId_fkey")
+}
+
+model rubric {
+  id            String          @id
+  title         String
+  description   String?
+  evaluators    String?         // <-- ADD THIS
+  evaluatees    String?         // <-- ADD THIS
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  evaluationlog evaluationlog[]
+  rubricsection rubricsection[]
+}
+
+model rubriccategory {
+  id              String            @id
+  title           String
+  order           Int
+  sectionId       String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  rubricsection   rubricsection     @relation(fields: [sectionId], references: [id], onDelete: Cascade, map: "RubricCategory_sectionId_fkey")
+  rubricindicator rubricindicator[]
+
+  @@index([sectionId], map: "RubricCategory_sectionId_fkey")
+}
+
+model rubricindicator {
+  id             String         @id
+  text           String
+  order          Int
+  weight         Float          @default(1)
+  categoryId     String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime
+  rubriccategory rubriccategory @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "RubricIndicator_categoryId_fkey")
+  score          score[]
+
+  @@index([categoryId], map: "RubricIndicator_categoryId_fkey")
+}
+
+model rubricsection {
+  id             String           @id
+  title          String
+  order          Int
+  rubricId       String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  rubriccategory rubriccategory[]
+  rubric         rubric           @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "RubricSection_rubricId_fkey")
+
+  @@index([rubricId], map: "RubricSection_rubricId_fkey")
+}
+
+model score {
+  id                        String          @id
+  value                     score_value
+  targetId                  String
+  graderId                  String
+  indicatorId               String
+  createdAt                 DateTime        @default(now())
+  user_score_graderIdTouser user            @relation("score_graderIdTouser", fields: [graderId], references: [id], onDelete: Cascade, map: "Score_graderId_fkey")
+  rubricindicator           rubricindicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade, map: "Score_indicatorId_fkey")
+  user_score_targetIdTouser user            @relation("score_targetIdTouser", fields: [targetId], references: [id], onDelete: Cascade, map: "Score_targetId_fkey")
+
+  @@unique([targetId, graderId, indicatorId], map: "Score_targetId_graderId_indicatorId_key")
+  @@index([graderId], map: "Score_graderId_fkey")
+  @@index([indicatorId], map: "Score_indicatorId_fkey")
+}
+
+model user {
+  id                                         String          @id
+  name                                       String
+  nis_niy                                    String          @unique(map: "User_nis_niy_key")
+  password                                   String
+  role                                       user_role
+  email                                      String?
+  gender                                     String?
+  evaluationlog_evaluationlog_graderIdTouser evaluationlog[] @relation("evaluationlog_graderIdTouser")
+  evaluationlog_evaluationlog_targetIdTouser evaluationlog[] @relation("evaluationlog_targetIdTouser")
+  score_score_graderIdTouser                 score[]         @relation("score_graderIdTouser")
+  score_score_targetIdTouser                 score[]         @relation("score_targetIdTouser")
+}
+
+enum score_value {
+  A
+  B
+  C
+  D
+}
+
+enum user_role {
+  ADMIN
+  DIRECTOR/PRINCIPAL
+  TEACHER
+  STAFF
+  STUDENT
+}

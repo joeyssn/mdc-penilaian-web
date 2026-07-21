@@ -6,12 +6,23 @@ export const dynamic = 'force-dynamic';
 // 1. READ ALL TEACHERS
 export async function GET() {
   try {
-    const users = await prisma.user.findMany({
-      orderBy: { name: 'asc' },
+    // Only fetch users who are NOT Admins or Directors
+    const teachers = await prisma.user.findMany({
+      where: {
+        role: {
+          notIn: ['ADMIN', 'DIRECTOR']
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        gender: true,
+      }
     });
-    return NextResponse.json(users);
+
+    return NextResponse.json(teachers);
   } catch (error) {
-    console.error("❌ GET TEACHERS ERROR:", error);
     return NextResponse.json({ error: "Failed to fetch teachers" }, { status: 500 });
   }
 }

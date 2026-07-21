@@ -1,3 +1,4 @@
+'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -19,16 +20,25 @@ export default function AdminDashboard() {
           />
         </div>
         
-        {/* Navigation Links */}
-        <div className="hidden md:flex gap-10 text-[15px] font-medium text-gray-600">
-          <Link href="/admin" className="text-black border-b-2 border-black pb-1">
-            Home
-          </Link>
-          <Link href="/admin/teachers" className="hover:text-black transition-colors">
-            Teacher / Staff
-          </Link>
-          <Link href="/admin/rubric" className="hover:text-black transition-colors">
-            Rubric
+        {/* Navigation Links & Logout */}
+        <div className="flex items-center gap-10">
+          <div className="hidden md:flex gap-10 text-[15px] font-medium text-gray-600">
+            <Link href="/admin" className="text-black border-b-2 border-black pb-1">
+              Home
+            </Link>
+            <Link href="/admin/teachers" className="hover:text-black transition-colors">
+              Teacher / Staff
+            </Link>
+            <Link href="/admin/rubric" className="hover:text-black transition-colors">
+              Rubric
+            </Link>
+          </div>
+
+          <Link 
+            href="/login" 
+            className="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2 rounded-lg text-sm font-bold transition-colors border border-red-200"
+          >
+            Logout
           </Link>
         </div>
       </nav>
@@ -121,4 +131,4 @@ function AssessmentCard({ title }: { title: string }) {
       </div>
     </div>
   );
-}
+}   

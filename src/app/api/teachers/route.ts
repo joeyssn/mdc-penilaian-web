@@ -6,23 +6,24 @@ export const dynamic = 'force-dynamic';
 // 1. READ ALL TEACHERS
 export async function GET() {
   try {
-    // Only fetch users who are NOT Admins or Directors
+    // Only fetch users who are exactly 'TEACHER'
     const teachers = await prisma.user.findMany({
       where: {
-        role: {
-          notIn: ['ADMIN', 'DIRECTOR']
-        }
+        role: 'TEACHER'
       },
       select: {
         id: true,
         name: true,
         role: true,
         gender: true,
+        department: true, // MUST include this for the IPA/IPS logic to work!
       }
     });
 
     return NextResponse.json(teachers);
   } catch (error) {
+    // This will print the exact error to your terminal if it fails again
+    console.error("API TEACHERS ERROR:", error);
     return NextResponse.json({ error: "Failed to fetch teachers" }, { status: 500 });
   }
 }

@@ -6,11 +6,6 @@ export async function POST(req: Request) {
   try {
     const { email: loginIdentifier, password } = await req.json();
 
-    // DEBUG 1: What is the frontend sending?
-    console.log("===================================");
-    console.log("👉 1. Trying to login with:", loginIdentifier);
-    console.log("👉 2. Password entered:", password);
-
     const user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -20,26 +15,25 @@ export async function POST(req: Request) {
       }
     });
 
-    // DEBUG 2: Did the database find anyone?
-    console.log("👉 3. User found in Database?", user ? `YES (${user.name})` : "NO");
-
-    if (user) {
-      // DEBUG 3: Compare the passwords side-by-side
-      console.log("👉 4. DB Password exactly is:", `'${user.password}'`);
-      console.log("👉 5. Typed Password exactly is:", `'${password}'`);
-      console.log("👉 6. Do they match?", user.password === password ? "YES" : "NO");
-    }
-    console.log("===================================");
-
+console.log("👉 LOGIN ATTEMPT:", { triedEmail: loginIdentifier, triedPassword: password });
+    console.log("👉 DATABASE FOUND:", user ? `Yes, User ID: ${user.id}` : "NO USER FOUND");
+console.log("👉 PASSWORD MATCH:", user?.password === password ? "YES" : `NO! Database actually has: '${user?.password}'`);
     if (!user || user.password !== password) {
       return NextResponse.json({ error: "Invalid credentials. Please try again." }, { status: 401 });
     }
 
+    // Include the department so the frontend knows if they are IPA or IPS
+   // 3. Create the Session Data
+// 3. Create the Session Data
     const sessionData = {
       id: user.id,
       name: user.name,
       role: user.role,
       gender: user.gender,
+      department: user.department,
+      grade: user.grade, 
+      level: user.level,
+      className: user.className, // <--- ADD THIS
     };
 
     const cookieStore = await cookies();

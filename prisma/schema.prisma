@@ -4,10 +4,11 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model evaluationlog {
-  id                                String   @id
+  id                                String   @id @default(uuid())
   graderId                          String
   targetId                          String
   rubricId                          String
@@ -22,24 +23,24 @@ model evaluationlog {
 }
 
 model rubric {
-  id            String          @id
+  id            String          @id @default(uuid())
   title         String
   description   String?
-  evaluators    String?         // <-- ADD THIS
-  evaluatees    String?         // <-- ADD THIS
+  evaluators    String?
+  evaluatees    String?
   createdAt     DateTime        @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime        @updatedAt
   evaluationlog evaluationlog[]
   rubricsection rubricsection[]
 }
 
 model rubriccategory {
-  id              String            @id
+  id              String            @id @default(uuid())
   title           String
   order           Int
   sectionId       String
   createdAt       DateTime          @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime          @updatedAt
   rubricsection   rubricsection     @relation(fields: [sectionId], references: [id], onDelete: Cascade, map: "RubricCategory_sectionId_fkey")
   rubricindicator rubricindicator[]
 
@@ -47,13 +48,13 @@ model rubriccategory {
 }
 
 model rubricindicator {
-  id             String         @id
+  id             String         @id @default(uuid())
   text           String
   order          Int
   weight         Float          @default(1)
   categoryId     String
   createdAt      DateTime       @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime       @updatedAt
   rubriccategory rubriccategory @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "RubricIndicator_categoryId_fkey")
   score          score[]
 
@@ -61,12 +62,12 @@ model rubricindicator {
 }
 
 model rubricsection {
-  id             String           @id
+  id             String           @id @default(uuid())
   title          String
   order          Int
   rubricId       String
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime         @updatedAt
   rubriccategory rubriccategory[]
   rubric         rubric           @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "RubricSection_rubricId_fkey")
 
@@ -74,7 +75,7 @@ model rubricsection {
 }
 
 model score {
-  id                        String          @id
+  id                        String          @id @default(uuid())
   value                     score_value
   targetId                  String
   graderId                  String
@@ -90,17 +91,29 @@ model score {
 }
 
 model user {
-  id                                         String          @id
+  id                                         String          @id @default(uuid())
   name                                       String
   nis_niy                                    String          @unique(map: "User_nis_niy_key")
   password                                   String
   role                                       user_role
   email                                      String?
   gender                                     String?
-  evaluationlog_evaluationlog_graderIdTouser evaluationlog[] @relation("evaluationlog_graderIdTouser")
-  evaluationlog_evaluationlog_targetIdTouser evaluationlog[] @relation("evaluationlog_targetIdTouser")
-  score_score_graderIdTouser                 score[]         @relation("score_graderIdTouser")
-  score_score_targetIdTouser                 score[]         @relation("score_targetIdTouser")
+  department                                 user_department? @default(UMUM)
+  
+  grade                                      Int?             // 7, 8, 9, 10, 11, 12
+  level                                      String?          // "SMP" or "SMA"
+  className                                  String?          // <--- ADD THIS (e.g., "9A", "10.1")
+
+  evaluationlog_evaluationlog_graderIdTouser evaluationlog[]  @relation("evaluationlog_graderIdTouser")
+  evaluationlog_evaluationlog_targetIdTouser evaluationlog[]  @relation("evaluationlog_targetIdTouser")
+  score_score_graderIdTouser                 score[]          @relation("score_graderIdTouser")
+  score_score_targetIdTouser                 score[]          @relation("score_targetIdTouser")
+}
+// ADDED: The department enum
+enum user_department {
+  IPA
+  IPS
+  UMUM
 }
 
 enum score_value {
@@ -112,7 +125,7 @@ enum score_value {
 
 enum user_role {
   ADMIN
-  DIRECTOR/PRINCIPAL
+  DIRECTOR_PRINCIPAL @map("DIRECTOR/PRINCIPAL") // Fixed for Prisma compatibility
   TEACHER
   STAFF
   STUDENT

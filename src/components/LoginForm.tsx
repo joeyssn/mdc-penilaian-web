@@ -36,6 +36,8 @@ export default function LoginForm() {
         // 2. Redirect based on the user's role from the database
         if (data.role === 'ADMIN' || data.role === 'DIRECTOR') {
           router.push('/admin');
+        } else if (data.role === 'STUDENT') {
+          router.push('/student');
         } else {
           router.push('/teachers');
         }

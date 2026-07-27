@@ -11,6 +11,7 @@ type User = {
   role: string;
   email?: string | null;
   gender?: string | null;
+  department?: string | null; 
 };
 
 export default function TeacherManagementPage() {
@@ -29,6 +30,7 @@ export default function TeacherManagementPage() {
     email: '', 
     gender: 'Laki-Laki', 
     role: 'TEACHER',
+    department: 'UMUM', 
     nis_niy: ''
   });
 
@@ -38,31 +40,43 @@ export default function TeacherManagementPage() {
 
   const fetchTeachers = async () => {
     setIsLoading(true);
-    const res = await fetch('/api/teachers');
-    const data = await res.json();
-    if (!data.error) setTeachers(data);
-    setIsLoading(false);
+    try {
+      const res = await fetch('/api/teachers');
+      const data = await res.json();
+      if (!data.error && Array.isArray(data)) {
+        setTeachers(data);
+      } else {
+        setTeachers([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch teachers:", error);
+      setTeachers([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // ----------------------------------------
-  // Helper Function for Titles
-  // ----------------------------------------
   const getTitle = (gender?: string | null) => {
     if (gender === 'Laki-Laki') return 'Mr. ';
     if (gender === 'Perempuan') return "Ma'am ";
     return '';
   };
 
-  // ----------------------------------------
-  // CRUD Handlers
-  // ----------------------------------------
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault();
-    await fetch('/api/teachers', {
+    const res = await fetch('/api/teachers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
     });
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      alert(data.error || "Something went wrong.");
+      return; 
+    }
+
     setIsAddModalOpen(false);
     resetForm();
     fetchTeachers(); 
@@ -72,11 +86,19 @@ export default function TeacherManagementPage() {
     e.preventDefault();
     if (!selectedTeacher) return;
 
-    await fetch('/api/teachers', {
+    const res = await fetch('/api/teachers', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: selectedTeacher.id, ...formData }),
     });
+    
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Something went wrong.");
+      return;
+    }
+
     setIsEditModalOpen(false);
     resetForm();
     fetchTeachers(); 
@@ -100,46 +122,54 @@ export default function TeacherManagementPage() {
   const openEditModal = (teacher: User) => {
     setSelectedTeacher(teacher);
     setFormData({
-      name: teacher.name,
+      name: teacher.name || '',
       email: teacher.email || '', 
       gender: teacher.gender || 'Laki-Laki', 
-      role: teacher.role,
-      nis_niy: teacher.nis_niy
+      role: teacher.role || 'TEACHER',
+      department: teacher.department || 'UMUM', 
+      nis_niy: teacher.nis_niy || ''
     });
     setIsEditModalOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', gender: 'Laki-Laki', role: 'TEACHER', nis_niy: '' });
+    setFormData({ name: '', email: '', gender: 'Laki-Laki', role: 'TEACHER', department: 'UMUM', nis_niy: '' });
     setSelectedTeacher(null);
   };
 
-  // Updated filter so you can actually search by typing "Mr" or "Ma'am"
   const filteredTeachers = teachers.filter(t => {
-    const fullNameWithTitle = `${getTitle(t.gender)}${t.name}`.toLowerCase();
-    return fullNameWithTitle.includes(searchQuery.toLowerCase()) || t.nis_niy.includes(searchQuery);
+    if (!t) return false;
+    const teacherName = t.name || '';
+    const teacherNisNiy = t.nis_niy || '';
+    const fullNameWithTitle = `${getTitle(t.gender)}${teacherName}`.toLowerCase();
+    
+    return fullNameWithTitle.includes(searchQuery.toLowerCase()) || 
+           teacherNisNiy.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
     <div className="min-h-screen bg-[#f4f6f8] font-sans">
       
-      {/* Navigation Bar */}
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center z-50 relative border-b border-gray-200">
         <div className="flex items-center">
-           <Image 
-            src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" 
-            alt="MDC Christian School" 
-            width={444} 
-            height={100} 
-            className="h-10 md:h-12 w-auto"
-            priority
-          />
+          <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
         </div>
         
-        <div className="hidden md:flex gap-10 text-[15px] font-medium text-gray-600">
-          <Link href="/admin" className="hover:text-black transition-colors">Home</Link>
-          <Link href="/admin/teachers" className="text-black border-b-2 border-black pb-1">Teacher / Staff</Link>
-          <Link href="/admin/rubric" className="hover:text-black transition-colors">Rubric</Link>
+        <div className="flex items-center gap-10">
+          <div className="hidden md:flex gap-8 text-[15px] font-bold text-gray-500">
+            <Link href="/admin" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Overview
+            </Link>
+            <Link href="/admin/teachers" className="text-[#053b50] border-b-2 border-[#008c99] pb-1 transition-all">
+              Teachers/Staff
+            </Link>
+            <Link href="/admin/rubric" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Rubrics
+            </Link>
+          </div>
+          <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">
+            Logout
+          </Link>
         </div>
       </nav>
 
@@ -180,15 +210,18 @@ export default function TeacherManagementPage() {
                     className="p-6 flex items-start gap-6 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0"
                   >
                     <div className="w-24 h-24 relative rounded-md overflow-hidden bg-gray-200 flex-shrink-0 shadow-sm flex items-center justify-center text-gray-400 font-bold text-3xl">
-                      {/* Avatar stays as the first letter of their actual name */}
-                      {teacher.name.charAt(0).toUpperCase()}
+                      {teacher.name ? teacher.name.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div className="flex flex-col">
-                      {/* Title added to the display name here! */}
                       <h3 className="font-bold text-gray-900 text-2xl">
                         {getTitle(teacher.gender)}{teacher.name}
                       </h3>
-                      <p className="text-lg text-gray-600">{teacher.role}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-lg text-gray-600 font-medium">{teacher.role}</p>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${teacher.department === 'UMUM' ? 'bg-gray-200 text-gray-700' : teacher.department === 'IPA' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                          {teacher.department || 'UMUM'}
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500 mt-1">NIY: {teacher.nis_niy}</p>
                     </div>
                   </div>
@@ -217,7 +250,12 @@ export default function TeacherManagementPage() {
                 <InputGroup label="Nama Lengkap" value={formData.name} onChange={(e: any) => setFormData({...formData, name: e.target.value})} required />
                 <InputGroup label="Email" value={formData.email} onChange={(e: any) => setFormData({...formData, email: e.target.value})} />
                 <SelectGroup label="Jenis Kelamin" value={formData.gender} onChange={(e: any) => setFormData({...formData, gender: e.target.value})} options={['Laki-Laki', 'Perempuan']} />
-                <SelectGroup label="Jabatan/Bagian/Bidang" value={formData.role} onChange={(e: any) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'DIRECTOR/PRINCIPAL', 'ADMIN']} />
+                
+                {/* THE FIX IS HERE: Updated to separated roles */}
+                <SelectGroup label="Jabatan/Bagian/Bidang" value={formData.role} onChange={(e: any) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN']} />
+                
+                <SelectGroup label="Departemen/Jurusan" value={formData.department} onChange={(e: any) => setFormData({...formData, department: e.target.value})} options={['UMUM', 'IPA', 'IPS']} />
+                
                 <InputGroup label="NIY" value={formData.nis_niy} onChange={(e: any) => setFormData({...formData, nis_niy: e.target.value})} required />
               </div>
 
@@ -243,7 +281,6 @@ export default function TeacherManagementPage() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl">
             <div className="bg-[#f39c12] px-6 py-4 flex justify-between items-center text-white">
-              {/* Title added to the Modal Header! */}
               <h2 className="font-bold text-xl">Teacher / Staff ({getTitle(selectedTeacher.gender).toUpperCase()}{selectedTeacher.name.toUpperCase()})</h2>
               <button type="button" onClick={() => setIsEditModalOpen(false)} className="hover:text-gray-200">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -255,14 +292,18 @@ export default function TeacherManagementPage() {
                 <InputGroup label="Nama Lengkap" value={formData.name} onChange={(e: any) => setFormData({...formData, name: e.target.value})} required />
                 <InputGroup label="Email" value={formData.email} onChange={(e: any) => setFormData({...formData, email: e.target.value})} />
                 <SelectGroup label="Jenis Kelamin" value={formData.gender} onChange={(e: any) => setFormData({...formData, gender: e.target.value})} options={['Laki-Laki', 'Perempuan']} />
-                <SelectGroup label="Jabatan/Bagian/Bidang" value={formData.role} onChange={(e: any) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'DIRECTOR', 'ADMIN']} />
+                
+                {/* Fixed here previously */}
+                <SelectGroup label="Jabatan/Bagian/Bidang" value={formData.role} onChange={(e: any) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN']} />                
+                
+                <SelectGroup label="Departemen/Jurusan" value={formData.department} onChange={(e: any) => setFormData({...formData, department: e.target.value})} options={['UMUM', 'IPA', 'IPS']} />
                 <InputGroup label="NIY" value={formData.nis_niy} onChange={(e: any) => setFormData({...formData, nis_niy: e.target.value})} required />
               </div>
 
               <div className="w-full md:w-56 flex flex-col">
                 <div className="w-full aspect-square bg-gray-100 rounded-full border-4 border-white shadow-sm flex items-center justify-center text-gray-400 relative overflow-hidden mb-6">
                     <span className="font-extrabold text-7xl text-gray-300">
-                      {formData.name ? formData.name.charAt(0).toUpperCase() : selectedTeacher.name.charAt(0).toUpperCase()}
+                      {formData.name ? formData.name.charAt(0).toUpperCase() : selectedTeacher.name?.charAt(0).toUpperCase()}
                     </span>
                 </div>
                 

@@ -75,7 +75,7 @@ export default function AdminDashboard() {
               Overview
             </Link>
             <Link href="/admin/teachers" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Teachers
+              Teachers/Staff
             </Link>
             <Link href="/admin/rubric" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
               Rubrics

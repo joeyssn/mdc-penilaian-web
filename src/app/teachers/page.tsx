@@ -26,6 +26,9 @@ export default function TeacherDashboard() {
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // NEW: State to keep track of who we've already evaluated
+  const [completedEvals, setCompletedEvals] = useState<Set<string>>(new Set());
+  
   // Evaluation States
   const [selectedTarget, setSelectedTarget] = useState<User | null>(null);
   const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
@@ -40,6 +43,13 @@ export default function TeacherDashboard() {
     if (meRes.ok) {
       const meData = await meRes.json();
       setLoggedInUser(meData);
+      
+      // NEW: Fetch the IDs of people this user has already graded
+      const compRes = await fetch(`/api/evaluate/completed?graderId=${meData.id}`);
+      if (compRes.ok) {
+        const compData = await compRes.json();
+        setCompletedEvals(new Set(compData)); // Save to a Set for fast checking
+      }
     }
 
     const scoreRes = await fetch('/api/me/scores');
@@ -93,6 +103,10 @@ export default function TeacherDashboard() {
 
       if (res.ok) {
         alert("Evaluation submitted successfully!");
+        
+        // NEW: Instantly mark this person as completed so they can't be clicked again!
+        setCompletedEvals(prev => new Set(prev).add(selectedTarget.id));
+        
         setSelectedTarget(null);
         setScores({}); 
       } else {
@@ -105,14 +119,37 @@ export default function TeacherDashboard() {
     }
   };
 
-  const filteredTeachers = teachers.filter(t => 
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
-    t.id !== loggedInUser?.id
-  );
+  // ==========================================
+  // STRICT EVALUATION RULES FOR EVERY ROLE
+  // ==========================================
+  const filteredTeachers = teachers.filter(target => {
+    const matchesSearch = target.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (!loggedInUser) return false;
+
+    // RULE 1: SELF-ASSESSMENT - Everyone can always evaluate themselves!
+    if (target.id === loggedInUser.id) return true;
+
+    // RULE 2: STRICT ROLE PERMISSIONS
+    switch (loggedInUser.role) {
+      case 'DIRECTOR':
+        return target.role === 'PRINCIPAL';
+      case 'PRINCIPAL':
+        return target.role === 'TEACHER' || target.role === 'STAFF';
+      case 'TEACHER':
+        return target.role === 'TEACHER';
+      case 'STAFF':
+        return target.role === 'STAFF';
+      case 'ADMIN':
+        return true; // Admins can see everyone
+      default:
+        return false;
+    }
+  });
 
   const activeRubric = rubrics[0];
 
-  // Calculate the overall weighted average
   let overallAvg = 0;
   if (myScores) {
     const totalEvals = myScores.peer.totalEvaluations + myScores.student.totalEvaluations;
@@ -124,7 +161,6 @@ export default function TeacherDashboard() {
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
       
-      {/* Navigation (Matched to Image Style) */}
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center z-50 relative border-b border-gray-200">
         <div className="flex items-center">
           <link rel="stylesheet" href="/teacher" />
@@ -146,11 +182,7 @@ export default function TeacherDashboard() {
 
       <div className="max-w-5xl mx-auto px-6 pt-12 pb-20 space-y-12">
         
-        {/* ============================== */}
-        {/* HERO / DASHBOARD SECTION (Redesigned) */}
-        {/* ============================== */}
         <div>
-          {/* Greeting */}
           {loggedInUser && (
             <h1 className="text-4xl font-extrabold text-[#053b50] mb-8">
               Hi, Welcome {getTitle(loggedInUser.gender)}{loggedInUser.name}
@@ -159,7 +191,6 @@ export default function TeacherDashboard() {
 
           {myScores && (
             <>
-              {/* Overall Rating Banner (Orange) */}
               <div className="bg-[#e99a24] rounded-2xl px-8 py-6 text-white flex justify-between items-center mb-6 shadow-sm">
                 <div>
                   <h2 className="text-2xl font-bold tracking-wide">Overall Evaluation Rating</h2>
@@ -173,10 +204,7 @@ export default function TeacherDashboard() {
                 </div>
               </div>
 
-              {/* Detail Rating Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Peer Rating Card (Gray Theme) */}
                 <div className="bg-white rounded-2xl shadow-sm p-8 border border-gray-100">
                   <h3 className="text-2xl font-extrabold text-black">Peer Rating</h3>
                   <p className="text-gray-700 font-medium mb-8">Feedback from colleagues</p>
@@ -189,7 +217,6 @@ export default function TeacherDashboard() {
                     <div className="text-sm font-bold text-gray-500">({myScores.peer.totalEvaluations} participant)</div>
                   </div>
                   
-                  {/* Progress Bar */}
                   <div className="w-full bg-[#e6e6e6] rounded-full h-3.5">
                     <div 
                       className="bg-gray-500 h-3.5 rounded-full transition-all duration-1000" 
@@ -198,7 +225,6 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
 
-                {/* Student Rating Card (Teal Theme) */}
                 <div className="bg-white rounded-2xl shadow-sm p-8 border border-gray-100">
                   <h3 className="text-2xl font-extrabold text-black">Student Rating</h3>
                   <p className="text-gray-700 font-medium mb-8">Feedback from students</p>
@@ -211,7 +237,6 @@ export default function TeacherDashboard() {
                     <div className="text-sm font-bold text-[#008c99]">({myScores.student.totalEvaluations} participant)</div>
                   </div>
                   
-                  {/* Progress Bar */}
                   <div className="w-full bg-[#e6e6e6] rounded-full h-3.5">
                     <div 
                       className="bg-[#008c99] h-3.5 rounded-full transition-all duration-1000" 
@@ -219,19 +244,15 @@ export default function TeacherDashboard() {
                     ></div>
                   </div>
                 </div>
-
               </div>
             </>
           )}
         </div>
 
-        {/* ============================== */}
-        {/* PEER EVALUATION TOOL */}
-        {/* ============================== */}
         <div className="pt-10 border-t border-gray-200">
           <div>
             <h2 className="text-3xl font-extrabold text-[#053b50]">Peer Evaluation Portal</h2>
-            <p className="text-gray-500 mt-2 text-lg">Select a teacher below to begin scoring.</p>
+            <p className="text-gray-500 mt-2 text-lg">Select a colleague (or search your own name for self-assessment) to begin scoring.</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 mt-6">
@@ -241,7 +262,7 @@ export default function TeacherDashboard() {
               </svg>
               <input 
                 type="text"
-                placeholder="Search for a Teacher to evaluate..."
+                placeholder="Search for a Colleague..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full outline-none text-gray-800 text-xl font-bold placeholder:text-gray-400 bg-transparent"
@@ -252,30 +273,44 @@ export default function TeacherDashboard() {
             {searchQuery && (
               <div className="max-h-[300px] overflow-y-auto">
                 {filteredTeachers.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500 font-bold">No teachers found.</div>
+                  <div className="p-8 text-center text-gray-500 font-bold">No results found.</div>
                 ) : (
-                  filteredTeachers.map(teacher => (
-                    <div 
-                      key={teacher.id}
-                      onClick={() => setSelectedTarget(teacher)}
-                      className="p-4 px-8 flex items-center justify-between hover:bg-[#008c99]/5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-500 text-lg">
-                          {teacher.name.charAt(0)}
+                  filteredTeachers.map(teacher => {
+                    // Check if this specific teacher has already been evaluated!
+                    const hasEvaluated = completedEvals.has(teacher.id);
+
+                    return (
+                      <div 
+                        key={teacher.id}
+                        onClick={() => !hasEvaluated && setSelectedTarget(teacher)}
+                        className={`p-4 px-8 flex items-center justify-between transition-colors border-b border-gray-100 last:border-b-0 ${hasEvaluated ? 'opacity-60 bg-gray-50' : 'hover:bg-[#008c99]/5 cursor-pointer group'}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${hasEvaluated ? 'bg-gray-200 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+                            {teacher.name.charAt(0)}
+                          </div>
+                          <div>
+                            <h3 className={`font-bold text-lg transition-colors ${hasEvaluated ? 'text-gray-500' : 'text-gray-900 group-hover:text-[#008c99]'}`}>
+                              {getTitle(teacher.gender)}{teacher.name}
+                              {teacher.id === loggedInUser?.id && <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${hasEvaluated ? 'bg-gray-300 text-gray-500' : 'bg-[#e99a24] text-white'}`}>Self-Assessment</span>}
+                            </h3>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">{teacher.role}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#008c99] transition-colors">
-                            {getTitle(teacher.gender)}{teacher.name}
-                          </h3>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide">{teacher.role}</p>
-                        </div>
+                        
+                        {/* Change the button based on if they are completed or not */}
+                        {hasEvaluated ? (
+                          <button disabled className="bg-gray-100 text-gray-400 border-2 border-gray-200 px-4 py-2 rounded-lg font-bold text-sm cursor-not-allowed">
+                            Completed
+                          </button>
+                        ) : (
+                          <button className="bg-white border-2 border-[#e99a24] text-[#e99a24] group-hover:bg-[#e99a24] group-hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors">
+                            Evaluate
+                          </button>
+                        )}
                       </div>
-                      <button className="bg-white border-2 border-[#e99a24] text-[#e99a24] group-hover:bg-[#e99a24] group-hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors">
-                        Evaluate
-                      </button>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}
@@ -353,10 +388,9 @@ export default function TeacherDashboard() {
                 </div>
 
               </form>
-            </div>
+            </div>          
           )}
         </div>
-
       </div>
     </div>
   );

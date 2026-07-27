@@ -12,13 +12,15 @@ type User = {
   department?: string | null; 
   grade?: number | null; 
   level?: string | null; 
-  className?: string | null; // <--- ADD THIS
+  className?: string | null;
 };
 
 type Indicator = { id: string; text: string; weight: number };
 type Category = { id: string; title: string; indicators: Indicator[] };
 type Section = { id: string; title: string; categories: Category[] };
-type Rubric = { id: string; title: string; sections: Section[] };
+
+// Added 'evaluators' to the Rubric type so TypeScript knows to look for it!
+type Rubric = { id: string; title: string; evaluators?: string | null; sections: Section[] };
 
 export default function StudentDashboard() {
     const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
@@ -98,7 +100,8 @@ export default function StudentDashboard() {
             setIsSubmitting(false);
         }
     };
-// ==========================================
+
+  // ==========================================
   // STRICT TEACHER, GRADE & DEPARTMENT FILTERING
   // ==========================================
   const filteredTeachers = teachers.filter(teacher => {
@@ -128,8 +131,15 @@ export default function StudentDashboard() {
     // If it doesn't match any of the above, hide the teacher
     return false;
   });
-    const activeRubric = rubrics[0];
-
+// THE FIX: Safely convert evaluators to a string first, in case the API returns an Array!
+  const activeRubric = rubrics.find((rubric) => {
+    if (!rubric.evaluators) return false;
+    
+    // Wrapping it in String() prevents the crash regardless of whether it's an array or text
+    const validEvaluators = String(rubric.evaluators).toLowerCase();
+    return validEvaluators.includes('student') || validEvaluators.includes('siswa');
+  }) || rubrics[0];
+  
     return (
         <div className="min-h-screen bg-[#f7f8f9] font-sans">
 
@@ -171,11 +181,11 @@ export default function StudentDashboard() {
                             </p>
                         </div>
                         {loggedInUser?.className && (
-    <div className="bg-white/20 px-6 py-3 rounded-xl backdrop-blur-sm shrink-0 border border-white/20 text-center">
-        <div className="text-xs uppercase tracking-widest font-bold opacity-80">Your Class</div>
-        <div className="text-2xl font-extrabold">{loggedInUser.className}</div>
-    </div>
-)}
+                            <div className="bg-white/20 px-6 py-3 rounded-xl backdrop-blur-sm shrink-0 border border-white/20 text-center">
+                                <div className="text-xs uppercase tracking-widest font-bold opacity-80">Your Class</div>
+                                <div className="text-2xl font-extrabold">{loggedInUser.className}</div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -191,7 +201,7 @@ export default function StudentDashboard() {
                                 placeholder="Search for your Teachers..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                suppressHydrationWarning // <--- ADD THIS LINE HERE
+                                suppressHydrationWarning 
                                 className="w-full outline-none text-gray-800 text-xl font-bold placeholder:text-gray-400 bg-transparent"
                                 autoComplete="off"
                             />
@@ -220,7 +230,7 @@ export default function StudentDashboard() {
                                                     <div className="flex gap-2 items-center mt-1">
                                                         <span className="text-xs text-gray-500 uppercase tracking-wide">{teacher.role}</span>
                                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${teacher.department === 'UMUM' ? 'bg-gray-100 text-gray-600' :
-                                                                teacher.department === 'IPA' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
+                                                            teacher.department === 'IPA' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
                                                             }`}>
                                                             {teacher.department || 'UMUM'}
                                                         </span>

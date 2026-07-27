@@ -134,14 +134,28 @@ export default function RubricPage() {
     <div className="min-h-screen bg-[#fafbfc] font-sans text-slate-800">
       
       {/* Navigation Bar */}
-      <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center z-50 relative border-b border-gray-200">
+     <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center z-50 relative border-b border-gray-200">
         <div className="flex items-center">
           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
         </div>
-        <div className="hidden md:flex gap-10 text-[15px] font-medium text-gray-600">
-          <Link href="/admin" className="hover:text-black transition-colors">Home</Link>
-          <Link href="/admin/teachers" className="hover:text-black transition-colors">Teacher / Staff</Link>
-          <Link href="/admin/rubric" className="text-black border-b-2 border-black pb-1">Rubric</Link>
+        
+        <div className="flex items-center gap-10">
+          {/* Admin Navigation Links */}
+          <div className="hidden md:flex gap-8 text-[15px] font-bold text-gray-500">
+            <Link href="/admin" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Overview
+            </Link>
+            <Link href="/admin/teachers" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Teachers/Staff
+            </Link>
+            <Link href="/admin/rubric" className="text-[#053b50] border-b-2 border-[#008c99] pb-1 transition-all">
+              Rubrics
+            </Link>
+          </div>
+          
+          <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">
+            Logout
+          </Link>
         </div>
       </nav>
 

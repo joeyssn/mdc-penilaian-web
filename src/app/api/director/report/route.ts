@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const users = await prisma.user.findMany({
       where: { 
-        role: { in: ['TEACHER', 'STAFF', 'DIRECTOR_PRINCIPAL'] } 
+        role: { in: ['TEACHER', 'STAFF', 'PRINCIPAL'] } 
       },
       include: {
         score_score_targetIdTouser: {

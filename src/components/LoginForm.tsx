@@ -34,12 +34,21 @@ export default function LoginForm() {
 
       if (res.ok) {
         // 2. Redirect based on the user's role from the database
-        if (data.role === 'ADMIN' || data.role === 'DIRECTOR') {
+        if (data.role === 'ADMIN') {
           router.push('/admin');
         } else if (data.role === 'STUDENT') {
           router.push('/student');
-        } else {
+        } else if (data.role === 'TEACHER') {
           router.push('/teachers');
+        }
+        else if (data.role === 'STAFF') {
+          router.push('/teachers');
+        }
+        else if (data.role === 'PRINCIPAL') {
+          router.push('/principal');
+        }
+        else if (data.role === 'DIRECTOR') {
+          router.push('/director');
         }
       } else {
         setError(data.error || 'Invalid credentials. Please try again.');

@@ -16,7 +16,6 @@ export default function CategoryCard({ category, onRefresh }: Props) {
   const [title, setTitle] = useState(category.title);
   const [showAddIndicator, setShowAddIndicator] = useState(false);
 
-  // ... (keep saveCategory and deleteCategory functions exactly as they are)
   async function saveCategory() {
     await fetch("/api/rubric/category", {
       method: "PUT",
@@ -79,15 +78,24 @@ export default function CategoryCard({ category, onRefresh }: Props) {
         {/* BODY (Indicators) */}
         {expanded && (
           <div className="space-y-3 mt-4 border-t border-gray-200 pt-4">
-            {category.indicators.length === 0 && (
-              <div className="italic text-xs text-gray-400">No indicators yet.</div>
-            )}
-            {category.indicators
-              .sort((a, b) => a.order - b.order)
-              .map((indicator) => (
+           {(category.indicators || [])
+              .sort((a: any, b: any) => {
+                // 1. If you added an 'order' column to your database, use it:
+                if (typeof a.order === 'number' && typeof b.order === 'number') {
+                  return a.order - b.order;
+                }
+                // 2. Sort by the exact millisecond they were created (oldest first, newest at bottom)
+                if (a.createdAt && b.createdAt) {
+                  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                }
+                // 3. Fallback
+                return 0;
+              })
+              .map((indicator, index) => (
                 <IndicatorRow
                   key={indicator.id}
                   indicator={indicator}
+                  index={index}
                   onRefresh={onRefresh}
                 />
               ))}
@@ -98,6 +106,7 @@ export default function CategoryCard({ category, onRefresh }: Props) {
       <AddIndicatorModal
         open={showAddIndicator}
         categoryId={category.id}
+        currentCount={category.indicators?.length || 0}
         onClose={() => setShowAddIndicator(false)}
         onSuccess={onRefresh}
       />

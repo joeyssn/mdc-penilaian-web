@@ -8,7 +8,8 @@ import AddSectionModal from "./AddSectionModal";
 import AddRubricModal from "./AddRubricModal";
 import { Rubric } from "./types";
 
-const AVAILABLE_ROLES = ["Teacher", "Staff", "Director/Principal", "Student"];
+// Added "Vice-Principal" to the available roles
+const AVAILABLE_ROLES = ["Admin", "Teacher", "Staff", "Vice-Principal", "Director/Principal", "Student"];
 
 export default function RubricPage() {
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
@@ -19,12 +20,10 @@ export default function RubricPage() {
   
   const [selectedRubricId, setSelectedRubricId] = useState<string>("");
 
-  // Top-Level Rubric Edit State
   const [editingRubric, setEditingRubric] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
 
-  // Permissions State
   const [editingSettings, setEditingSettings] = useState(false);
   const [evaluators, setEvaluators] = useState<string[]>([]);
   const [evaluatees, setEvaluatees] = useState<string[]>([]);
@@ -38,7 +37,6 @@ export default function RubricPage() {
       if (Array.isArray(data)) {
         setRubrics(data);
         if (data.length > 0) {
-          // If we are preserving selection, keep the current ID. Otherwise, pick the first one.
           const activeId = preserveSelection && selectedRubricId ? selectedRubricId : data[0].id;
           setSelectedRubricId(activeId);
           
@@ -58,7 +56,6 @@ export default function RubricPage() {
     fetchRubrics();
   }, []);
 
-  // Sync state when you select a different rubric from the dropdown
   useEffect(() => {
     if (selectedRubricId) {
       const active = rubrics.find((r) => r.id === selectedRubricId);
@@ -80,24 +77,18 @@ export default function RubricPage() {
   };
 
   const handleSavePermissions = async () => {
-  // Check for both Teacher and Staff
-  if ((evaluators.includes("Teacher") || evaluators.includes("Staff") || evaluators.includes("student")) && evaluatees.includes("Director/Principal")) {
-    alert("Policy Error: Teachers and Staff are not permitted to score the Director/Principal.");
-    return;
-  }
-  
-  try {
-    await fetch("/api/rubric", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedRubricId, evaluators, evaluatees }),
-    });
-    setEditingSettings(false);
-    fetchRubrics(true);
-  } catch (err) {
-    alert("Failed to update rubric settings.");
-  }
-};
+    try {
+      await fetch("/api/rubric", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedRubricId, evaluators, evaluatees }),
+      });
+      setEditingSettings(false);
+      fetchRubrics(true);
+    } catch (err) {
+      alert("Failed to update rubric settings.");
+    }
+  };
 
   const handleSaveRubricInfo = async () => {
     try {
@@ -122,7 +113,7 @@ export default function RubricPage() {
         body: JSON.stringify({ id: selectedRubricId }),
       });
       setSelectedRubricId("");
-      fetchRubrics(); // Reset entirely
+      fetchRubrics(); 
     } catch (err) {
       alert("Failed to delete rubric.");
     }
@@ -132,15 +123,12 @@ export default function RubricPage() {
 
   return (
     <div className="min-h-screen bg-[#fafbfc] font-sans text-slate-800">
-      
-      {/* Navigation Bar */}
      <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center z-50 relative border-b border-gray-200">
         <div className="flex items-center">
           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
         </div>
         
         <div className="flex items-center gap-10">
-          {/* Admin Navigation Links */}
           <div className="hidden md:flex gap-8 text-[15px] font-bold text-gray-500">
             <Link href="/admin" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
               Overview
@@ -160,8 +148,6 @@ export default function RubricPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto py-10 px-6">
-        
-        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
             <h1 className="text-4xl font-extrabold text-[#053b50] tracking-tight">Manage Rubrics</h1>
@@ -181,7 +167,6 @@ export default function RubricPage() {
           </div>
         ) : (
           <>
-            {/* RUBRIC SELECTOR */}
             <div className="mb-6 flex items-center gap-4">
               <label className="font-bold text-sm text-gray-600">Active Rubric:</label>
               <select 
@@ -195,12 +180,8 @@ export default function RubricPage() {
               </select>
             </div>
 
-            {/* RUBRIC CONTAINER */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-hidden">
-              
-              {/* Rubric Title & Description Header */}
               <div className="border-b border-gray-100 px-8 py-6 flex flex-col md:flex-row justify-between items-start md:items-center bg-gray-50/50 gap-4">
-                
                 {editingRubric ? (
                    <div className="flex-1 w-full space-y-3 pr-8">
                      <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-bold text-lg text-[#053b50]" placeholder="Rubric Title" />
@@ -229,44 +210,58 @@ export default function RubricPage() {
                 </div>
               </div>
 
-              {/* Permissions Panel */}
               {editingSettings ? (
                 <div className="px-8 py-6 bg-white border-b border-gray-100">
                   <h3 className="font-bold text-[#053b50] mb-4 text-sm uppercase tracking-wide">Assignment & Access Rules</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">Who evaluates? (Evaluators)</label>
+                    
+                    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                      <div className="flex justify-between items-end mb-4">
+                        <label className="block text-sm font-bold text-[#053b50]">Who evaluates? (Evaluators)</label>
+                        <div className="flex gap-2">
+                           <button onClick={() => setEvaluators([...AVAILABLE_ROLES])} className="text-[10px] bg-[#008397]/10 text-[#008397] px-2 py-1.5 rounded font-bold hover:bg-[#008397]/20 transition">Select All</button>
+                           <button onClick={() => setEvaluators([])} className="text-[10px] bg-white border border-gray-300 text-gray-600 px-2 py-1.5 rounded font-bold hover:bg-gray-100 transition">Clear</button>
+                        </div>
+                      </div>
                       <div className="flex gap-4 flex-wrap">
                         {AVAILABLE_ROLES.map((role) => (
-                          <label key={`evaluator-${role}`} className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                          <label key={`evaluator-${role}`} className="flex items-center gap-2 text-sm font-semibold text-gray-600 cursor-pointer hover:text-[#008397] transition-colors">
                             <input type="checkbox" checked={evaluators.includes(role)} onChange={() => toggleRole(role, "evaluator")} className="w-4 h-4 rounded border-gray-300 text-[#008397] focus:ring-[#008397]" /> {role}
                           </label>
                         ))}
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">Who receives the score? (Target)</label>
+                    
+                    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                      <div className="flex justify-between items-end mb-4">
+                        <label className="block text-sm font-bold text-[#053b50]">Who receives the score? (Target)</label>
+                        <div className="flex gap-2">
+                           {/* Added Vice-Principal to the Target All action */}
+                           <button onClick={() => setEvaluatees(["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Student"])} className="text-[10px] bg-[#e99a24]/10 text-[#e99a24] px-2 py-1.5 rounded font-bold hover:bg-[#e99a24]/20 transition">Target All (Except Admin)</button>
+                           <button onClick={() => setEvaluatees([])} className="text-[10px] bg-white border border-gray-300 text-gray-600 px-2 py-1.5 rounded font-bold hover:bg-gray-100 transition">Clear</button>
+                        </div>
+                      </div>
                       <div className="flex gap-4 flex-wrap">
                         {AVAILABLE_ROLES.map((role) => (
-                          <label key={`evaluatee-${role}`} className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" checked={evaluatees.includes(role)} onChange={() => toggleRole(role, "evaluatee")} className="w-4 h-4 rounded border-gray-300 text-[#008397] focus:ring-[#008397]" /> {role}
+                          <label key={`evaluatee-${role}`} className="flex items-center gap-2 text-sm font-semibold text-gray-600 cursor-pointer hover:text-[#e99a24] transition-colors">
+                            <input type="checkbox" checked={evaluatees.includes(role)} onChange={() => toggleRole(role, "evaluatee")} className="w-4 h-4 rounded border-gray-300 text-[#e99a24] focus:ring-[#e99a24]" /> {role}
                           </label>
                         ))}
                       </div>
                     </div>
+
                   </div>
                   <div className="mt-6 flex justify-end">
-                    <button onClick={handleSavePermissions} className="bg-[#008397] hover:bg-[#006e80] text-white px-5 py-2 rounded-lg font-semibold text-sm transition">Save Access Rules</button>
+                    <button onClick={handleSavePermissions} className="bg-[#008397] hover:bg-[#006e80] text-white px-8 py-2.5 rounded-lg font-bold text-sm transition shadow-sm active:scale-95">Save Access Rules</button>
                   </div>
                 </div>
               ) : (
                  <div className="px-8 py-4 bg-white border-b border-gray-100 flex gap-10">
-                    <div><span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Evaluators</span><span className="text-sm font-medium text-slate-700">{evaluators.length > 0 ? evaluators.join(", ") : "Not assigned"}</span></div>
-                    <div><span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Target (Evaluatees)</span><span className="text-sm font-medium text-slate-700">{evaluatees.length > 0 ? evaluatees.join(", ") : "Not assigned"}</span></div>
+                    <div><span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Evaluators</span><span className="text-sm font-bold text-[#053b50]">{evaluators.length > 0 ? evaluators.join(", ") : "Not assigned"}</span></div>
+                    <div><span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Target (Evaluatees)</span><span className="text-sm font-bold text-[#e99a24]">{evaluatees.length > 0 ? evaluatees.join(", ") : "Not assigned"}</span></div>
                  </div>
               )}
 
-              {/* Sections List */}
               <div className="p-8 space-y-6 bg-[#fafbfc]">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-bold text-gray-600 uppercase tracking-wide text-sm">Rubric Sections</h3>

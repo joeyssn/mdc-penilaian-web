@@ -5,16 +5,16 @@ import { RubricIndicator } from "./types";
 
 interface Props {
   indicator: RubricIndicator;
+  index: number; // <--- Accept the index prop
   onRefresh: () => void;
 }
 
-export default function IndicatorRow({ indicator, onRefresh }: Props) {
+export default function IndicatorRow({ indicator, index, onRefresh }: Props) {
   const [editing, setEditing] = useState(false);
 
   const [text, setText] = useState(indicator.text);
   const [weight, setWeight] = useState<number | string>(indicator.weight);
 
-  // Auto-correct the number if they type something out of bounds
   const handleBlur = () => {
     let num = Number(weight);
     if (isNaN(num) || num < 1) setWeight(1);
@@ -76,15 +76,22 @@ export default function IndicatorRow({ indicator, onRefresh }: Props) {
     <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5 hover:shadow-md transition duration-200">
       {!editing ? (
         <div className="flex justify-between items-start gap-4">
-          <div className="flex-1">
-            <div className="font-medium text-slate-700 text-sm leading-relaxed">
-              {indicator.text}
-            </div>
-            <div className="mt-2 text-xs text-gray-500 font-medium bg-gray-50 inline-block px-2.5 py-1 rounded-md border border-gray-100">
-              Max Score:
-              <span className="font-bold text-[#053b50] ml-1.5">
-                {indicator.weight}
-              </span>
+          
+          {/* UPDATED: Added the Q1, Q2 badge next to the text */}
+          <div className="flex-1 flex gap-3 items-start">
+            <span className="text-xs font-bold text-white bg-[#008397] px-2 py-1 rounded shadow-sm mt-0.5 shrink-0">
+              Q{index + 1}
+            </span>
+            <div>
+              <div className="font-medium text-slate-700 text-sm leading-relaxed">
+                {indicator.text}
+              </div>
+              <div className="mt-2 text-xs text-gray-500 font-medium bg-gray-50 inline-block px-2.5 py-1 rounded-md border border-gray-100">
+                Max Score:
+                <span className="font-bold text-[#053b50] ml-1.5">
+                  {indicator.weight}
+                </span>
+              </div>
             </div>
           </div>
 

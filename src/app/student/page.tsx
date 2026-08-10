@@ -44,6 +44,8 @@ export default function StudentDashboard() {
             setLoggedInUser(meData);
         }
 
+        //an laoanlnnsbiugfis;mo  soan  ialjohnia ;oak so in the end the material is just the assurance that we 
+
         const tRes = await fetch('/api/teachers');
         const tData = await tRes.json();
         if (!tData.error) setTeachers(tData);
@@ -152,7 +154,7 @@ export default function StudentDashboard() {
                 <div className="flex items-center gap-10">
                     <div className="hidden md:flex gap-10 text-[15px] font-medium text-gray-800">
                         <Link href="/student" className="text-black border-b-2 border-black pb-1">
-                            Dashboard
+                            Home
                         </Link>
                     </div>
 
@@ -219,7 +221,7 @@ export default function StudentDashboard() {
                                             onClick={() => setSelectedTarget(teacher)}
                                             className="p-4 px-8 flex items-center justify-between hover:bg-[#008c99]/5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 group"
                                         >
-                                            <div className="flex items-center gap-4">
+                                            <div className="    flex items-center gap-4">
                                                 <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-500 text-lg">
                                                     {teacher.name.charAt(0)}
                                                 </div>

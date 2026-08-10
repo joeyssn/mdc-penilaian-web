@@ -5,6 +5,7 @@ import { useState } from "react";
 interface Props {
   open: boolean;
   categoryId: string;
+  currentCount: number; // <--- Accept the current count
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -12,6 +13,7 @@ interface Props {
 export default function AddIndicatorModal({
   open,
   categoryId,
+  currentCount,
   onClose,
   onSuccess,
 }: Props) {
@@ -21,7 +23,6 @@ export default function AddIndicatorModal({
 
   if (!open) return null;
 
-  // Auto-correct the number if they type something out of bounds
   const handleBlur = () => {
     let num = Number(weight);
     if (isNaN(num) || num < 1) setWeight(1);
@@ -53,6 +54,7 @@ export default function AddIndicatorModal({
           categoryId,
           text,
           weight: finalWeight,
+          order: currentCount + 1, // <--- Tells the database to put it at the very end!
         }),
       });
 
@@ -77,7 +79,6 @@ export default function AddIndicatorModal({
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-gray-100">
         
-        {/* Header */}
         <div className="bg-gray-50/50 border-b border-gray-100 px-8 py-5 flex justify-between items-center">
           <h2 className="text-xl font-bold text-[#053b50]">
             Add Indicator
@@ -87,7 +88,6 @@ export default function AddIndicatorModal({
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-8 space-y-6">
           <div>
             <label className="block font-bold text-[#053b50] text-sm mb-2">
@@ -119,7 +119,6 @@ export default function AddIndicatorModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="border-t border-gray-100 px-8 py-5 flex justify-end gap-3 bg-gray-50/30">
           <button
             onClick={() => {

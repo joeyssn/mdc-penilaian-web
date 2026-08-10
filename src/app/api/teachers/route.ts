@@ -77,6 +77,7 @@ export async function PUT(req: Request) {
     console.error("❌ UPDATE TEACHER ERROR:", error);
     return NextResponse.json({ error: "Failed to update teacher" }, { status: 500 });
   }
+  
 }
 
 export async function DELETE(req: Request) {

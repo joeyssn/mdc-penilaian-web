@@ -50,6 +50,9 @@ export default function LoginForm() {
         else if (data.role === 'DIRECTOR') {
           router.push('/director');
         }
+        else if (data.role === 'VICE_PRINCIPAL') {
+          router.push('/vice-principal');
+        }
       } else {
         setError(data.error || 'Invalid credentials. Please try again.');
       }

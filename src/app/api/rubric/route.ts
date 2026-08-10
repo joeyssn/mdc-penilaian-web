@@ -9,13 +9,13 @@ export async function GET() {
     const rubrics = await prisma.rubric.findMany({
       include: {
         rubricsection: {
-          orderBy: { order: 'asc' },
+          orderBy: { createdAt: 'asc' }, 
           include: {
             rubriccategory: {
-              orderBy: { order: 'asc' },
+              orderBy: { createdAt: 'asc' }, 
               include: {
                 rubricindicator: {
-                  orderBy: { order: 'asc' }
+                  orderBy: { createdAt: 'asc' } 
                 }
               }
             }
@@ -26,8 +26,6 @@ export async function GET() {
 
     const formattedRubrics = rubrics.map((rubric) => ({
       ...rubric,
-      // MySQL stores this as a single string "Teacher,Staff". 
-      // We split it here so the frontend gets the Array it expects!
       evaluators: rubric.evaluators ? rubric.evaluators.split(',') : [],
       evaluatees: rubric.evaluatees ? rubric.evaluatees.split(',') : [],
       sections: rubric.rubricsection.map((section) => ({
@@ -67,24 +65,12 @@ export async function POST(req: Request) {
   }
 }
 
-// 3. UPDATE A RUBRIC (Includes strict policy enforcement for Teacher and Staff)
+// 3. UPDATE A RUBRIC 
 export async function PUT(req: Request) {
   try {
     const { id, title, description, evaluators, evaluatees } = await req.json();
     
-    // --- UPDATED POLICY CHECK ---
-    if (evaluators && evaluatees) {
-      const isTeacherOrStaff = evaluators.includes("Teacher") || evaluators.includes("Staff");
-      const isDirectorTarget = evaluatees.includes("Director");
-
-      if (isTeacherOrStaff && isDirectorTarget) {
-        return NextResponse.json(
-          { error: "Policy Error: Teachers and Staff are not permitted to evaluate the Director." },
-          { status: 403 }
-        );
-      }
-    }
-    // ----------------------------
+    // 🚀 The strict policy check block was completely removed from here!
 
     const updateData: any = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;

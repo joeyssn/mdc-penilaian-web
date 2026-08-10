@@ -73,7 +73,6 @@ export default function AddRubricModal({ open, onClose, onSuccess }: Props) {
             />
           </div>
         </div>
-
         <div className="border-t border-gray-100 px-8 py-5 flex justify-end gap-3 bg-gray-50/30">
           <button onClick={onClose} className="border border-gray-300 text-gray-700 font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-50 transition">
             Cancel

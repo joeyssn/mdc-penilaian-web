@@ -113,7 +113,13 @@ export default function RubricSectionCard({ section, onRefresh }: Props) {
             )}
             
             {(section.categories || [])
-              .sort((a, b) => a.order - b.order)
+              .sort((a, b) => {
+                // FIXED: Same as above. Return 0 to prevent ID-based shuffling.
+                if (typeof a.order === 'number' && typeof b.order === 'number' && (a.order > 0 || b.order > 0)) {
+                  return a.order - b.order;
+                }
+                return 0;
+              })
               .map((category) => (
                 <CategoryCard
                   key={category.id}

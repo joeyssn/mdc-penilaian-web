@@ -25,13 +25,13 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       try {
         const res = await fetch('/api/admin/stats');
-        
+
         if (!res.ok) {
           throw new Error(`API returned status: ${res.status}`);
         }
 
         const data = await res.json();
-        
+
         if (!data.error) {
           setStudentData(data.studentStats);
           setTeacherData(data.teacherStats);
@@ -61,13 +61,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
-      
+
       {/* Navigation */}
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center z-50 relative border-b border-gray-200">
         <div className="flex items-center">
           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
         </div>
-        
+
         <div className="flex items-center gap-10">
           {/* Admin Navigation Links */}
           <div className="hidden md:flex gap-8 text-[15px] font-bold text-gray-500">
@@ -80,8 +80,15 @@ export default function AdminDashboard() {
             <Link href="/admin/rubric" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
               Rubrics
             </Link>
+            <Link href="/admin/observasi-template" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Edit Observasi Questions
+            </Link>
+            <Link href="/admin/observasi" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Observasi Status
+            </Link>
           </div>
-          
+
+
           <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">
             Logout
           </Link>
@@ -103,7 +110,7 @@ export default function AdminDashboard() {
             {/* TOTAL NUMBERS SUMMARY CARDS */}
             {totals && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                
+
                 {/* Overall Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-center">
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Overall Completion</h3>

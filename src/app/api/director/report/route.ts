@@ -12,9 +12,9 @@ export async function GET() {
     const userMap = new Map();
     allUsers.forEach(u => userMap.set(u.id, u));
 
-    // Added VICE_PRINCIPAL to targets
+    // 🚀 FIX 1: Add BOTH VP roles so they appear as rows in the table
     const targetUsers = allUsers.filter(u => 
-      ['TEACHER', 'STAFF', 'VICE_PRINCIPAL', 'PRINCIPAL'].includes((u.role || '').toUpperCase())
+      ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL'].includes((u.role || '').toUpperCase())
     );
     const targetIds = targetUsers.map(u => u.id);
 
@@ -53,8 +53,8 @@ export async function GET() {
       const peerScores = userScores.filter(s => {
         const graderRole = userMap.get(s.graderId)?.role || '';
         return s.graderId !== user.id && 
-               // Added VICE_PRINCIPAL to Peer evaluators
-               ['TEACHER', 'STAFF', 'VICE_PRINCIPAL', 'PRINCIPAL'].includes(graderRole.toUpperCase());
+               // 🚀 FIX 2: Add BOTH VP roles here so their scores count as "Peer" scores
+               ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL'].includes(graderRole.toUpperCase());
       });
 
       const studentStats = calculateStats(studentScores);
@@ -67,10 +67,15 @@ export async function GET() {
         overallAvg = (totalOverall / userScores.length).toFixed(1);
       }
 
+      // 🚀 FIX 3: Make the role look clean on the frontend!
+      let displayRole = user.role;
+      if (user.role === 'VICE_PRINCIPAL_KURIKULUM') displayRole = 'VP Kurikulum';
+      if (user.role === 'VICE_PRINCIPAL_KESISWAAN') displayRole = 'VP Kesiswaan';
+
       return {
         id: user.id,
         name: user.name,
-        role: user.role,
+        role: displayRole,
         department: '-', 
         studentCount: studentStats.count,
         studentAvg: studentStats.avg,

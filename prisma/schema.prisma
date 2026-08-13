@@ -128,11 +128,36 @@ enum score_value {
   D
 }
 
+model Observation {
+  id               String   @id @default(cuid())
+  targetId         String
+  targetName       String
+  observerId       String
+  observerName     String
+  date             String
+  kelas            String
+  subject          String
+  duration         String
+  topic            String
+  scores           Json
+  notesPositive    String   @db.Text
+  notesImprovement String   @db.Text
+  finalScore       Float
+  isApproved       Boolean  @default(false) // 🚀 ADDED THIS LINE
+  createdAt        DateTime @default(now())
+}
+
+model ObservationTemplate {
+  id      String @id @default(cuid())
+  content Json
+}
+
 enum user_role {
   ADMIN
   DIRECTOR
   PRINCIPAL
-  VICE_PRINCIPAL
+  VICE_PRINCIPAL_KURIKULUM   // <--- Added Sub-Role 1
+  VICE_PRINCIPAL_KESISWAAN   // <--- Added Sub-Role 2
   TEACHER
   STAFF
   STUDENT

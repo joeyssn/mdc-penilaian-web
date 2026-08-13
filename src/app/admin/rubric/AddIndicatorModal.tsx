@@ -123,7 +123,7 @@ export default function AddIndicatorModal({
           <button
             onClick={() => {
               setText("");
-              setWeight(1);
+              setWeight(4);
               onClose();
             }}
             className="border border-gray-300 text-gray-700 font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-50 transition"

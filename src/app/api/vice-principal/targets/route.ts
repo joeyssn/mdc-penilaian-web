@@ -10,7 +10,7 @@ export async function GET() {
     const users = await prisma.user.findMany({
       where: {
         role: {
-          in: ['TEACHER', 'STAFF', 'VICE_PRINCIPAL', 'PRINCIPAL']
+          in: ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL']
         }
       },
       select: {
@@ -29,5 +29,40 @@ export async function GET() {
   } catch (error) {
     console.error("❌ FAILED TO FETCH VP TARGETS:", error);
     return NextResponse.json({ error: "Failed to fetch targets" }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { graderId, targetId, scores } = await req.json();
+
+    // Extract just the IDs of the questions being answered
+    const indicatorIds = scores.map((s: { indicatorId: string, value: string }) => s.indicatorId);
+
+    // 1. CLEAR OUT OLD SCORES: Delete any existing scores this grader gave this target for these specific questions
+    await prisma.score.deleteMany({
+      where: {
+        graderId: graderId,
+        targetId: targetId,
+        indicatorId: { in: indicatorIds }
+      }
+    });
+
+    // 2. SAVE NEW SCORES: Now it's perfectly safe to insert the new ones!
+    const scoresToInsert = scores.map((score: { indicatorId: string, value: string }) => ({
+      graderId,
+      targetId,
+      indicatorId: score.indicatorId,
+      value: score.value,
+    }));
+
+    await prisma.score.createMany({
+      data: scoresToInsert
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("❌ EVALUATION SAVE ERROR:", error);
+    return NextResponse.json({ error: "Failed to save evaluation" }, { status: 500 });
   }
 }

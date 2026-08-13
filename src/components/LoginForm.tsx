@@ -50,7 +50,10 @@ export default function LoginForm() {
         else if (data.role === 'DIRECTOR') {
           router.push('/director');
         }
-        else if (data.role === 'VICE_PRINCIPAL') {
+        else if (data.role === 'VICE_PRINCIPAL_KESISWAAN') {
+          router.push('/vice-principal');
+        }
+        else if (data.role === 'VICE_PRINCIPAL_KURIKULUM') {
           router.push('/vice-principal');
         }
       } else {

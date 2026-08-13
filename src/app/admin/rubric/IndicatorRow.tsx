@@ -17,7 +17,7 @@ export default function IndicatorRow({ indicator, index, onRefresh }: Props) {
 
   const handleBlur = () => {
     let num = Number(weight);
-    if (isNaN(num) || num < 1) setWeight(1);
+    if (isNaN(num) || num < 1) setWeight(4);
     else if (num > 4) setWeight(4);
   };
 
@@ -132,7 +132,7 @@ export default function IndicatorRow({ indicator, index, onRefresh }: Props) {
               type="number"
               min={1}
               max={4}
-              step={1}
+              step={4}
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               onBlur={handleBlur}

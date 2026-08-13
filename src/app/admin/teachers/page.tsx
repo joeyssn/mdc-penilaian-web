@@ -166,6 +166,12 @@ export default function TeacherManagementPage() {
             <Link href="/admin/rubric" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
               Rubrics
             </Link>
+            <Link href="/admin/observasi-template" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Edit Observasi Questions
+            </Link>
+            <Link href="/admin/observasi" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
+              Observasi Status
+            </Link>
           </div>
           <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">
             Logout

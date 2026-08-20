@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
+// --- TYPES ---
 type User = { id: string; name: string; role: string; gender?: string | null; department?: string; };
 type Indicator = { id: string; text: string; weight: number };
 type Category = { id: string; title: string; indicators: Indicator[] };
@@ -29,6 +30,9 @@ type GroupedObservation = {
   averageScore: number;
   records: Observation[];
 };
+
+// 🚀 UPDATED ABSENCE TYPE
+type Absence = { id: string; userId: string; userName: string; role: string; attendanceScore: number; };
 
 const FALLBACK_TEMPLATE = [
   {
@@ -82,8 +86,14 @@ export default function UnifiedDirectorDashboard() {
   const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 🚀 DYNAMIC WEIGHTS STATE
+  const [weights, setWeights] = useState({ studentWeight: 25, peerWeight: 25, observationWeight: 25, attendanceWeight: 25 });
+
   const [reportData, setReportData] = useState<ReportRow[]>([]);
   const [isReportLoading, setIsReportLoading] = useState(true);
+
+  // 🚀 ABSENCE STATE
+  const [absences, setAbsences] = useState<Absence[]>([]);
 
   const [groupedObservations, setGroupedObservations] = useState<GroupedObservation[]>([]);
   const [selectedGroupedObs, setSelectedGroupedObs] = useState<GroupedObservation | null>(null);
@@ -94,6 +104,13 @@ export default function UnifiedDirectorDashboard() {
     fetchPersonalData();
     fetchOverviewData();
     fetchObservations();
+    
+    // Fetch Dynamic Weights from API
+    fetch('/api/settings/weights')
+      .then(res => res.json())
+      .then(data => {
+        if(!data.error) setWeights({ studentWeight: data.studentWeight, peerWeight: data.peerWeight, observationWeight: data.observationWeight, attendanceWeight: data.attendanceWeight });
+      });
   }, []);
 
   const fetchPersonalData = async () => {
@@ -102,10 +119,7 @@ export default function UnifiedDirectorDashboard() {
       const meData = await meRes.json();
       setLoggedInUser(meData);
       const compRes = await fetch(`/api/evaluate/completed?graderId=${meData.id}`);
-      if (compRes.ok) {
-        const compData = await compRes.json();
-        setCompletedEvals(new Set(compData)); 
-      }
+      if (compRes.ok) setCompletedEvals(new Set(await compRes.json())); 
     }
     const scoreRes = await fetch('/api/me/scores');
     if (scoreRes.ok) {
@@ -126,6 +140,12 @@ export default function UnifiedDirectorDashboard() {
       const res = await fetch('/api/director/report');
       const data = await res.json();
       if (!data.error) setReportData(data);
+
+      // FETCH ABSENCES FOR THE REPORT
+      const absRes = await fetch('/api/absences');
+      const absData = await absRes.json();
+      if (!absData.error) setAbsences(absData);
+
     } catch (error) {
       console.error(error);
     } finally {
@@ -151,7 +171,7 @@ export default function UnifiedDirectorDashboard() {
       const data = await res.json();
       
       if (!data.error) {
-        // 🚀 THE FIX: ONLY PROCESS OBSERVATIONS THAT THE PRINCIPAL HAS APPROVED!
+        // 🚀 ONLY SHOW APPROVED OBSERVATIONS
         const approvedData = data.filter((obs: Observation) => obs.isApproved === true);
 
         const grouped = approvedData.reduce((acc: any, obs: Observation) => {
@@ -192,7 +212,7 @@ export default function UnifiedDirectorDashboard() {
     if (!dbRole) return '';
     const upper = dbRole.toUpperCase();
     if (upper === 'TEACHER') return 'Teacher';
-    if (upper === 'STAFF') return 'Staff';
+    if (upper === 'STAFF' || upper === 'HRD') return 'Staff';
     if (upper === 'PRINCIPAL' || upper === 'DIRECTOR') return 'Director/Principal';
     if (upper === 'VICE_PRINCIPAL' || upper === 'VICE-PRINCIPAL') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
@@ -203,8 +223,7 @@ export default function UnifiedDirectorDashboard() {
     const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal"];
     const excludedRoles = ["Admin", "Student"];
     const hasRequired = requiredRoles.every(role => r.evaluators?.includes(role) && r.evaluatees?.includes(role));
-    const hasExcluded = excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
-    return hasRequired && !hasExcluded;
+    return hasRequired && !excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
   };
 
   const handleScoreChange = (indicatorId: string, value: 'A'|'B'|'C'|'D') => {
@@ -215,7 +234,7 @@ export default function UnifiedDirectorDashboard() {
     e.preventDefault();
     if (!selectedTarget || !loggedInUser) return;
     const scoreArray = Object.entries(scores).map(([indicatorId, value]) => ({ indicatorId, value }));
-    if (scoreArray.length === 0) { alert("Please score at least one indicator before submitting."); return; }
+    if (scoreArray.length === 0) return alert("Please score at least one indicator.");
 
     setIsSubmitting(true);
     try {
@@ -225,28 +244,19 @@ export default function UnifiedDirectorDashboard() {
         body: JSON.stringify({ graderId: loggedInUser.id, targetId: selectedTarget.id, scores: scoreArray }),
       });
       if (res.ok) {
-        alert("Evaluation submitted successfully!");
+        alert("Evaluation submitted!");
         setCompletedEvals(prev => new Set(prev).add(selectedTarget.id));
-        setSelectedTarget(null);
-        setScores({}); 
-      } else { alert("Failed to submit evaluation."); }
-    } catch (error) { console.error(error); } finally { setIsSubmitting(false); }
+        setSelectedTarget(null); setScores({}); 
+      }
+    } catch (error) {} finally { setIsSubmitting(false); }
   };
 
   const filteredTeachers = teachers.filter(target => {
     const matchesSearch = target.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch || !loggedInUser || target.id === loggedInUser.id) return false;
-    if (loggedInUser.role === 'PRINCIPAL') return target.role === 'TEACHER' || target.role === 'STAFF' || target.role === 'VICE_PRINCIPAL';
-    if (loggedInUser.role === 'VICE_PRINCIPAL') return target.role === 'VICE_PRINCIPAL' || target.role === 'TEACHER' || target.role === 'STAFF';
-    return target.role === 'PRINCIPAL' || target.role === 'VICE_PRINCIPAL' || target.role === 'TEACHER' || target.role === 'STAFF';
+    return matchesSearch && loggedInUser && target.id !== loggedInUser.id && target.role !== 'STUDENT' && target.role !== 'ADMIN';
   });
 
-  let activeRubric: Rubric | null = null;
-  if (loggedInUser && selectedTarget) {
-    const myRole = getNormalizedRole(loggedInUser.role);
-    const targetRole = getNormalizedRole(selectedTarget.role);
-    activeRubric = rubrics.find(r => r.evaluators?.includes(myRole) && r.evaluatees?.includes(targetRole) && !isSelfReflectionRule(r)) || null;
-  }
+  let activeRubric = loggedInUser && selectedTarget ? rubrics.find(r => r.evaluators?.includes(getNormalizedRole(loggedInUser.role)) && r.evaluatees?.includes(getNormalizedRole(selectedTarget.role)) && !isSelfReflectionRule(r)) || null : null;
 
   let overallAvg = 0;
   if (myScores) {
@@ -549,13 +559,39 @@ export default function UnifiedDirectorDashboard() {
                       <th className="py-4 px-4 font-bold text-[#f39c12] uppercase text-xs tracking-wider text-center">Peer<br/><span className="text-[10px] text-gray-400 font-normal">Count & Score</span></th>
                       <th className="py-4 px-4 font-bold text-purple-600 uppercase text-xs tracking-wider text-center">Self<br/><span className="text-[10px] text-gray-400 font-normal">Count & Score</span></th>
                       <th className="py-4 px-4 font-bold text-green-600 uppercase text-xs tracking-wider text-center">Observation<br/><span className="text-[10px] text-gray-400 font-normal">Principal/VP Avg</span></th>
+                      <th className="py-4 px-4 font-bold text-teal-600 uppercase text-xs tracking-wider text-center">Attendance<br/><span className="text-[10px] text-gray-400 font-normal">HRD Score</span></th>
                       <th className="py-4 px-6 font-bold text-gray-800 uppercase text-xs tracking-wider text-center">Overall Avg<br/><span className="text-[10px] text-gray-400 font-normal">(Scale 1-4)</span></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {reportData.map((row) => {
+                      const sScore = parseFloat(row.studentAvg);
+                      const pScore = parseFloat(row.peerAvg);
+                      
                       const obsGroup = groupedObservations.find(g => g.targetId === row.id);
-                      const obsAvg = obsGroup ? obsGroup.averageScore.toFixed(2) : '-';
+                      const oScore = obsGroup ? obsGroup.averageScore : NaN;
+                      const obsAvgDisplay = obsGroup ? obsGroup.averageScore.toFixed(2) : '-';
+
+                      // Fetch HRD Attendance Score
+                      const userAbsence = absences.find(a => a.userId === row.id);
+                      const aScore = userAbsence ? userAbsence.attendanceScore : NaN;
+                      const attAvgDisplay = userAbsence ? userAbsence.attendanceScore.toFixed(1) : '-';
+
+                      // Apply Dynamic Weights
+                      let wStudent = weights.studentWeight; 
+                      let wPeer = weights.peerWeight; 
+                      let wObs = weights.observationWeight;
+                      let wAtt = weights.attendanceWeight;
+
+                      let activeWeightSum = 0;
+                      let accumulatedScore = 0;
+
+                      if (!isNaN(sScore)) { activeWeightSum += wStudent; accumulatedScore += (sScore * wStudent); }
+                      if (!isNaN(pScore)) { activeWeightSum += wPeer; accumulatedScore += (pScore * wPeer); }
+                      if (!isNaN(oScore)) { activeWeightSum += wObs; accumulatedScore += (oScore * wObs); }
+                      if (!isNaN(aScore)) { activeWeightSum += wAtt; accumulatedScore += (aScore * wAtt); }
+
+                      const finalDynamicAvg = activeWeightSum > 0 ? (accumulatedScore / activeWeightSum).toFixed(2) : '-';
 
                       return (
                         <tr key={row.id} className="hover:bg-gray-50 print:hover:bg-transparent transition-colors">
@@ -586,19 +622,26 @@ export default function UnifiedDirectorDashboard() {
                           </td>
                           <td className="py-4 px-4 text-center">
                             <div className="flex flex-col items-center gap-1">
-                              <span className={`font-extrabold mt-4 ${obsAvg === '-' ? 'text-gray-300' : 'text-green-600'}`}>{obsAvg}</span>
+                              <span className={`font-extrabold mt-4 ${obsAvgDisplay === '-' ? 'text-gray-300' : 'text-green-600'}`}>{obsAvgDisplay}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className={`font-extrabold text-sm mt-4 ${attAvgDisplay === '-' ? 'text-gray-300' : 'text-teal-600'}`}>
+                                {attAvgDisplay}
+                              </span>
                             </div>
                           </td>
                           <td className="py-4 px-6 text-center">
-                            <span className={`font-extrabold text-lg ${row.overallAvg === '-' ? 'text-gray-300' : 'text-[#053b50]'}`}>
-                              {row.overallAvg}
+                            <span className={`font-extrabold text-lg ${finalDynamicAvg === '-' ? 'text-gray-300' : 'text-[#053b50]'}`}>
+                              {finalDynamicAvg}
                             </span>
                           </td>
                         </tr>
                       );
                     })}
                     {reportData.length === 0 && (
-                      <tr><td colSpan={7} className="py-8 text-center text-gray-500">No evaluation data found yet.</td></tr>
+                      <tr><td colSpan={8} className="py-8 text-center text-gray-500">No evaluation data found yet.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -620,7 +663,7 @@ export default function UnifiedDirectorDashboard() {
             {isObsLoading ? (
                <div className="col-span-full p-8 text-center text-gray-500 font-bold bg-white rounded-2xl border border-gray-200">Loading observation records...</div>
             ) : groupedObservations.length === 0 ? (
-              <div className="col-span-full p-8 text-center text-gray-500 font-bold bg-white rounded-2xl border border-gray-200">No observation records found.</div>
+              <div className="col-span-full p-8 text-center text-gray-500 font-bold bg-white rounded-2xl border border-gray-200">No approved observation records found.</div>
             ) : (
               groupedObservations.map(group => (
                 <div key={group.targetId} onClick={() => setSelectedGroupedObs(group)} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:border-[#008c99] hover:shadow-md transition-all cursor-pointer group hover:-translate-y-1 duration-200 relative overflow-hidden">

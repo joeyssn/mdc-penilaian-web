@@ -156,9 +156,26 @@ enum user_role {
   ADMIN
   DIRECTOR
   PRINCIPAL
-  VICE_PRINCIPAL_KURIKULUM   // <--- Added Sub-Role 1
-  VICE_PRINCIPAL_KESISWAAN   // <--- Added Sub-Role 2
+  VICE_PRINCIPAL_KURIKULUM
+  VICE_PRINCIPAL_KESISWAAN
   TEACHER
   STAFF
+  HRD       // <--- NEW ROLE
   STUDENT
+}
+model Absence {
+  id              String   @id @default(cuid())
+  userId          String   
+  userName        String
+  role            String
+  attendanceScore Float    @default(0) // 🚀 SIMPLIFIED: Just a 1-4 Score
+  updatedAt       DateTime @updatedAt
+}
+
+model WeightSettings {
+  id                String @id @default("default")
+  studentWeight     Float  @default(25)
+  peerWeight        Float  @default(25)
+  observationWeight Float  @default(25)
+  attendanceWeight  Float  @default(25) // 🚀 NEW: Weight for HRD Attendance Score
 }

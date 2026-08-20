@@ -122,6 +122,8 @@ export default function TeacherDashboard() {
     switch (loggedInUser.role) {
       case 'DIRECTOR': return target.role === 'PRINCIPAL';
       case 'PRINCIPAL': return target.role === 'TEACHER' || target.role === 'STAFF';
+      case 'VICE_PRINCIPAL': return target.role === 'TEACHER' || target.role === 'STAFF';
+      case 'HRD': return target.role === 'STAFF';
       case 'TEACHER': return target.role === 'TEACHER';
       case 'STAFF': return target.role === 'STAFF';
       case 'ADMIN': return true;

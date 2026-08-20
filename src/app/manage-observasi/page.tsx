@@ -9,7 +9,7 @@ type Observation = {
   id: string; targetId: string; targetName: string; observerId: string; observerName: string;
   date: string; kelas: string; subject: string; duration: string; topic: string;
   scores: Record<string, number>; notesPositive: string; notesImprovement: string; finalScore: number;
-  isApproved: boolean; // 🚀 ADDED TO TYPE
+  isApproved: boolean; 
 };
 
 export default function ManageObservasiPage() {
@@ -34,7 +34,7 @@ export default function ManageObservasiPage() {
     if (obsRes.ok) {
       const data = await obsRes.json();
       
-      // 🚀 SMART FILTERING: Admin & Principal see all. VP only sees their own!
+      // Principal & Admin see all. VP only sees their own.
       if (role === 'ADMIN' || role === 'PRINCIPAL') {
         setObservations(data);
       } else {

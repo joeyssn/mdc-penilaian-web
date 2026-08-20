@@ -68,7 +68,7 @@ export default function PrincipalDashboard() {
     if (upper === 'TEACHER') return 'Teacher';
     if (upper === 'STAFF') return 'Staff';
     if (upper === 'PRINCIPAL' || upper === 'DIRECTOR') return 'Director/Principal';
-    if (upper === 'VICE_PRINCIPAL_KURIKULUM' || upper === 'VICE_PRINCIPAL_KESISWAAN') return 'Vice-Principal'; 
+    if (upper === 'VICE_PRINCIPAL_KURIKULUM' || upper === 'VICE_PRINCIPAL_KESISWAAN' || upper === 'VICE_PRINCIPAL') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
     return dbRole;
   };
@@ -107,17 +107,24 @@ export default function PrincipalDashboard() {
     } catch (error) { console.error(error); } finally { setIsSubmitting(false); }
   };
 
+  // 🚀 RESTRICTED TO VICE PRINCIPALS AND STAFF ONLY
   const filteredTeachers = teachers.filter(target => {
     const matchesSearch = target.name.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch || !loggedInUser || target.id === loggedInUser.id) return false;
     
     const targetRole = (target.role || '').toUpperCase();
 
-    if (targetRole === 'STUDENT' || targetRole === 'DIRECTOR' || targetRole === 'ADMIN' || targetRole === 'PRINCIPAL') {
-      return false;
+    // Only allow specific roles through
+    if (
+      targetRole === 'TEACHER' || 
+      targetRole === 'VICE_PRINCIPAL_KURIKULUM' || 
+      targetRole === 'VICE_PRINCIPAL_KESISWAAN' ||
+      targetRole === 'VICE_PRINCIPAL'
+    ) {
+      return true;
     }
     
-    return true;
+    return false;
   });
 
   let activeRubric: Rubric | null = null;
@@ -221,14 +228,14 @@ export default function PrincipalDashboard() {
 
         <div className="pt-8 md:pt-10 border-t border-gray-200">
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-[#053b50]">Staff Evaluation Portal</h2>
-            <p className="text-gray-500 mt-2 text-sm md:text-lg">Select a staff member below to begin scoring.</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-[#053b50]">Vice Principal & Teacher Evaluation Portal</h2>
+            <p className="text-gray-500 mt-2 text-sm md:text-lg">Select a Teacher or Vice Principal below to begin scoring.</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 mt-6">
             <div className="flex items-center px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 bg-gray-50">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-gray-400 mr-3 md:mr-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input type="text" placeholder="Search for Staff or Teachers..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full outline-none text-gray-800 text-lg md:text-xl font-bold placeholder:text-gray-400 bg-transparent" autoComplete="off" suppressHydrationWarning />
+              <input type="text" placeholder="Search for Vice Principals or Teachers ..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full outline-none text-gray-800 text-lg md:text-xl font-bold placeholder:text-gray-400 bg-transparent" autoComplete="off" suppressHydrationWarning />
             </div>
 
             {searchQuery && (

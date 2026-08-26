@@ -25,7 +25,7 @@ export default function HRDDashboard() {
   const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🚀 ABSENCE STATES (Updated to handle decimals)
+  // ABSENCE STATES
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [absTargetId, setAbsTargetId] = useState('');
   const [attendanceScore, setAttendanceScore] = useState<number | ''>('');
@@ -61,21 +61,24 @@ export default function HRDDashboard() {
   };
 
   const getNormalizedRole = (dbRole?: string) => {
-    if (!dbRole) return '';
+    if (!dbRole) return 'Staff';
     const upper = dbRole.toUpperCase();
     if (upper === 'TEACHER') return 'Teacher';
-    if (upper === 'STAFF' || upper === 'HRD') return 'Staff'; 
+    if (upper === 'STAFF' || upper === 'HRD') return 'Staff';
+    if (upper === 'KARYAWAN') return 'Karyawan'; // 🚀 Karyawan is now independent!
     if (upper === 'PRINCIPAL' || upper === 'DIRECTOR') return 'Director/Principal';
     if (upper === 'VICE_PRINCIPAL' || upper === 'VICE-PRINCIPAL' || upper === 'VICE_PRINCIPAL_KURIKULUM' || upper === 'VICE_PRINCIPAL_KESISWAAN') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
-    return dbRole;
+    return 'Staff';
   };
 
   const isSelfReflectionRule = (r: Rubric) => {
-    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal"];
+    // 🚀 Added Karyawan to requiredRoles so they can use the rubrics
+    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"]; 
     const excludedRoles = ["Admin", "Student"];
     const hasRequired = requiredRoles.every(role => r.evaluators?.includes(role) && r.evaluatees?.includes(role));
-    return hasRequired && !excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
+    const hasExcluded = excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
+    return hasRequired && !hasExcluded;
   };
 
   const submitEvaluation = async (e: FormEvent) => {
@@ -103,7 +106,6 @@ export default function HRDDashboard() {
     const target = teachers.find(t => t.id === absTargetId);
     if (!target) return alert("Pilih staff!");
     
-    // 🚀 VALIDATE THE DECIMAL SCORE
     if (attendanceScore === '' || attendanceScore < 1 || attendanceScore > 4) {
       return alert("Masukkan skor kehadiran yang valid antara 1.0 hingga 4.0!");
     }
@@ -163,7 +165,6 @@ export default function HRDDashboard() {
                   </select>
                 </div>
                 
-                {/* 🚀 NEW DECIMAL INPUT INSTEAD OF BUTTONS */}
                 <div>
                   <label className="text-sm font-bold text-gray-700 block mb-2">Input Skor (1.0 - 4.0)</label>
                   <input 
@@ -200,7 +201,6 @@ export default function HRDDashboard() {
                     {absences.map(a => (
                       <tr key={a.id} className="border-b border-gray-100 text-sm hover:bg-gray-50">
                         <td className="p-3 font-bold">{a.userName} <span className="text-[10px] text-gray-400 block uppercase">{a.role.replace('_', ' ')}</span></td>
-                        {/* 🚀 FORCES IT TO DISPLAY 1 DECIMAL (e.g. 3.0 or 3.5) */}
                         <td className="p-3 text-center font-extrabold text-[#008c99] text-lg">{a.attendanceScore.toFixed(1)} <span className="text-xs text-gray-400 font-normal">/ 4.0</span></td>
                         <td className="p-3 text-right">
                           <button onClick={() => { setAbsTargetId(a.userId); setAttendanceScore(a.attendanceScore); }} className="text-blue-500 font-bold hover:text-blue-700 text-xs bg-blue-50 px-3 py-1.5 rounded-lg">

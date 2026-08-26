@@ -3,8 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal'];
-
+const DEFAULT_ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan']; // 🚀 Added Karyawan
 export async function GET() {
   try {
     let settings = await prisma.weightSettings.findMany();

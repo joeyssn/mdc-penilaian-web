@@ -9,8 +9,8 @@ import AddRubricModal from "./AddRubricModal";
 import { Rubric } from "./types";
 
 // Added "Vice-Principal" to the available roles
-const AVAILABLE_ROLES = ["Admin", "Teacher", "Staff", "Vice-Principal", "Director/Principal", "Student"];
-
+// Find your roles array in your rubric manager and add 'Karyawan' to it
+const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"];
 export default function RubricPage() {
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
   const [loading, setLoading] = useState(true);

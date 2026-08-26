@@ -56,6 +56,9 @@ export default function LoginForm() {
         else if (data.role === 'VICE_PRINCIPAL_KURIKULUM') {
           router.push('/vice-principal');
         }
+        else if (data.role === 'KARYAWAN') {  
+          router.push('/karyawan');
+        }
       } else {
         setError(data.error || 'Invalid credentials. Please try again.');
       }

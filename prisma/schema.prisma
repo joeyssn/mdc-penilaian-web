@@ -161,6 +161,7 @@ enum user_role {
   TEACHER
   STAFF
   HRD       // <--- NEW ROLE
+  KARYAWAN
   STUDENT
 }
 model Absence {

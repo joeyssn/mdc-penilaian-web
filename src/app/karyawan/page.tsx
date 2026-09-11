@@ -357,7 +357,7 @@ export default function KaryawanDashboard() {
                         <div className="bg-gray-100 px-4 md:px-6 py-3 border-b border-gray-200">
                           <h3 className="font-bold text-gray-800 text-base md:text-lg">{section.title}</h3>
                         </div>
-                        <div className="p-4 md:p-6 space-y-6 md:space-y-8">
+                        <div className="p-4 md:p-6 space-y-6 md:space-y-8">1
                           {(section.categories || []).map((category) => (
                             <div key={category.id} className="space-y-4">
                               <h4 className="font-bold text-[#e99a24] uppercase tracking-wide text-xs md:text-sm border-b border-gray-100 pb-2">{category.title}</h4>
@@ -379,7 +379,7 @@ export default function KaryawanDashboard() {
                             </div>
                           ))}
                         </div>
-                      </div>
+                      </div>  
                     ))}
                     <div className="pt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-end">
                       <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-[#e99a24] hover:bg-[#d68a1f] text-white font-extrabold text-base md:text-lg px-8 md:px-10 py-3 md:py-4 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">

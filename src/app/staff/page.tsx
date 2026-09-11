@@ -26,7 +26,6 @@ export default function StaffDashboard() {
   const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🚀 METRICS FOR THE TRUE FINAL SCORE
   const [myWeights, setMyWeights] = useState({ studentWeight: 25, peerWeight: 25, observationWeight: 25, attendanceWeight: 25 });
   const [myAbsence, setMyAbsence] = useState<number | null>(null);
   const [myObsAvg, setMyObsAvg] = useState<number | null>(null);
@@ -48,7 +47,6 @@ export default function StaffDashboard() {
       if (!scoreData.error) setMyScores(scoreData);
     }
 
-    // Fetch Role Weights
     const wRes = await fetch('/api/settings/weights');
     const wData = await wRes.json();
     if (!wData.error && Array.isArray(wData)) {
@@ -90,6 +88,7 @@ export default function StaffDashboard() {
     const tData = await tRes.json();
     if (!tData.error) setTeachers(tData);
 
+    // 🚀 CLEAN RUBRIC FETCHING
     const rRes = await fetch('/api/rubric');
     const rData = await rRes.json();
     if (!rData.error && rData.length > 0) setRubrics(rData);
@@ -107,13 +106,6 @@ export default function StaffDashboard() {
     if (upper.includes('VICE_PRINCIPAL') || upper === 'VICE-PRINCIPAL') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
     return 'Staff';
-  };
-
-  const isSelfReflectionRule = (r: Rubric) => {
-    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"];
-    const excludedRoles = ["Admin", "Student"];
-    const hasRequired = requiredRoles.every(role => r.evaluators?.includes(role) && r.evaluatees?.includes(role));
-    return hasRequired && !excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
   };
 
   const submitEvaluation = async (e: FormEvent) => {
@@ -136,16 +128,27 @@ export default function StaffDashboard() {
     } catch (error) {} finally { setIsSubmitting(false); }
   };
 
-  // 🚀 STAFF EVALUATE STAFF
+  // 🚀 STAFF CAN SEARCH FOR STAFF AND KARYAWAN
   const filteredTeachers = teachers.filter(target => {
     const matchesSearch = target.name.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch || !loggedInUser || target.id === loggedInUser.id) return false;
-    return (target.role || '').toUpperCase() === 'STAFF' || (target.role || '').toUpperCase() === 'HRD';
+    const targetRole = (target.role || '').toUpperCase();
+    return targetRole === 'STAFF' || targetRole === 'HRD' || targetRole === 'KARYAWAN';
   });
 
-  let activeRubric = loggedInUser && selectedTarget ? rubrics.find(r => r.evaluators?.includes(getNormalizedRole(loggedInUser.role)) && r.evaluatees?.includes(getNormalizedRole(selectedTarget.role)) && !isSelfReflectionRule(r)) || null : null;
+  // 🚀 FOOLPROOF RUBRIC MATCHER
+  let activeRubric: Rubric | null = null;
+  if (loggedInUser && selectedTarget) {
+    const myRole = getNormalizedRole(loggedInUser.role);
+    const targetRole = getNormalizedRole(selectedTarget.role);
 
-  // 🚀 CALCULATE THE TRUE FINAL DYNAMIC SCORE
+    activeRubric = rubrics.find(r => 
+      r.evaluators?.includes(myRole) && 
+      r.evaluatees?.includes(targetRole) &&
+      !r.title.toLowerCase().includes('self') 
+    ) || null;
+  }
+
   let activeWeightSum = 0; let accumulatedScore = 0;
   const sScore = myScores?.student?.average || 0;
   const pScore = myScores?.peer?.average || 0;
@@ -161,7 +164,7 @@ export default function StaffDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
-      <nav className="bg-white py-4 px-4 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 border-b border-gray-200 gap-4 md:gap-0">
+      <nav className="bg-white py-4 px-4 md:px-12 shadow-sm flex justify-between items-center z-50 border-b border-gray-200">
         <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={200} height={50} className="h-8 md:h-12 w-auto" priority />
         <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold">Logout</Link>
       </nav>
@@ -172,7 +175,6 @@ export default function StaffDashboard() {
 
           {myScores && (
             <>
-              {/* MASTER FINAL SCORE CARD */}
               <div className="bg-[#053b50] rounded-2xl px-6 py-6 md:px-8 md:py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shadow-md border border-gray-800">
                 <div>
                   <h2 className="text-xl md:text-2xl font-bold tracking-wide">Final Evaluation Rating</h2>
@@ -184,9 +186,7 @@ export default function StaffDashboard() {
                 </div>
               </div>
 
-              {/* INDIVIDUAL BREAKDOWN CARDS */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                
                 {myWeights.studentWeight > 0 && (
                   <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                     <div>
@@ -199,7 +199,6 @@ export default function StaffDashboard() {
                     <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#008c99] h-3 rounded-full transition-all duration-1000" style={{ width: `${(sScore / 4) * 100}%` }}></div></div>
                   </div>
                 )}
-
                 {myWeights.peerWeight > 0 && (
                   <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                     <div>
@@ -213,7 +212,6 @@ export default function StaffDashboard() {
                     <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div></div>
                   </div>
                 )}
-
                 {myWeights.observationWeight > 0 && (
                   <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                     <div>
@@ -226,7 +224,6 @@ export default function StaffDashboard() {
                     <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-green-600 h-3 rounded-full transition-all duration-1000" style={{ width: `${(oScore / 4) * 100}%` }}></div></div>
                   </div>
                 )}
-
                 {myWeights.attendanceWeight > 0 && (
                   <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                     <div>
@@ -248,7 +245,6 @@ export default function StaffDashboard() {
           )}
         </div>
 
-        {/* PEER EVALUATION PORTAL */}
         <div className="pt-8 md:pt-10 border-t border-gray-200">
           <div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-[#053b50]">Evaluate Colleagues</h2>
@@ -258,7 +254,7 @@ export default function StaffDashboard() {
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 mt-6">
             <div className="flex items-center px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 bg-gray-50">
               <svg className="w-5 h-5 md:w-6 md:h-6 text-gray-400 mr-3 md:mr-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input type="text" placeholder="Search for Staff..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full outline-none text-gray-800 text-lg md:text-xl font-bold bg-transparent" autoComplete="off" suppressHydrationWarning />
+              <input type="text" placeholder="Search for Staff or Karyawan..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full outline-none text-gray-800 text-lg md:text-xl font-bold bg-transparent" autoComplete="off" suppressHydrationWarning />
             </div>
 
             {searchQuery && (
@@ -278,9 +274,9 @@ export default function StaffDashboard() {
                           </div>
                         </div>
                         {hasEvaluated ? (
-                          <button disabled className="w-full sm:w-auto bg-gray-100 text-gray-400 border-2 border-gray-200 px-4 py-2 rounded-lg font-bold text-sm">Completed</button>
+                          <button disabled className="bg-gray-100 text-gray-400 border-2 border-gray-200 px-4 py-2 rounded-lg font-bold text-sm">Completed</button>
                         ) : (
-                          <button className="w-full sm:w-auto bg-white border-2 border-[#e99a24] text-[#e99a24] px-4 py-2 rounded-lg font-bold text-sm">Evaluate</button>
+                          <button className="bg-white border-2 border-[#e99a24] text-[#e99a24] px-4 py-2 rounded-lg font-bold text-sm">Evaluate</button>
                         )}
                       </div>
                     );
@@ -290,43 +286,53 @@ export default function StaffDashboard() {
             )}
           </div>
 
-          {selectedTarget && activeRubric && (
+          {selectedTarget && (
             <div className="mt-8 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-              <div className="bg-[#008c99] px-6 py-5 md:px-8 md:py-6 text-white flex justify-between items-center">
-                <h2 className="text-xl md:text-2xl font-extrabold tracking-tight">Evaluating: {getTitle(selectedTarget.gender)}{selectedTarget.name}</h2>
-                <button onClick={() => { setSelectedTarget(null); setScores({}); }} className="bg-black/10 px-4 py-2 rounded-lg font-bold text-sm">Cancel</button>
-              </div>
-              <form onSubmit={submitEvaluation} className="p-4 md:p-8 space-y-6 md:space-y-8 bg-gray-50">
-                {(activeRubric.sections || []).map((section) => (
-                  <div key={section.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div className="bg-gray-100 px-4 md:px-6 py-3 border-b border-gray-200"><h3 className="font-bold text-gray-800 text-base md:text-lg">{section.title}</h3></div>
-                    <div className="p-4 md:p-6 space-y-6 md:space-y-8">
-                      {(section.categories || []).map((cat) => (
-                        <div key={cat.id} className="space-y-4">
-                          <h4 className="font-bold text-[#e99a24] uppercase text-xs md:text-sm border-b border-gray-100 pb-2">{cat.title}</h4>
-                          <div className="space-y-4">
-                            {(cat.indicators || []).map((ind) => (
-                              <div key={ind.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 rounded-lg bg-gray-50">
-                                <p className="text-gray-700 font-medium text-sm md:text-base lg:w-2/3">{ind.text}</p>
-                                <div className="flex gap-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm shrink-0">
-                                  {['A', 'B', 'C', 'D'].map((val) => (
-                                    <label key={val} className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-md cursor-pointer font-bold ${scores[ind.id] === val ? 'bg-[#008c99] text-white shadow-md' : 'bg-gray-50 text-gray-500'}`}>
-                                      <input type="radio" name={ind.id} value={val} className="hidden" onChange={() => setScores(p => ({ ...p, [ind.id]: val as any }))} required /> {val}
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <div className="flex justify-end pt-6 border-t border-gray-200">
-                  <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-[#e99a24] text-white font-extrabold text-base md:text-lg px-8 py-3 rounded-xl shadow-md">{isSubmitting ? 'Saving...' : 'Submit Evaluation'}</button>
+              {!activeRubric ? (
+                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 md:p-8 text-center shadow-sm">
+                  <h3 className="text-base md:text-lg font-bold text-red-700">No Rubric Assigned</h3>
+                  <p className="text-red-600 mt-2 text-sm md:text-base">The admin has not assigned a rubric for you to evaluate this specific role yet.</p>
+                  <button onClick={() => setSelectedTarget(null)} className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg font-bold shadow-sm hover:bg-red-700 w-full sm:w-auto">Go Back</button>
                 </div>
-              </form>
+              ) : (
+                <>
+                  <div className="bg-[#008c99] px-6 py-5 md:px-8 md:py-6 text-white flex justify-between items-center">
+                    <h2 className="text-xl md:text-2xl font-extrabold tracking-tight">Evaluating: {getTitle(selectedTarget.gender)}{selectedTarget.name}</h2>
+                    <button onClick={() => { setSelectedTarget(null); setScores({}); }} className="bg-black/10 px-4 py-2 rounded-lg font-bold text-sm">Cancel</button>
+                  </div>
+                  <form onSubmit={submitEvaluation} className="p-4 md:p-8 space-y-6 md:space-y-8 bg-gray-50">
+                    {(activeRubric.sections || []).map((section) => (
+                      <div key={section.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                        <div className="bg-gray-100 px-4 md:px-6 py-3 border-b border-gray-200"><h3 className="font-bold text-gray-800 text-base md:text-lg">{section.title}</h3></div>
+                        <div className="p-4 md:p-6 space-y-6 md:space-y-8">
+                          {(section.categories || []).map((cat) => (
+                            <div key={cat.id} className="space-y-4">
+                              <h4 className="font-bold text-[#e99a24] uppercase text-xs md:text-sm border-b border-gray-100 pb-2">{cat.title}</h4>
+                              <div className="space-y-4">
+                                {(cat.indicators || []).map((ind) => (
+                                  <div key={ind.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 rounded-lg bg-gray-50">
+                                    <p className="text-gray-700 font-medium text-sm md:text-base lg:w-2/3">{ind.text}</p>
+                                    <div className="flex gap-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm shrink-0">
+                                      {['A', 'B', 'C', 'D'].map((val) => (
+                                        <label key={val} className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-md cursor-pointer font-bold ${scores[ind.id] === val ? 'bg-[#008c99] text-white shadow-md' : 'bg-gray-50 text-gray-500'}`}>
+                                          <input type="radio" name={ind.id} value={val} className="hidden" onChange={() => setScores(p => ({ ...p, [ind.id]: val as any }))} required /> {val}
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-end pt-6 border-t border-gray-200">
+                      <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto bg-[#e99a24] text-white font-extrabold text-base md:text-lg px-8 py-3 rounded-xl shadow-md">{isSubmitting ? 'Saving...' : 'Submit Evaluation'}</button>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           )}
         </div>

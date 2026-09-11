@@ -23,6 +23,7 @@ export default function RubricPage() {
   const [editingRubric, setEditingRubric] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editIsSelfReflection, setEditIsSelfReflection] = useState(false); // 🚀 ADDED STATE
 
   const [editingSettings, setEditingSettings] = useState(false);
   const [evaluators, setEvaluators] = useState<string[]>([]);
@@ -95,7 +96,8 @@ export default function RubricPage() {
       await fetch("/api/rubric", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedRubricId, title: editTitle, description: editDesc }),
+        // 🚀 INCLUDED isSelfReflection IN SAVE PAYLOAD
+        body: JSON.stringify({ id: selectedRubricId, title: editTitle, description: editDesc, isSelfReflection: editIsSelfReflection }),
       });
       setEditingRubric(false);
       fetchRubrics(true);
@@ -107,10 +109,9 @@ export default function RubricPage() {
   const handleDeleteRubric = async () => {
     if (!confirm("Are you sure you want to permanently delete this ENTIRE rubric?")) return;
     try {
-      await fetch("/api/rubric", {
+      // 🚀 UPDATED TO PASS ID IN URL SO THE DELETE API FIX WORKS
+      await fetch(`/api/rubric?id=${selectedRubricId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedRubricId }),
       });
       setSelectedRubricId("");
       fetchRubrics(); 
@@ -119,7 +120,9 @@ export default function RubricPage() {
     }
   };
 
-  const rubric = rubrics.find((r) => r.id === selectedRubricId);
+  // NOTE: If TypeScript complains about `isSelfReflection` not existing on `r`, 
+  // you need to add `isSelfReflection?: boolean;` inside your ./types.ts file!
+  const rubric = rubrics.find((r: any) => r.id === selectedRubricId);
 
   return (
     <div className="min-h-screen bg-[#fafbfc] font-sans text-slate-800">
@@ -130,21 +133,9 @@ export default function RubricPage() {
         
         <div className="flex items-center gap-10">
           <div className="hidden md:flex gap-8 text-[15px] font-bold text-gray-500">
-            <Link href="/admin" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Overview
-            </Link>
-            <Link href="/admin/teachers" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Teachers/Staff
-            </Link>
-            <Link href="/admin/rubric" className="text-[#053b50] border-b-2 border-[#008c99] pb-1 transition-all">
-              Rubrics
-            </Link>
-            <Link href="/admin/observasi-template" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Edit Observasi Questions
-            </Link>
-            <Link href="/admin/observasi" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Observasi Status
-            </Link>
+            <div className="hidden md:flex gap-8 text-[15px] font-bold text-gray-500">
+          <Link href="/admin" className="text-gray-500 hover:text-[#008c99] font-bold transition-colors">← Go back to Live Overview</Link>
+          </div>
           </div>
           
           <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">
@@ -192,10 +183,20 @@ export default function RubricPage() {
                    <div className="flex-1 w-full space-y-3 pr-8">
                      <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-bold text-lg text-[#053b50]" placeholder="Rubric Title" />
                      <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 resize-none" placeholder="Description" rows={2} />
+                     
+                     {/* 🚀 THE ADDED CHECKBOX */}
+                     <label className="flex items-center gap-2 mt-2 w-fit cursor-pointer text-sm font-bold text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
+                       <input type="checkbox" checked={editIsSelfReflection} onChange={(e) => setEditIsSelfReflection(e.target.checked)} className="w-4 h-4 accent-green-600" />
+                       Is this a Self-Reflection Rubric?
+                     </label>
                    </div>
                 ) : (
                   <div>
-                    <h2 className="text-2xl font-bold text-[#053b50]">{rubric.title}</h2>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold text-[#053b50]">{rubric.title}</h2>
+                      {/* 🚀 THE ADDED BADGE */}
+                      {rubric.isSelfReflection && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Self-Reflection</span>}
+                    </div>
                     {rubric.description && <p className="text-gray-500 mt-2 text-sm">{rubric.description}</p>}
                   </div>
                 )}
@@ -208,7 +209,8 @@ export default function RubricPage() {
                       </>
                    ) : (
                       <>
-                        <button onClick={() => { setEditTitle(rubric.title); setEditDesc(rubric.description || ""); setEditingRubric(true); }} className="text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg shadow-sm transition">Edit Info</button>
+                        {/* 🚀 SETS THE INITIAL CHECKBOX VALUE WHEN CLICKING EDIT */}
+                        <button onClick={() => { setEditTitle(rubric.title); setEditDesc(rubric.description || ""); setEditIsSelfReflection(rubric.isSelfReflection || false); setEditingRubric(true); }} className="text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg shadow-sm transition">Edit Info</button>
                         <button onClick={() => setEditingSettings(!editingSettings)} className="text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg shadow-sm transition">{editingSettings ? "Cancel Rules" : "Access Rules"}</button>
                         <button onClick={handleDeleteRubric} className="text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-2 rounded-lg shadow-sm transition">Delete</button>
                       </>
@@ -277,8 +279,8 @@ export default function RubricPage() {
                 {rubric.sections?.length === 0 && <div className="text-gray-400 italic text-sm">No sections added yet.</div>}
                 
                 {(rubric.sections || [])
-                  .sort((a, b) => a.order - b.order)
-                  .map((section) => (
+                  .sort((a: any, b: any) => a.order - b.order)
+                  .map((section: any) => (
                     <RubricSectionCard key={section.id} section={section} onRefresh={() => fetchRubrics(true)} />
                   ))}
               </div>

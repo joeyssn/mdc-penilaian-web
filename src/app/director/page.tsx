@@ -5,7 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
-// --- TYPES ---
 type User = { id: string; name: string; role: string; gender?: string | null; department?: string; };
 type Indicator = { id: string; text: string; weight: number };
 type Category = { id: string; title: string; indicators: Indicator[] };
@@ -40,7 +39,6 @@ export default function UnifiedDirectorDashboard() {
   const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🚀 WEIGHTS & METRICS
   const defaultWeights = { studentWeight: 25, peerWeight: 25, observationWeight: 25, attendanceWeight: 25 };
   const [weightsConfig, setWeightsConfig] = useState<Record<string, typeof defaultWeights>>({
     'Teacher': { ...defaultWeights }, 'Staff': { ...defaultWeights }, 'Karyawan': { ...defaultWeights },
@@ -80,7 +78,6 @@ export default function UnifiedDirectorDashboard() {
       if (!scoreData.error) setMyScores(scoreData);
     }
 
-    // Fetch Role-Based Weights & Set My Own Weights
     const wRes = await fetch('/api/settings/weights');
     const wData = await wRes.json();
     if (!wData.error && Array.isArray(wData)) {
@@ -105,7 +102,7 @@ export default function UnifiedDirectorDashboard() {
 
     const rRes = await fetch('/api/rubric');
     const rData = await rRes.json();
-    if (!rData.error) setRubrics(rData);
+    if (!rData.error && rData.length > 0) setRubrics(rData);
   };
 
   const fetchOverviewData = async () => {
@@ -116,7 +113,7 @@ export default function UnifiedDirectorDashboard() {
       const absRes = await fetch('/api/absences');
       const absData = await absRes.json();
       if (!absData.error) setAbsences(absData);
-    } catch (error) { console.error(error); } finally { setIsReportLoading(false); }
+    } catch (error) {} finally { setIsReportLoading(false); }
   };
 
   const fetchObservations = async () => {
@@ -130,13 +127,10 @@ export default function UnifiedDirectorDashboard() {
       const data = await res.json();
       if (!data.error) {
         const approvedData = data.filter((obs: Observation) => obs.isApproved === true);
-        
-        // Find My Observation average while we're here
         if (loggedInUser) {
           const myObs = approvedData.filter((o: any) => o.targetId === loggedInUser.id);
           if (myObs.length > 0) setMyObsAvg(myObs.reduce((s: number, o: any) => s + o.finalScore, 0) / myObs.length);
         }
-
         const grouped = approvedData.reduce((acc: any, obs: Observation) => {
           if (!acc[obs.targetId]) acc[obs.targetId] = { targetId: obs.targetId, targetName: obs.targetName, kelas: obs.kelas, subject: obs.subject, records: [] };
           acc[obs.targetId].records.push(obs);
@@ -162,13 +156,6 @@ export default function UnifiedDirectorDashboard() {
     return 'Staff';
   };
 
-  const isSelfReflectionRule = (r: Rubric) => {
-    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"];
-    const excludedRoles = ["Admin", "Student"];
-    const hasRequired = requiredRoles.every(role => r.evaluators?.includes(role) && r.evaluatees?.includes(role));
-    return hasRequired && !excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
-  };
-
   const handleScoreChange = (indicatorId: string, value: 'A'|'B'|'C'|'D') => setScores(prev => ({ ...prev, [indicatorId]: value }));
 
   const submitEvaluation = async (e: FormEvent) => {
@@ -192,16 +179,24 @@ export default function UnifiedDirectorDashboard() {
     } catch (error) {} finally { setIsSubmitting(false); }
   };
 
-  // DIRECTOR EVALUATES PRINCIPALS
   const filteredTeachers = teachers.filter(target => {
     const matchesSearch = target.name.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch || !loggedInUser || target.id === loggedInUser.id) return false;
     return target.role.toUpperCase() === 'PRINCIPAL';
   });
 
-  let activeRubric = loggedInUser && selectedTarget ? rubrics.find(r => r.evaluators?.includes(getNormalizedRole(loggedInUser.role)) && r.evaluatees?.includes(getNormalizedRole(selectedTarget.role)) && !isSelfReflectionRule(r)) || null : null;
+  let activeRubric: Rubric | null = null;
+  if (loggedInUser && selectedTarget) {
+    const myRole = getNormalizedRole(loggedInUser.role);
+    const targetRole = getNormalizedRole(selectedTarget.role);
 
-  // 🚀 CALCULATE THE TRUE FINAL DYNAMIC SCORE FOR MY EVALUATION TAB
+    activeRubric = rubrics.find(r => 
+      r.evaluators?.includes(myRole) && 
+      r.evaluatees?.includes(targetRole) &&
+      !r.title.toLowerCase().includes('self') 
+    ) || null;
+  }
+
   let activeWeightSum = 0; let accumulatedScore = 0;
   const sScore = myScores?.student?.average || 0;
   const pScore = myScores?.peer?.average || 0;
@@ -215,7 +210,6 @@ export default function UnifiedDirectorDashboard() {
 
   const trueOverallAvg = activeWeightSum > 0 ? (accumulatedScore / activeWeightSum).toFixed(2) : '-.-';
 
-  // --- PRINT VIEW FOR COMBINED OBSERVATION ---
   if (activeTab === 'observasi' && selectedGroupedObs) {
     return (
       <div className="min-h-screen bg-gray-200 py-10 print:bg-white print:py-0 font-serif">
@@ -298,7 +292,6 @@ export default function UnifiedDirectorDashboard() {
         <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">Logout</Link>
       </nav>
 
-      {/* TAB 1: PERSONAL EVALUATION */}
       {activeTab === 'personal' && (
         <div className="max-w-7xl mx-auto px-6 pt-12 pb-20 space-y-12 animate-in fade-in duration-300">
           <div>
@@ -330,7 +323,6 @@ export default function UnifiedDirectorDashboard() {
                       <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#008c99] h-3 rounded-full transition-all duration-1000" style={{ width: `${(sScore / 4) * 100}%` }}></div></div>
                     </div>
                   )}
-
                   {myWeights.peerWeight > 0 && (
                     <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                       <div>
@@ -338,13 +330,11 @@ export default function UnifiedDirectorDashboard() {
                         <p className="text-gray-500 font-medium mb-4 text-xs">Weight: {myWeights.peerWeight}%</p>
                         <div className="flex justify-between items-end mb-3">
                           <div className="text-3xl font-extrabold text-[#f39c12] tracking-tight">{pScore > 0 ? pScore.toFixed(1) : '-.-'}</div>
-                          <div className="text-xs font-bold text-[#f39c12]">({myScores.peer.totalEvaluations} reviews)</div>
                         </div>
                       </div>
                       <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div></div>
                     </div>
                   )}
-
                   {myWeights.observationWeight > 0 && (
                     <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                       <div>
@@ -357,7 +347,6 @@ export default function UnifiedDirectorDashboard() {
                       <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-green-600 h-3 rounded-full transition-all duration-1000" style={{ width: `${(oScore / 4) * 100}%` }}></div></div>
                     </div>
                   )}
-
                   {myWeights.attendanceWeight > 0 && (
                     <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                       <div>
@@ -480,7 +469,10 @@ export default function UnifiedDirectorDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {reportData.map((row) => {
+                    {/* 🚀 HIDDEN ADMINS AND STUDENTS */}
+                    {reportData
+                      .filter((row) => row.role.toUpperCase() !== 'STUDENT' && row.role.toUpperCase() !== 'ADMIN')
+                      .map((row) => {
                       const sScore = parseFloat(row.studentAvg);
                       const pScore = parseFloat(row.peerAvg);
                       const obsGroup = groupedObservations.find(g => g.targetId === row.id);
@@ -489,7 +481,7 @@ export default function UnifiedDirectorDashboard() {
                       const aScore = userAbsence ? userAbsence.attendanceScore : NaN;
 
                       const roleKey = getNormalizedRole(row.role);
-                      const activeWeights = weightsConfig[roleKey] || defaultWeights;
+                       const activeWeights = weightsConfig[roleKey] || defaultWeights;
 
                       let wStudent = activeWeights.studentWeight; let wPeer = activeWeights.peerWeight; 
                       let wObs = activeWeights.observationWeight; let wAtt = activeWeights.attendanceWeight;

@@ -26,6 +26,7 @@ export async function GET() {
 
     const formattedRubrics = rubrics.map((rubric) => ({
       ...rubric,
+      // 🚀 The spread operator automatically includes isSelfReflection
       evaluators: rubric.evaluators ? rubric.evaluators.split(',') : [],
       evaluatees: rubric.evaluatees ? rubric.evaluatees.split(',') : [],
       sections: rubric.rubricsection.map((section) => ({
@@ -47,14 +48,17 @@ export async function GET() {
 // 2. CREATE A RUBRIC
 export async function POST(req: Request) {
   try {
-    const { title, description } = await req.json();
+    // 🚀 Added isSelfReflection, evaluators, and evaluatees so they actually save!
+    const { title, description, isSelfReflection, evaluators, evaluatees } = await req.json();
+    
     const rubric = await prisma.rubric.create({
       data: { 
         id: crypto.randomUUID(), 
         title, 
         description,
-        evaluators: "", // Start empty
-        evaluatees: "", // Start empty
+        isSelfReflection: isSelfReflection || false, // 🚀 SAVES THE CHECKBOX
+        evaluators: evaluators && Array.isArray(evaluators) ? evaluators.join(',') : "", 
+        evaluatees: evaluatees && Array.isArray(evaluatees) ? evaluatees.join(',') : "",
         updatedAt: new Date()
       }, 
     });
@@ -68,15 +72,16 @@ export async function POST(req: Request) {
 // 3. UPDATE A RUBRIC 
 export async function PUT(req: Request) {
   try {
-    const { id, title, description, evaluators, evaluatees } = await req.json();
+    const { id, title, description, evaluators, evaluatees, isSelfReflection } = await req.json();
     
-    // 🚀 The strict policy check block was completely removed from here!
-
     const updateData: any = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     
-    // Convert arrays back to comma-separated strings for MySQL
+    // 🚀 SAVES THE CHECKBOX WHEN EDITING
+    if (isSelfReflection !== undefined) updateData.isSelfReflection = isSelfReflection;
+    
+    // Convert arrays back to comma-separated strings for Database
     if (evaluators !== undefined) updateData.evaluators = evaluators.join(',');
     if (evaluatees !== undefined) updateData.evaluatees = evaluatees.join(',');
 
@@ -95,7 +100,14 @@ export async function PUT(req: Request) {
 // 4. DELETE A RUBRIC
 export async function DELETE(req: Request) {
   try {
-    const { id } = await req.json();
+    // 🚀 FIXED: Reads the ID from the URL (e.g. ?id=123) instead of crashing on req.json()
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: "Rubric ID is required" }, { status: 400 });
+    }
+
     await prisma.rubric.delete({
       where: { id },
     });

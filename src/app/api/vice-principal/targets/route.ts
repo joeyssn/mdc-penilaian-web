@@ -10,7 +10,7 @@ export async function GET() {
     const users = await prisma.user.findMany({
       where: {
         role: {
-          in: ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL']
+          in: ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL','KARYAWAN']
         }
       },
       select: {

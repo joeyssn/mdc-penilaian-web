@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const teachers = await prisma.user.findMany({
       // We now fetch DIRECTOR and PRINCIPAL separately
-      where: { role: { in: ['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN'] } }, 
+      where: { role: { in: ['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN','VICE_PRINCIPAL_KESISWAAN','VICE_PRINCIPAL_KURIKULUM','KARYAWAN'] } }, 
       select: { 
         id: true, 
         name: true, 

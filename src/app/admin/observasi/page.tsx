@@ -70,21 +70,7 @@ export default function AdminTrackRecordPage() {
         
         <div className="flex items-center gap-10">
           <div className="hidden md:flex gap-8 text-[15px] font-bold text-gray-500">
-            <Link href="/admin" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Overview
-            </Link>
-            <Link href="/admin/teachers" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Teachers/Staff
-            </Link>
-            <Link href="/admin/rubric" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Rubrics
-            </Link>
-            <Link href="/admin/observasi-template" className="hover:text-[#008c99] border-b-2 border-transparent hover:border-[#008c99] pb-1 transition-all">
-              Edit Observasi Questions
-            </Link>
-            <Link href="/admin/observasi" className="text-[#053b50] border-b-2 border-[#008c99] pb-1 transition-all">
-              Observasi Status
-            </Link>
+          <Link href="/admin" className="text-gray-500 hover:text-[#008c99] font-bold transition-colors">← Go back to Live Overview</Link>
           </div>
           
           <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">

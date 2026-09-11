@@ -14,7 +14,7 @@ export async function GET() {
 
     // 🚀 FIX 1: Add BOTH VP roles so they appear as rows in the table
     const targetUsers = allUsers.filter(u => 
-      ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL'].includes((u.role || '').toUpperCase())
+      ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL','HRD','KARYAWAN'].includes((u.role || '').toUpperCase())
     );
     const targetIds = targetUsers.map(u => u.id);
 
@@ -54,7 +54,7 @@ export async function GET() {
         const graderRole = userMap.get(s.graderId)?.role || '';
         return s.graderId !== user.id && 
                // 🚀 FIX 2: Add BOTH VP roles here so their scores count as "Peer" scores
-               ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL'].includes(graderRole.toUpperCase());
+               ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL','HRD','KARYAWAN'].includes(graderRole.toUpperCase());
       });
 
       const studentStats = calculateStats(studentScores);

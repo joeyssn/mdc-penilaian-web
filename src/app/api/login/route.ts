@@ -1,30 +1,54 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
-    const { email: loginIdentifier, password } = await req.json();
+    // The frontend might still send this variable as "email" or "username"
+    const { email: rawInput, password } = await req.json();
 
+    if (!rawInput || !password) {
+      return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+    }
+
+    // 🚀 THE EMAIL ENFORCER: 
+    // If they type "budi", it becomes "budi@mdc.sch.id". 
+    // If they type "budi@mdc.sch.id", it stays exactly the same.
+    const loginEmail = rawInput.includes('@') 
+      ? rawInput.toLowerCase().trim() 
+      : `${rawInput.toLowerCase().trim()}@mdc.sch.id`;
+
+    // 1. Find the user STRICTLY by their email address
     const user = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email: loginIdentifier },
-          { nis_niy: loginIdentifier }
-        ]
+        email: loginEmail
       }
     });
 
-console.log("👉 LOGIN ATTEMPT:", { triedEmail: loginIdentifier, triedPassword: password });
-    console.log("👉 DATABASE FOUND:", user ? `Yes, User ID: ${user.id}` : "NO USER FOUND");
-console.log("👉 PASSWORD MATCH:", user?.password === password ? "YES" : `NO! Database actually has: '${user?.password}'`);
-    if (!user || user.password !== password) {
-      return NextResponse.json({ error: "Invalid credentials. Please try again." }, { status: 401 });
+    console.log("👉 LOGIN ATTEMPT:", { triedEmail: loginEmail });
+    console.log("👉 DATABASE FOUND:", user ? `Yes, User ID: ${user.id}, Role: ${user.role}` : "NO USER FOUND");
+
+    if (!user) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
-    // Include the department so the frontend knows if they are IPA or IPS
-   // 3. Create the Session Data
-// 3. Create the Session Data
+    // 2. Safely check the password
+    let passwordMatch = false;
+    
+    // Check if the password in the DB is hashed (starts with $2a$ or $2b$)
+    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+      passwordMatch = await bcrypt.compare(password, user.password);
+    } else {
+      // Fallback for old unhashed accounts
+      passwordMatch = (user.password === password); 
+    }
+
+    if (!passwordMatch) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    }
+
+    // 3. Create the secure Session Data
     const sessionData = {
       id: user.id,
       name: user.name,
@@ -33,7 +57,7 @@ console.log("👉 PASSWORD MATCH:", user?.password === password ? "YES" : `NO! D
       department: user.department,
       grade: user.grade, 
       level: user.level,
-      className: user.className, // <--- ADD THIS
+      className: user.className,
     };
 
     const cookieStore = await cookies();

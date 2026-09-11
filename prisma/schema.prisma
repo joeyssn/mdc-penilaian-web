@@ -8,14 +8,14 @@ datasource db {
 }
 
 model evaluationlog {
-  id                                         String   @id @default(uuid())
-  graderId                                   String
-  targetId                                   String
-  rubricId                                   String
-  createdAt                                  DateTime @default(now())
-  user_evaluationlog_graderIdTouser user     @relation("evaluationlog_graderIdTouser", fields: [graderId], references: [id], onDelete: Cascade, map: "EvaluationLog_graderId_fkey")
-  rubric                                     rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "EvaluationLog_rubricId_fkey")
-  user_evaluationlog_targetIdTouser user     @relation("evaluationlog_targetIdTouser", fields: [targetId], references: [id], onDelete: Cascade, map: "EvaluationLog_targetId_fkey")
+  id                                        String   @id @default(uuid())
+  graderId                                  String
+  targetId                                  String
+  rubricId                                  String
+  createdAt                                 DateTime @default(now())
+  user_evaluationlog_graderIdTouser user    @relation("evaluationlog_graderIdTouser", fields: [graderId], references: [id], onDelete: Cascade, map: "EvaluationLog_graderId_fkey")
+  rubric                                    rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "EvaluationLog_rubricId_fkey")
+  user_evaluationlog_targetIdTouser user    @relation("evaluationlog_targetIdTouser", fields: [targetId], references: [id], onDelete: Cascade, map: "EvaluationLog_targetId_fkey")
 
   @@unique([graderId, targetId, rubricId], map: "EvaluationLog_graderId_targetId_rubricId_key")
   @@index([rubricId], map: "EvaluationLog_rubricId_fkey")
@@ -23,19 +23,17 @@ model evaluationlog {
 }
 
 model rubric {
-  id              String          @id @default(uuid())
-  title           String
-  description     String?
-  evaluators      String?
-  evaluatees      String?
-  
-  // ---> THE NEW DATABASE LOCK IS HERE <---
-  intendedForRole String          @default("STUDENT") 
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  evaluationlog   evaluationlog[]
-  rubricsection   rubricsection[]
+  id               String          @id @default(uuid())
+  title            String
+  description      String?
+  evaluators       String?
+  evaluatees       String?
+  isSelfReflection Boolean         @default(false) 
+  intendedForRole  String          @default("STUDENT") 
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  evaluationlog    evaluationlog[]
+  rubricsection    rubricsection[]
 }
 
 model rubriccategory {
@@ -106,15 +104,16 @@ model user {
   
   grade                                      Int?             // 7, 8, 9, 10, 11, 12
   level                                      String?          // "SMP" or "SMA"
-  className                                  String?          // <--- ADD THIS (e.g., "9A", "10.1")
+  className                                  String?          // (e.g., "9A", "10.1")
 
   evaluationlog_evaluationlog_graderIdTouser evaluationlog[]  @relation("evaluationlog_graderIdTouser")
   evaluationlog_evaluationlog_targetIdTouser evaluationlog[]  @relation("evaluationlog_targetIdTouser")
   score_score_graderIdTouser                 score[]          @relation("score_graderIdTouser")
   score_score_targetIdTouser                 score[]          @relation("score_targetIdTouser")
+
+  @@index([role]) // 🚀 This makes filtering students on your dedicated page lightning fast!
 }
 
-// ADDED: The department enum
 enum user_department {
   IPA
   IPS
@@ -143,7 +142,7 @@ model Observation {
   notesPositive    String   @db.Text
   notesImprovement String   @db.Text
   finalScore       Float
-  isApproved       Boolean  @default(false) // 🚀 ADDED THIS LINE
+  isApproved       Boolean  @default(false)
   createdAt        DateTime @default(now())
 }
 
@@ -160,16 +159,17 @@ enum user_role {
   VICE_PRINCIPAL_KESISWAAN
   TEACHER
   STAFF
-  HRD       // <--- NEW ROLE
+  HRD      
   KARYAWAN
   STUDENT
 }
+
 model Absence {
   id              String   @id @default(cuid())
   userId          String   
   userName        String
   role            String
-  attendanceScore Float    @default(0) // 🚀 SIMPLIFIED: Just a 1-4 Score
+  attendanceScore Float    @default(0) 
   updatedAt       DateTime @updatedAt
 }
 
@@ -178,5 +178,5 @@ model WeightSettings {
   studentWeight     Float  @default(25)
   peerWeight        Float  @default(25)
   observationWeight Float  @default(25)
-  attendanceWeight  Float  @default(25) // 🚀 NEW: Weight for HRD Attendance Score
+  attendanceWeight  Float  @default(25) 
 }

@@ -5,7 +5,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-type ReportRow = { id: string; name: string; role: string; department: string; studentCount: number; peerCount: number; selfCount: number; studentAvg: string; peerAvg: string; selfAvg: string; overallAvg: string; };
+type ReportRow = { 
+  id: string; 
+  name: string; 
+  role: string; 
+  department: string; 
+  studentCount: number; 
+  peerCount: number; 
+  selfCount: number; 
+  studentAvg: string; 
+  peerAvg: string; 
+  selfAvg: string; 
+  overallAvg: string; 
+};
 type Observation = { id: string; targetId: string; targetName: string; finalScore: number; isApproved: boolean; };
 type GroupedObservation = { targetId: string; averageScore: number; records: Observation[]; };
 type Absence = { id: string; userId: string; userName: string; attendanceScore: number; };
@@ -13,8 +25,27 @@ type Absence = { id: string; userId: string; userName: string; attendanceScore: 
 type ChartData = { name: string; value: number; fill: string };
 type Totals = { totalStudents: number; activeStudents: number; totalTeachersStaff: number; activeTeachersStaff: number; overallTotal: number; overallActive: number; };
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 rounded-lg shadow-xl border border-gray-100">
+        <p className="font-bold text-gray-800">{payload[0].name}</p>
+        <p className="text-gray-600">{payload[0].value} Users</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function AdminDashboard() {
-  const defaultWeights = { studentWeight: 25, peerWeight: 25, observationWeight: 25, attendanceWeight: 25 };
+  const defaultWeights = { 
+    studentWeight: 20, 
+    peerWeight: 20, 
+    selfWeight: 20, 
+    observationWeight: 20, 
+    attendanceWeight: 20 
+  };
+  
   const [weightsConfig, setWeightsConfig] = useState<Record<string, typeof defaultWeights>>({
     'Teacher': { ...defaultWeights },
     'Staff': { ...defaultWeights },
@@ -58,6 +89,7 @@ export default function AdminDashboard() {
             loadedConfig[w.id] = {
               studentWeight: Number(w.studentWeight) || 0,
               peerWeight: Number(w.peerWeight) || 0,
+              selfWeight: Number(w.selfWeight) || 0,
               observationWeight: Number(w.observationWeight) || 0,
               attendanceWeight: Number(w.attendanceWeight) || 0
             };
@@ -93,11 +125,22 @@ export default function AdminDashboard() {
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
   };
 
-  const currentW = weightsConfig[selectedRoleWeight];
-  const currentTotal = currentW.studentWeight + currentW.peerWeight + currentW.observationWeight + currentW.attendanceWeight;
+  const currentW = weightsConfig[selectedRoleWeight] || defaultWeights;
+  const currentTotal = 
+    currentW.studentWeight + 
+    currentW.peerWeight + 
+    currentW.selfWeight + 
+    currentW.observationWeight + 
+    currentW.attendanceWeight;
 
   const updateWeight = (field: string, value: number) => {
-    setWeightsConfig(prev => ({ ...prev, [selectedRoleWeight]: { ...prev[selectedRoleWeight], [field]: value } }));
+    setWeightsConfig(prev => ({ 
+      ...prev, 
+      [selectedRoleWeight]: { 
+        ...prev[selectedRoleWeight], 
+        [field]: value 
+      } 
+    }));
   };
 
   const handleSaveWeights = async () => {
@@ -105,7 +148,7 @@ export default function AdminDashboard() {
 
     const invalidRoles = Object.entries(weightsConfig)
       .filter(([role]) => validRoles.includes(role)) 
-      .filter(([role, w]) => (w.studentWeight + w.peerWeight + w.observationWeight + w.attendanceWeight) !== 100);
+      .filter(([role, w]) => (w.studentWeight + w.peerWeight + w.selfWeight + w.observationWeight + w.attendanceWeight) !== 100);
 
     if (invalidRoles.length > 0) {
       const names = invalidRoles.map(i => i[0]).join(', ');
@@ -140,24 +183,12 @@ export default function AdminDashboard() {
     return 'Staff';
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 rounded-lg shadow-xl border border-gray-100">
-          <p className="font-bold text-gray-800">{payload[0].name}</p>
-          <p className="text-gray-600">{payload[0].value} Users</p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500">Loading Admin Dashboard...</div>;
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans print:bg-white pb-20 print:pb-0">
       
-      {/* 🚀 CLEANED NAVIGATION HEADER */}
+      {/* NAVIGATION HEADER */}
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 print:hidden gap-4">
         <div className="flex items-center">
            <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
@@ -250,6 +281,7 @@ export default function AdminDashboard() {
 
         <hr className="border-gray-200 print:hidden" />
 
+        {/* ADMIN TOOLS & MANAGEMENT */}
         <div className="print:hidden">
           <h2 className="text-2xl font-extrabold text-[#053b50] mb-6">Admin Tools & Management</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -272,7 +304,7 @@ export default function AdminDashboard() {
               <div className="bg-orange-100 text-orange-600 p-4 rounded-full mb-4 group-hover:bg-orange-600 group-hover:text-white transition-colors">
                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
               </div>
-              <h3 className="text-lg font-bold text-[#053b50] group-hover:text-orange-700">Track Record</h3>
+              <h3 className="text-lg font-bold text-[#053b50] group-hover:text-orange-700">Observation Track Record</h3>
             </Link>
 
             <Link href="/admin/observasi-template" className="bg-white hover:bg-green-50 border border-gray-200 p-6 rounded-2xl shadow-sm transition-all group flex flex-col items-center text-center cursor-pointer">
@@ -282,12 +314,34 @@ export default function AdminDashboard() {
               <h3 className="text-lg font-bold text-[#053b50] group-hover:text-green-700">Edit Observation Rubric</h3>
             </Link>
 
-            <Link href="/admin/students" className="bg-white hover:bg-green-50 border border-gray-200 p-6 rounded-2xl shadow-sm transition-all group flex flex-col items-center text-center cursor-pointer">
-              <div className="bg-green-100 text-green-600 p-4 rounded-full mb-4 group-hover:bg-green-600 group-hover:text-white transition-colors">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            <Link href="/admin/students" className="bg-white hover:bg-teal-50 border border-gray-200 p-6 rounded-2xl shadow-sm transition-all group flex flex-col items-center text-center cursor-pointer">
+              <div className="bg-teal-100 text-teal-600 p-4 rounded-full mb-4 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>
               </div>
-              <h3 className="text-lg font-bold text-[#053b50] group-hover:text-green-700">Manage Students</h3>
+              <h3 className="text-lg font-bold text-[#053b50] group-hover:text-teal-700">Manage Students</h3>
             </Link>
+
+            <Link href="/admin/semester" className="bg-white hover:bg-rose-50 border border-gray-200 p-6 rounded-2xl shadow-sm transition-all group flex flex-col items-center text-center cursor-pointer">
+              <div className="bg-rose-100 text-rose-600 p-4 rounded-full mb-4 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#053b50] group-hover:text-rose-700">System Reset</h3>
+            </Link>
+
+            <Link href="/admin/semester/history" className="bg-white hover:bg-indigo-50 border border-gray-200 p-6 rounded-2xl shadow-sm transition-all group flex flex-col items-center text-center cursor-pointer">
+              <div className="bg-indigo-100 text-indigo-600 p-4 rounded-full mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#053b50] group-hover:text-indigo-700">Activity History</h3>
+            </Link>
+
+            <Link href="/admin/master-report" className="bg-white hover:bg-amber-50 border border-gray-200 p-6 rounded-2xl shadow-sm transition-all group flex flex-col items-center text-center cursor-pointer">
+              <div className="bg-amber-100 text-amber-600 p-4 rounded-full mb-4 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#053b50] group-hover:text-amber-700">Director Master Report</h3>
+            </Link>
+
           </div>
         </div>
 
@@ -327,6 +381,7 @@ export default function AdminDashboard() {
               </select>
             </div>
 
+            {/* WEIGHT SLIDERS (5 CRITERIA) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -336,6 +391,10 @@ export default function AdminDashboard() {
                 <div className="space-y-2">
                   <label className="font-bold text-gray-700 flex justify-between">Peer Evaluation <span className="text-[#f39c12]">{currentW.peerWeight}%</span></label>
                   <input type="range" min="0" max="100" value={currentW.peerWeight} onChange={(e) => updateWeight('peerWeight', Number(e.target.value))} className="w-full accent-[#f39c12]" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Self Reflection Evaluation <span className="text-purple-600">{currentW.selfWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.selfWeight} onChange={(e) => updateWeight('selfWeight', Number(e.target.value))} className="w-full accent-purple-600" />
                 </div>
               </div>
               
@@ -357,6 +416,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* LIVE PREVIEW TABLE WITH 5 SCORE COLUMNS */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden print:border-none print:shadow-none mt-8">
           <div className="bg-gray-100 px-6 py-4 border-b border-gray-200 print:hidden">
             <h3 className="font-bold text-gray-800">Live Preview Table</h3>
@@ -368,6 +428,7 @@ export default function AdminDashboard() {
                   <th className="py-4 px-6 font-bold text-gray-600 uppercase text-xs tracking-wider">Staff Name</th>
                   <th className="py-4 px-4 font-bold text-[#008c99] uppercase text-xs tracking-wider text-center">Student<br/><span className="text-[10px] text-gray-400 font-normal">Score</span></th>
                   <th className="py-4 px-4 font-bold text-[#f39c12] uppercase text-xs tracking-wider text-center">Peer<br/><span className="text-[10px] text-gray-400 font-normal">Score</span></th>
+                  <th className="py-4 px-4 font-bold text-purple-600 uppercase text-xs tracking-wider text-center">Self<br/><span className="text-[10px] text-gray-400 font-normal">Score</span></th>
                   <th className="py-4 px-4 font-bold text-green-600 uppercase text-xs tracking-wider text-center">Observation<br/><span className="text-[10px] text-gray-400 font-normal">Avg Score</span></th>
                   <th className="py-4 px-4 font-bold text-teal-600 uppercase text-xs tracking-wider text-center">Attendance<br/><span className="text-[10px] text-gray-400 font-normal">HRD Score</span></th>
                   <th className="py-4 px-6 font-extrabold text-[#053b50] bg-blue-50 uppercase text-xs tracking-wider text-center border-l border-blue-100 print:bg-transparent print:border-l-0">Simulated Final Average<br/><span className="text-[10px] text-gray-500 font-normal">(Scale 1-4)</span></th>
@@ -375,12 +436,12 @@ export default function AdminDashboard() {
               </thead>
               
               <tbody className="divide-y divide-gray-100">
-                {/* 🚀 HIDDEN ADMINS AND STUDENTS FROM LIVE TABLE */}
                 {reportData
                   .filter((row) => row.role.toUpperCase() !== 'STUDENT' && row.role.toUpperCase() !== 'ADMIN')
                   .map((row) => {
                   const sScore = parseFloat(row.studentAvg);
                   const pScore = parseFloat(row.peerAvg);
+                  const selfScore = parseFloat(row.selfAvg);
                   
                   const obsGroup = groupedObservations.find(g => g.targetId === row.id);
                   const oScore = obsGroup ? obsGroup.averageScore : NaN;
@@ -395,6 +456,7 @@ export default function AdminDashboard() {
 
                   let wStudent = activeWeights.studentWeight; 
                   let wPeer = activeWeights.peerWeight; 
+                  let wSelf = activeWeights.selfWeight;
                   let wObs = activeWeights.observationWeight;
                   let wAtt = activeWeights.attendanceWeight;
 
@@ -403,6 +465,7 @@ export default function AdminDashboard() {
 
                   if (!isNaN(sScore)) { activeWeightSum += wStudent; accumulatedScore += (sScore * wStudent); }
                   if (!isNaN(pScore)) { activeWeightSum += wPeer; accumulatedScore += (pScore * wPeer); }
+                  if (!isNaN(selfScore)) { activeWeightSum += wSelf; accumulatedScore += (selfScore * wSelf); }
                   if (!isNaN(oScore)) { activeWeightSum += wObs; accumulatedScore += (oScore * wObs); }
                   if (!isNaN(aScore)) { activeWeightSum += wAtt; accumulatedScore += (aScore * wAtt); }
 
@@ -416,6 +479,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="py-4 px-4 text-center font-bold text-[#008c99]">{row.studentAvg !== '-' ? row.studentAvg : <span className="text-gray-300">-</span>}</td>
                       <td className="py-4 px-4 text-center font-bold text-[#f39c12]">{row.peerAvg !== '-' ? row.peerAvg : <span className="text-gray-300">-</span>}</td>
+                      <td className="py-4 px-4 text-center font-bold text-purple-600">{row.selfAvg !== '-' ? row.selfAvg : <span className="text-gray-300">-</span>}</td>
                       <td className="py-4 px-4 text-center font-bold text-green-600">{obsAvgDisplay !== '-' ? obsAvgDisplay : <span className="text-gray-300">-</span>}</td>
                       <td className="py-4 px-4 text-center font-bold text-teal-600">{attAvgDisplay !== '-' ? attAvgDisplay : <span className="text-gray-300">-</span>}</td>
                       
@@ -428,7 +492,7 @@ export default function AdminDashboard() {
                   );
                 })}
                 {reportData.filter((row) => row.role.toUpperCase() !== 'STUDENT' && row.role.toUpperCase() !== 'ADMIN').length === 0 && (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-500 font-bold">Belum ada data evaluasi di database.</td></tr>
+                  <tr><td colSpan={7} className="py-8 text-center text-gray-500 font-bold">Belum ada data evaluasi di database.</td></tr>
                 )}
               </tbody>
             </table>

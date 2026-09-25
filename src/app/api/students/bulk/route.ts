@@ -4,75 +4,85 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
-    const studentsData = await req.json();
+    const rawStudentsData = await req.json();
 
-    if (!Array.isArray(studentsData) || studentsData.length === 0) {
+    if (!Array.isArray(rawStudentsData) || rawStudentsData.length === 0) {
       return NextResponse.json({ error: "No data provided" }, { status: 400 });
     }
 
-    // 1. Fetch existing users to compare against
     const existingUsers = await prisma.user.findMany({
       select: { email: true, nis_niy: true }
     });
     
-    // Create fast lookup sets for emails and NIS
     const existingEmails = new Set(existingUsers.map(u => u.email));
     const existingNis = new Set(existingUsers.map(u => u.nis_niy));
 
     const validStudentsToInsert = [];
     let duplicateCount = 0;
+    let emptyRowsSkipped = 0;
 
-    // 2. Filter out duplicates
-    for (const student of studentsData) {
-      // Clean up the input
-      const rawInput = String(student.email || student.username || student.nis || Math.random().toString(36).substring(7)).trim().toLowerCase();
-      
-      const generatedEmail = rawInput.includes('@') ? rawInput : `${rawInput}@mdc.sch.id`;
-      
-      // If they typed a full email in Excel, extract just the prefix for the NIS
-      const nis_niy = rawInput.includes('@') ? rawInput.split('@')[0] : rawInput;
-
-      // 🚀 THE DUPLICATE CHECK
-      if (existingEmails.has(generatedEmail) || existingNis.has(nis_niy)) {
-        duplicateCount++;
-        continue; // Skip this student and move to the next one!
+    for (const rawStudent of rawStudentsData) {
+      // 🚀 THE FIX: Convert all Excel column headers to lowercase automatically
+      // Now "Name", "NAME", and "name" will all work perfectly!
+      const student: any = {};
+      for (const key in rawStudent) {
+        student[key.toLowerCase().trim()] = rawStudent[key];
       }
 
-      // If it is a new student, hash the password and prepare them for insertion
+      // Check using our newly normalized lowercase keys
+      const sName = student.name;
+      const sIdentifier = student.email || student.username || student.nis;
+
+      if (!sName && !sIdentifier) {
+        emptyRowsSkipped++;
+        continue;
+      }
+
+      const rawInput = String(sIdentifier || '').trim().toLowerCase();
+      if (!rawInput) {
+        emptyRowsSkipped++;
+        continue; 
+      }
+      
+      const generatedEmail = rawInput.includes('@') ? rawInput : `${rawInput}@mdc.sch.id`;
+      const nis_niy = rawInput.includes('@') ? rawInput.split('@')[0] : rawInput;
+
+      if (existingEmails.has(generatedEmail) || existingNis.has(nis_niy)) {
+        duplicateCount++;
+        continue; 
+      }
+
       const rawPassword = student.password ? String(student.password) : 'student123';
       const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
       validStudentsToInsert.push({
-        name: String(student.name || 'Unknown Student'),
+        name: String(sName || 'Unknown Student'),
         nis_niy: nis_niy, 
         email: generatedEmail,
         password: hashedPassword,
         role: 'STUDENT',
         gender: student.gender ? String(student.gender) : null,
-        className: student.kelas || null,
+        className: student.kelas || student.class || null,
       });
 
-      // Add to our lookup sets so we don't insert duplicates that are within the same Excel file!
       existingEmails.add(generatedEmail);
       existingNis.add(nis_niy);
     }
 
-    // 3. Check if there is actually anyone new to insert
     if (validStudentsToInsert.length === 0) {
       return NextResponse.json({ 
-        message: `No new students imported. All ${duplicateCount} students were already in the database!`,
+        message: `No new students added. ${duplicateCount} duplicates ignored.`,
         count: 0
       });
     }
 
-    // 4. Safely insert the new students
     const result = await prisma.user.createMany({
       data: validStudentsToInsert,
-      skipDuplicates: true, // Double protection at the database level
+      skipDuplicates: true, 
     });
 
     return NextResponse.json({ 
-      message: `Successfully imported ${result.count} new students! (${duplicateCount} duplicates skipped).`, 
+      message: `Successfully added ${result.count} new students! (${duplicateCount} duplicates ignored).`, 
       count: result.count 
     });
 

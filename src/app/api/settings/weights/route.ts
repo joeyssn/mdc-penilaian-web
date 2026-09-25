@@ -1,52 +1,80 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma'; // Adjust import according to your prisma instance path
 
-export const dynamic = 'force-dynamic';
-
-const DEFAULT_ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan']; // 🚀 Added Karyawan
+// GET: Fetch all role-based evaluation weights
 export async function GET() {
   try {
-    let settings = await prisma.weightSettings.findMany();
-    
-    // Auto-create defaults for any missing roles in the database
-    for (const role of DEFAULT_ROLES) {
-      if (!settings.find((s: any) => s.id === role)) {
-        const newSetting = await prisma.weightSettings.create({
-          data: { id: role, studentWeight: 25, peerWeight: 25, observationWeight: 25, attendanceWeight: 25 }
-        });
-        settings.push(newSetting);
-      }
-    }
-    return NextResponse.json(settings);
+    const weights = await prisma.evaluationWeight.findMany();
+    return NextResponse.json(weights, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch weights" }, { status: 500 });
+    console.error('Error fetching evaluation weights:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch evaluation weights.' },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(req: Request) {
+// PUT: Bulk update role-based evaluation weights
+export async function PUT(request: Request) {
   try {
-    const data = await req.json(); // Now receives an array of roles
-    
-    for (const d of data) {
-      await prisma.weightSettings.upsert({
-        where: { id: d.id },
-        update: { 
-          studentWeight: d.studentWeight, 
-          peerWeight: d.peerWeight, 
-          observationWeight: d.observationWeight, 
-          attendanceWeight: d.attendanceWeight 
-        },
-        create: { 
-          id: d.id, 
-          studentWeight: d.studentWeight, 
-          peerWeight: d.peerWeight, 
-          observationWeight: d.observationWeight, 
-          attendanceWeight: d.attendanceWeight 
-        }
-      });
+    const body = await request.json();
+
+    if (!Array.isArray(body)) {
+      return NextResponse.json(
+        { error: 'Payload must be an array of weight configurations.' },
+        { status: 400 }
+      );
     }
-    return NextResponse.json({ success: true });
+
+    // Validate that each entry sums to 100%
+    for (const item of body) {
+      const studentWeight = Number(item.studentWeight) || 0;
+      const peerWeight = Number(item.peerWeight) || 0;
+      const selfWeight = Number(item.selfWeight) || 0;
+      const observationWeight = Number(item.observationWeight) || 0;
+      const attendanceWeight = Number(item.attendanceWeight) || 0;
+
+      const total = studentWeight + peerWeight + selfWeight + observationWeight + attendanceWeight;
+
+      if (total !== 100) {
+        return NextResponse.json(
+          { error: `Total weight for role "${item.id}" must equal 100%. Currently: ${total}%` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Perform atomic transaction updates across all configured roles
+    const updatePromises = body.map((item) =>
+      prisma.evaluationWeight.upsert({
+        where: { id: item.id },
+        update: {
+          studentWeight: Number(item.studentWeight) || 0,
+          peerWeight: Number(item.peerWeight) || 0,
+          selfWeight: Number(item.selfWeight) || 0,
+          observationWeight: Number(item.observationWeight) || 0,
+          attendanceWeight: Number(item.attendanceWeight) || 0,
+        },
+        create: {
+          id: item.id,
+          studentWeight: Number(item.studentWeight) || 0,
+          peerWeight: Number(item.peerWeight) || 0,
+          selfWeight: Number(item.selfWeight) || 0,
+          observationWeight: Number(item.observationWeight) || 0,
+          attendanceWeight: Number(item.attendanceWeight) || 0,
+        },
+      })
+    );
+
+    const updatedWeights = await prisma.$transaction(updatePromises);
+
+    return NextResponse.json(updatedWeights, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update weights" }, { status: 500 });
+    console.error('Error updating evaluation weights:', error);
+    return NextResponse.json(
+      { error: 'Failed to update evaluation weights.' },
+      { status: 500 }
+    );
   }
 }

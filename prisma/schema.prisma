@@ -173,10 +173,28 @@ model Absence {
   updatedAt       DateTime @updatedAt
 }
 
-model WeightSettings {
-  id                String @id @default("default")
-  studentWeight     Float  @default(25)
-  peerWeight        Float  @default(25)
-  observationWeight Float  @default(25)
-  attendanceWeight  Float  @default(25) 
+model EvaluationWeight {
+  id                String   @id // e.g., "Teacher", "Staff", "Karyawan", "Vice-Principal", "Director/Principal"
+  studentWeight     Float    @default(20)
+  peerWeight        Float    @default(20)
+  selfWeight        Float    @default(20)
+  observationWeight Float    @default(20)
+  attendanceWeight Float    @default(20)
+  updatedAt         DateTime @updatedAt
+}
+
+model SemesterArchive {
+  id               String   @id @default(uuid())
+  semester         String   // e.g., "Ganjil 2026/2027"
+  targetId         String
+  targetName       String
+  targetRole       String
+  scoresData       Json?    // Snapshot of all 'score' rows
+  evalLogsData     Json?    // Snapshot of all 'evaluationlog' rows
+  observationsData Json?    // Snapshot of all 'Observation' rows
+  absenceData      Json?    // Snapshot of 'Absence' row
+  archivedAt       DateTime @default(now())
+
+  @@index([semester])
+  @@index([targetId])
 }

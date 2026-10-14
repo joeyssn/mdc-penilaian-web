@@ -198,3 +198,12 @@ model SemesterArchive {
   @@index([semester])
   @@index([targetId])
 }
+
+model PerformanceWeight {
+  id          String   @id @default(uuid())
+  factorKey   String   @unique // e.g., 'STUDENT', 'PEER', 'SELF', 'OBSERVATION', 'ATTENDANCE'
+  displayName String   // e.g., 'Student Evaluation'
+  weight      Float    // e.g., 0.25 (representing 25%)
+  description String?
+  updatedAt   DateTime @updatedAt
+}

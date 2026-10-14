@@ -37,7 +37,7 @@ export async function GET() {
       'Full Name': user.name,
       'Email Domain': user.email,
       'Role': user.role,
-      'Department': user.department || '-',
+      'Department': user.department || '-',2
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);

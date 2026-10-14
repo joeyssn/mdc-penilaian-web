@@ -401,6 +401,7 @@ function TeacherForm({ formData, setFormData, onSubmit, submitLabel, submitColor
 
 function InputGroup({ label, value, onChange, required = false }: any) {
   return (
+    
     <div className="flex flex-col">
       <label className="text-xs text-gray-500 mb-1.5 font-bold uppercase tracking-wider">{label}</label>
       <input 

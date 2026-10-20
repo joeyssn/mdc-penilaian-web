@@ -98,48 +98,76 @@ export function resolveProfile<T extends { id: string }>(
 }
 
 // ---------------------------------------------------------------------------------------------
-// SD / TK use a different, 3-part master report: Student + HRD + (Peer & Self reflection combined).
-// The existing columns are reused so nothing in the database changes:
-//   peerWeight       = the combined "Peer & Self" weight
-//   attendanceWeight = HRD
-//   selfWeight and observationWeight stay 0.
+// SD / TK master report. Overall score = Main evaluation + Student + HRD (default 79 / 11 / 10).
+// The main evaluation is itself Peer + Self + Supervisor + Leaders (default 10 / 10 / 20 / 60 of main).
+//   mainWeight       share of the overall score taken by the main evaluation
+//   studentWeight    Student evaluation share of the overall score
+//   attendanceWeight HRD share of the overall score
+//   peerWeight / selfWeight / supervisorWeight / leaderWeight   split INSIDE the main evaluation (sum 100)
+//   observationWeight is not used (0)
 // ---------------------------------------------------------------------------------------------
 export const isSdGroupLevel = (level?: string | null) => ['SD', 'TK'].includes(String(level || '').toUpperCase());
 
-export const SD_DEFAULT_WEIGHTS = {
-  studentWeight: 34, peerWeight: 33, selfWeight: 0, observationWeight: 0, attendanceWeight: 33,
-};
-
-// True when a stored profile already follows the 3-part layout
-export const isThreePartWeights = (w: { selfWeight?: number; observationWeight?: number }) =>
-  !Number(w.selfWeight) && !Number(w.observationWeight);
-
-type Weights = {
+export type FullWeights = {
   studentWeight: number; peerWeight: number; selfWeight: number; observationWeight: number; attendanceWeight: number;
+  mainWeight: number; supervisorWeight: number; leaderWeight: number;
 };
-type Scores = { student: number; peer: number; self: number; observation: number; attendance: number }; // NaN = missing
 
-const present = (n: number) => typeof n === 'number' && !isNaN(n);
+export const SD_DEFAULT_WEIGHTS: FullWeights = {
+  studentWeight: 11, attendanceWeight: 10, mainWeight: 79,
+  peerWeight: 10, selfWeight: 10, supervisorWeight: 20, leaderWeight: 60,
+  observationWeight: 0,
+};
+
+// True when a stored profile already uses the SD / TK layout (older profiles have no main weight)
+export const isSdLayout = (w: { mainWeight?: number }) => Number(w.mainWeight) > 0;
+
+// Check an SD / TK profile. Returns an error message, or null when valid.
+export function validateSdWeights(w: Partial<FullWeights>): string | null {
+  const n = (v: unknown) => Number(v) || 0;
+  const overall = n(w.mainWeight) + n(w.studentWeight) + n(w.attendanceWeight);
+  const inner = n(w.peerWeight) + n(w.selfWeight) + n(w.supervisorWeight) + n(w.leaderWeight);
+  if (n(w.observationWeight)) return 'Observation is not used for SD / TK.';
+  if (overall !== 100) return `Main + Student + HRD must total 100%. Currently: ${overall}%`;
+  if (inner !== 100) return `Peer + Self + Supervisor + Leaders must total 100% of the main evaluation. Currently: ${inner}%`;
+  return null;
+}
+
+type Scores = {
+  student: number; peer: number; self: number; observation: number; attendance: number;
+  supervisor?: number; leader?: number; // NaN / undefined = missing
+};
+
+const present = (n: number | undefined): n is number => typeof n === 'number' && !isNaN(n);
 
 // Final score on the same 1-4 scale as the components.
-//  - SD / TK: Student, HRD and Peer & Self must all exist, otherwise the result is "incomplete"
-//    (no weights are redistributed). Peer & Self is the average of whichever of the two exists.
+//  - SD / TK: every part must exist (Peer, Self, Supervisor, Leaders, Student, HRD), otherwise the
+//    result is "incomplete" and nothing is redistributed. `missing` lists what is absent.
 //  - SMP / SMA: unchanged. Missing components are left out and the remaining weights are rescaled.
 export function computeFinal(
   profileId: string,
-  w: Weights,
+  w: Partial<FullWeights> & { studentWeight: number; peerWeight: number; selfWeight: number; observationWeight: number; attendanceWeight: number },
   s: Scores
-): { final: number | null; incomplete: boolean; peerSelf: number | null } {
+): { final: number | null; incomplete: boolean; main: number | null; missing: string[] } {
   if (isSdProfile(profileId)) {
-    const parts = [s.peer, s.self].filter(present);
-    const peerSelf = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : null;
-    if (!present(s.student) || !present(s.attendance) || peerSelf === null) {
-      return { final: null, incomplete: true, peerSelf };
-    }
-    const total = w.studentWeight + w.peerWeight + w.attendanceWeight;
-    if (total <= 0) return { final: null, incomplete: true, peerSelf };
-    const final = (s.student * w.studentWeight + peerSelf * w.peerWeight + s.attendance * w.attendanceWeight) / total;
-    return { final, incomplete: false, peerSelf };
+    const parts: [string, number | undefined, number][] = [
+      ['Peer', s.peer, w.peerWeight], ['Self', s.self, w.selfWeight],
+      ['Supervisor', s.supervisor, w.supervisorWeight || 0], ['Leaders', s.leader, w.leaderWeight || 0],
+    ];
+    const missing = parts.filter(([, v]) => !present(v)).map(([name]) => name);
+    if (!present(s.student)) missing.push('Student');
+    if (!present(s.attendance)) missing.push('HRD');
+
+    const innerTotal = parts.reduce((a, [, , weight]) => a + weight, 0);
+    const main = missing.some(m => ['Peer', 'Self', 'Supervisor', 'Leaders'].includes(m)) || innerTotal <= 0
+      ? null
+      : parts.reduce((a, [, v, weight]) => a + (v as number) * weight, 0) / innerTotal;
+
+    const mainWeight = w.mainWeight || 0;
+    const overallTotal = mainWeight + w.studentWeight + w.attendanceWeight;
+    if (missing.length > 0 || main === null || overallTotal <= 0) return { final: null, incomplete: true, main, missing };
+    const final = (main * mainWeight + s.student * w.studentWeight + s.attendance * w.attendanceWeight) / overallTotal;
+    return { final, incomplete: false, main, missing };
   }
 
   const items: [number, number][] = [
@@ -148,5 +176,5 @@ export function computeFinal(
   ];
   let sum = 0, acc = 0;
   items.forEach(([score, weight]) => { if (present(score)) { sum += weight; acc += score * weight; } });
-  return { final: sum > 0 ? acc / sum : null, incomplete: false, peerSelf: null };
+  return { final: sum > 0 ? acc / sum : null, incomplete: false, main: null, missing: [] };
 }

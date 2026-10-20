@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { denyUnlessRole, getSession, RUBRIC_EDITOR_ROLES } from '@/lib/session';
-import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, isSdProfile } from '@/lib/weights';
+import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, isSdProfile, validateSdWeights } from '@/lib/weights';
 
 export const dynamic = 'force-dynamic';
 
 const VALID_IDS: string[] = [...WEIGHT_PROFILES];
-const FIELDS = ['studentWeight', 'peerWeight', 'selfWeight', 'observationWeight', 'attendanceWeight'] as const;
+const FIELDS = ['studentWeight', 'peerWeight', 'selfWeight', 'observationWeight', 'attendanceWeight', 'mainWeight', 'supervisorWeight', 'leaderWeight'] as const;
 
 // GET: all weight profiles (any logged-in user; dashboards need their own profile)
 export async function GET() {
@@ -39,18 +39,15 @@ export async function PUT(request: Request) {
       if (values.some(v => v < 0 || v > 100)) {
         return NextResponse.json({ error: `Weights for "${item.id}" must be between 0 and 100.` }, { status: 400 });
       }
-      if (isSdProfile(item.id) && (Number(item.selfWeight) || Number(item.observationWeight))) {
-        return NextResponse.json(
-          { error: `SD / TK profile "${item.id}" only uses Student, HRD and Peer & Self weights.` },
-          { status: 400 }
-        );
+      if (isSdProfile(item.id)) {
+        const sdError = validateSdWeights(item);
+        if (sdError) return NextResponse.json({ error: `${item.id}: ${sdError}` }, { status: 400 });
+        continue;
       }
-      const total = values.reduce((a, b) => a + b, 0);
+      const total = ['studentWeight', 'peerWeight', 'selfWeight', 'observationWeight', 'attendanceWeight']
+        .reduce((a, f) => a + (Number(item[f]) || 0), 0);
       if (total !== 100) {
-        return NextResponse.json(
-          { error: `Total weight for "${item.id}" must equal 100%. Currently: ${total}%` },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: `Total weight for "${item.id}" must equal 100%. Currently: ${total}%` }, { status: 400 });
       }
     }
 

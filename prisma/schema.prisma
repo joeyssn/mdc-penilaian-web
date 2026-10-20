@@ -181,6 +181,10 @@ model EvaluationWeight {
   selfWeight        Float    @default(20)
   observationWeight Float    @default(20)
   attendanceWeight Float    @default(20)
+  // SD / TK only: main evaluation (peer, self, supervisor, leaders) and its internal split
+  mainWeight        Float    @default(0)
+  supervisorWeight  Float    @default(0)
+  leaderWeight      Float    @default(0)
   updatedAt         DateTime @updatedAt
 }
 

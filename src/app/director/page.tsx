@@ -489,9 +489,9 @@ export default function UnifiedDirectorDashboard() {
                       );
                       const activeWeights = matched || defaultWeights;
                       const sdRow = matched ? isSdProfile(matched.id) : false;
-                      const { final, incomplete } = computeFinal(
+                      const { final, incomplete, missing } = computeFinal(
                         matched ? matched.id : 'DEFAULT', { selfWeight: 0, ...activeWeights },
-                        { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore }
+                        { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore, leader: oScore, supervisor: NaN }
                       );
                       const finalDynamicAvg = final === null ? '-' : final.toFixed(2);
 
@@ -502,7 +502,7 @@ export default function UnifiedDirectorDashboard() {
                           <td className="py-4 px-4 text-center font-extrabold text-[#f39c12]">{row.peerAvg}</td>
                           <td className="py-4 px-4 text-center font-extrabold text-green-600">{obsGroup ? obsGroup.averageScore.toFixed(2) : '-'}</td>
                           <td className="py-4 px-4 text-center font-extrabold text-teal-600">{userAbsence ? userAbsence.attendanceScore.toFixed(1) : '-'}</td>
-                          <td className="py-4 px-6 text-center bg-blue-50/30 print:bg-transparent font-extrabold text-xl text-[#053b50]">{finalDynamicAvg}{incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum lengkap</span>}</td>
+                          <td className="py-4 px-6 text-center bg-blue-50/30 print:bg-transparent font-extrabold text-xl text-[#053b50]">{finalDynamicAvg}{incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum: {missing.join(', ')}</span>}</td>
                         </tr>
                       );
                     })}

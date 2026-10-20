@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import CycleLockPanel from '@/components/CycleLockPanel';
-import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdProfile, isThreePartWeights, profileLabel, resolveProfile, roleLabel } from '@/lib/weights';
+import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
 
 type ReportRow = { 
   id: string; 
@@ -42,15 +42,31 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export default function AdminDashboard() {
-  const defaultWeights = { 
+  const defaultWeights: FullWeights = { 
     studentWeight: 20, 
     peerWeight: 20, 
     selfWeight: 20, 
     observationWeight: 20, 
-    attendanceWeight: 20 
+    attendanceWeight: 20,
+    mainWeight: 0, supervisorWeight: 0, leaderWeight: 0
   };
+  const toFull = (w: any): FullWeights => ({
+    studentWeight: Number(w.studentWeight) || 0,
+    peerWeight: Number(w.peerWeight) || 0,
+    selfWeight: Number(w.selfWeight) || 0,
+    observationWeight: Number(w.observationWeight) || 0,
+    attendanceWeight: Number(w.attendanceWeight) || 0,
+    mainWeight: Number(w.mainWeight) || 0,
+    supervisorWeight: Number(w.supervisorWeight) || 0,
+    leaderWeight: Number(w.leaderWeight) || 0,
+  });
+  // Valid = totals exactly 100 (SD / TK: overall split AND the split inside the main evaluation)
+  const isValidProfile = (id: string, w: FullWeights) =>
+    isSdProfile(id)
+      ? validateSdWeights(w) === null
+      : (w.studentWeight + w.peerWeight + w.selfWeight + w.observationWeight + w.attendanceWeight) === 100;
   
-  const [weightsConfig, setWeightsConfig] = useState<Record<string, typeof defaultWeights>>({});
+  const [weightsConfig, setWeightsConfig] = useState<Record<string, FullWeights>>({});
   const [selectedRoleWeight, setSelectedRoleWeight] = useState('');
   const [newProfileId, setNewProfileId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -80,34 +96,19 @@ export default function AdminDashboard() {
       const wRes = await fetch('/api/settings/weights');
       const wData = await wRes.json();
       if (!wData.error && Array.isArray(wData)) {
-        let loadedConfig: Record<string, typeof defaultWeights> = {};
-        wData.forEach((w: any) => {
-          loadedConfig[w.id] = {
-            studentWeight: Number(w.studentWeight) || 0,
-            peerWeight: Number(w.peerWeight) || 0,
-            selfWeight: Number(w.selfWeight) || 0,
-            observationWeight: Number(w.observationWeight) || 0,
-            attendanceWeight: Number(w.attendanceWeight) || 0
-          };
-        });
+        let loadedConfig: Record<string, FullWeights> = {};
+        wData.forEach((w: any) => { loadedConfig[w.id] = toFull(w); });
         // One profile per role for SMP / SMA and a separate set for SD. A profile that has not been
         // saved yet starts from the closest existing one (an SD profile from its SMP / SMA twin),
         // or equal 20% weights. Nothing changes until you press Save.
         const byId: Record<string, any> = { ...loadedConfig };
-        const ordered: Record<string, typeof defaultWeights> = {};
+        const ordered: Record<string, FullWeights> = {};
         WEIGHT_PROFILES.forEach(id => {
           const source = byId[id] || fallbackIds(id).map(f => byId[f]).find(Boolean);
-          const w: any = source || defaultWeights;
-          ordered[id] = {
-            studentWeight: Number(w.studentWeight) || 0,
-            peerWeight: Number(w.peerWeight) || 0,
-            selfWeight: Number(w.selfWeight) || 0,
-            observationWeight: Number(w.observationWeight) || 0,
-            attendanceWeight: Number(w.attendanceWeight) || 0,
-          };
-          // SD / TK profiles use the 3-part layout. One that still has the old 5-part values
-          // (copied from SMP / SMA) starts from an even split instead; nothing changes until Save.
-          if (isSdProfile(id) && !isThreePartWeights(ordered[id])) ordered[id] = { ...SD_DEFAULT_WEIGHTS };
+          ordered[id] = toFull(source || defaultWeights);
+          // SD / TK profiles use the main/student/HRD layout. One without it (an old profile or a copy
+          // of SMP / SMA) starts from 79 / 11 / 10 and 10 / 10 / 20 / 60; nothing changes until Save.
+          if (isSdProfile(id) && !isSdLayout(ordered[id])) ordered[id] = { ...SD_DEFAULT_WEIGHTS };
           byId[id] = ordered[id];
         });
         loadedConfig = ordered;
@@ -143,12 +144,12 @@ export default function AdminDashboard() {
   };
 
   const currentW = weightsConfig[selectedRoleWeight] || defaultWeights;
-  const currentTotal = 
-    currentW.studentWeight + 
-    currentW.peerWeight + 
-    currentW.selfWeight + 
-    currentW.observationWeight + 
-    currentW.attendanceWeight;
+  const sdSelected = isSdProfile(selectedRoleWeight);
+  const currentInner = currentW.peerWeight + currentW.selfWeight + currentW.supervisorWeight + currentW.leaderWeight;
+  const currentTotal = sdSelected
+    ? currentW.mainWeight + currentW.studentWeight + currentW.attendanceWeight
+    : currentW.studentWeight + currentW.peerWeight + currentW.selfWeight + currentW.observationWeight + currentW.attendanceWeight;
+  const currentValid = isValidProfile(selectedRoleWeight, currentW);
 
   const updateWeight = (field: string, value: number) => {
     setWeightsConfig(prev => ({ 
@@ -165,11 +166,11 @@ export default function AdminDashboard() {
 
   const handleSaveWeights = async () => {
     const invalid = Object.entries(weightsConfig)
-      .filter(([, w]) => (w.studentWeight + w.peerWeight + w.selfWeight + w.observationWeight + w.attendanceWeight) !== 100);
+      .filter(([id, w]) => !isValidProfile(id, w));
 
     if (invalid.length > 0) {
       const names = invalid.map(([id]) => profileLabel(id)).join(', ');
-      return alert(`Error: The total percentage for ${names} is not exactly 100%! Please fix before saving.`);
+      return alert(`Error: The total percentage for ${names} is not valid: every total must be exactly 100%. Please fix before saving.`);
     }
 
     setIsSaving(true);
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
 
   const handleAddProfile = () => {
     if (!newProfileId || weightsConfig[newProfileId]) return;
-    setWeightsConfig(prev => ({ ...prev, [newProfileId]: { ...defaultWeights } }));
+    setWeightsConfig(prev => ({ ...prev, [newProfileId]: isSdProfile(newProfileId) ? { ...SD_DEFAULT_WEIGHTS } : { ...defaultWeights } }));
     setSelectedRoleWeight(newProfileId);
     setNewProfileId('');
   };
@@ -397,7 +398,7 @@ export default function AdminDashboard() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                 Print Report
               </button>
-              <button onClick={handleSaveWeights} disabled={currentTotal !== 100 || isSaving || Object.keys(weightsConfig).length === 0} className="bg-[#e99a24] hover:bg-[#d68a1f] text-white px-6 py-3 rounded-xl font-bold shadow-md transition-all disabled:opacity-50 whitespace-nowrap">
+              <button onClick={handleSaveWeights} disabled={!currentValid || isSaving || Object.keys(weightsConfig).length === 0} className="bg-[#e99a24] hover:bg-[#d68a1f] text-white px-6 py-3 rounded-xl font-bold shadow-md transition-all disabled:opacity-50 whitespace-nowrap">
                 {isSaving ? 'Saving...' : 'Save Rule'}
               </button>
             </div>
@@ -462,9 +463,14 @@ export default function AdminDashboard() {
               {isSdProfile(selectedRoleWeight) ? (
               <>
               <div className="md:col-span-2 text-sm font-medium text-orange-800 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                SD / TK master report: the score is split between Student, HRD, and Peer &amp; Self Reflection. Peer and Self are averaged into one score before this weight is applied. Observation is not used.
+                SD / TK master report. The overall score is split between the <b>Main evaluation</b>, <b>Student</b> and <b>HRD</b>. The Main evaluation is itself made of Peer, Self, Supervisor and Leaders. Observation is not used.
               </div>
               <div className="space-y-6">
+                <h4 className="font-extrabold text-[#053b50] uppercase text-xs tracking-wider">Overall score split</h4>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Main Evaluation (Peer, Self, Supervisor, Leaders) <span className="text-[#053b50]">{currentW.mainWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.mainWeight} onChange={(e) => updateWeight('mainWeight', Number(e.target.value))} className="w-full accent-[#053b50]" />
+                </div>
                 <div className="space-y-2">
                   <label className="font-bold text-gray-700 flex justify-between">Student Evaluation <span className="text-[#008c99]">{currentW.studentWeight}%</span></label>
                   <input type="range" min="0" max="100" value={currentW.studentWeight} onChange={(e) => updateWeight('studentWeight', Number(e.target.value))} className="w-full accent-[#008c99]" />
@@ -475,9 +481,22 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="space-y-6">
+                <h4 className="font-extrabold text-[#053b50] uppercase text-xs tracking-wider">Inside the main evaluation</h4>
                 <div className="space-y-2">
-                  <label className="font-bold text-gray-700 flex justify-between">Peer &amp; Self Reflection <span className="text-[#f39c12]">{currentW.peerWeight}%</span></label>
+                  <label className="font-bold text-gray-700 flex justify-between">Peer <span className="text-[#f39c12]">{currentW.peerWeight}%</span></label>
                   <input type="range" min="0" max="100" value={currentW.peerWeight} onChange={(e) => updateWeight('peerWeight', Number(e.target.value))} className="w-full accent-[#f39c12]" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Self Reflection <span className="text-purple-600">{currentW.selfWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.selfWeight} onChange={(e) => updateWeight('selfWeight', Number(e.target.value))} className="w-full accent-purple-600" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Supervisor <span className="text-green-600">{currentW.supervisorWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.supervisorWeight} onChange={(e) => updateWeight('supervisorWeight', Number(e.target.value))} className="w-full accent-green-600" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Leaders (Principal / Vice Principal) <span className="text-rose-600">{currentW.leaderWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.leaderWeight} onChange={(e) => updateWeight('leaderWeight', Number(e.target.value))} className="w-full accent-rose-600" />
                 </div>
               </div>
               </>
@@ -512,8 +531,15 @@ export default function AdminDashboard() {
               </>
               )}
 
-              <div className={`md:col-span-2 p-4 rounded-xl font-bold text-center text-lg transition-colors ${currentTotal === 100 ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>
-                Total Weight for {profileLabel(selectedRoleWeight)}: {currentTotal}% {currentTotal !== 100 && "(Adjust sliders so total equals exactly 100%)"}
+              <div className={`md:col-span-2 p-4 rounded-xl font-bold text-center text-lg transition-colors ${currentValid ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>
+                {sdSelected ? (
+                  <>
+                    Overall (Main + Student + HRD): {currentTotal}% &nbsp;·&nbsp; Inside Main: {currentInner}%
+                    {!currentValid && <span className="block text-sm font-semibold mt-1">Both totals must equal exactly 100%</span>}
+                  </>
+                ) : (
+                  <>Total Weight for {profileLabel(selectedRoleWeight)}: {currentTotal}% {currentTotal !== 100 && "(Adjust sliders so total equals exactly 100%)"}</>
+                )}
               </div>
             </div>
           </div>
@@ -559,9 +585,10 @@ export default function AdminDashboard() {
                   const activeWeights = matched || defaultWeights;
                   const sdRow = matched ? isSdProfile(matched.id) : false;
 
-                  const { final, incomplete, peerSelf } = computeFinal(
+                  const { final, incomplete, main, missing } = computeFinal(
                     matched ? matched.id : 'DEFAULT', activeWeights,
-                    { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore }
+                    // Leaders = the principal / vice principal observation score. Supervisor scores are not collected yet.
+                    { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore, leader: oScore, supervisor: NaN }
                   );
                   const finalDynamicAvg = final === null ? '-' : final.toFixed(2);
 
@@ -581,8 +608,8 @@ export default function AdminDashboard() {
                         <span className={`font-extrabold text-xl ${finalDynamicAvg === '-' ? 'text-gray-300' : 'text-[#053b50]'}`}>
                           {finalDynamicAvg}
                         </span>
-                        {incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum lengkap</span>}
-                        {sdRow && peerSelf !== null && <span className="block text-[10px] text-gray-400">Peer&amp;Self {peerSelf.toFixed(2)}</span>}
+                        {incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum: {missing.join(', ')}</span>}
+                        {sdRow && main !== null && <span className="block text-[10px] text-gray-400">Main {main.toFixed(2)}</span>}
                       </td>
                     </tr>
                   );

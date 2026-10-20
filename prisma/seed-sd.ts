@@ -100,6 +100,25 @@ const SELF_RUBRIC: Section[] = [
   ]},
 ];
 
+const STUDENT_RUBRIC: Section[] = [
+  { title: 'A. Penilaian Siswa terhadap Guru', categories: [
+    { title: 'A.1 Cara Mengajar', indicators: [
+      'Guru menjelaskan pelajaran dengan jelas sehingga saya mengerti.',
+      'Guru membuat pelajaran menyenangkan.',
+      'Guru memberi kesempatan kepada saya untuk bertanya.',
+    ]},
+    { title: 'A.2 Sikap Guru', indicators: [
+      'Guru ramah dan sabar kepada murid.',
+      'Guru adil kepada semua murid.',
+      'Guru menjadi contoh yang baik bagi saya.',
+    ]},
+    { title: 'A.3 Suasana Kelas', indicators: [
+      'Saya merasa aman dan nyaman di kelas.',
+      'Guru datang dan mulai pelajaran tepat waktu.',
+    ]},
+  ]},
+];
+
 const RUBRICS = [
   {
     title: 'SD - Evaluasi Kinerja Guru',
@@ -116,6 +135,14 @@ const RUBRICS = [
     evaluatees: 'Teacher',
     isSelfReflection: true,
     sections: SELF_RUBRIC,
+  },
+  {
+    title: 'SD/TK - Evaluasi Guru oleh Siswa',
+    description: 'Rubrik penilaian guru oleh siswa SD/TK. Bahasa sederhana. Skala 1-4.',
+    evaluators: 'Student',
+    evaluatees: 'Teacher',
+    isSelfReflection: false,
+    sections: STUDENT_RUBRIC,
   },
 ];
 

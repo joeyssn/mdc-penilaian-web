@@ -1,24 +1,22 @@
 import { prisma } from '@/lib/prisma';
-import type { SessionUser } from '@/lib/session';
-import { isSdGroupLevel } from '@/lib/weights';
 
-const LEGACY_LOCK_KEY = 'scoresLocked';
+const LOCK_KEY = 'scoresLocked';
 
-// Whether this user's results are currently hidden.
-// - If cycles exist: the user sees scores only when every OPEN cycle for their school level is unlocked.
-//   Users without a school level are checked against all open cycles. No open cycle means locked.
-// - If no cycle has ever been created: falls back to the old global switch (locked unless set to 'false').
-export async function isScoresLockedFor(user: Pick<SessionUser, 'level'>): Promise<boolean> {
-  const totalCycles = await prisma.evaluationCycle.count();
-  if (totalCycles === 0) {
-    const row = await prisma.appSetting.findUnique({ where: { key: LEGACY_LOCK_KEY } });
-    return row ? row.value !== 'false' : true;
-  }
-  const level = user.level ? (isSdGroupLevel(user.level) ? 'SD' : String(user.level).toUpperCase()) : null;
-  const cycles = await prisma.evaluationCycle.findMany({
-    where: { status: 'OPEN', ...(level ? { schoolLevel: level } : {}) },
-    select: { scoresLocked: true },
+// One switch for the whole app. Scores are hidden from users unless an admin has explicitly unlocked them.
+export async function isScoresLocked(): Promise<boolean> {
+  const row = await prisma.appSetting.findUnique({ where: { key: LOCK_KEY } });
+  return row ? row.value !== 'false' : true;
+}
+
+// Kept so existing callers keep working; visibility no longer depends on the user.
+export async function isScoresLockedFor(_user?: unknown): Promise<boolean> {
+  return isScoresLocked();
+}
+
+export async function setScoresLocked(locked: boolean) {
+  await prisma.appSetting.upsert({
+    where: { key: LOCK_KEY },
+    update: { value: String(locked) },
+    create: { key: LOCK_KEY, value: String(locked) },
   });
-  if (cycles.length === 0) return true;
-  return cycles.some(c => c.scoresLocked);
 }

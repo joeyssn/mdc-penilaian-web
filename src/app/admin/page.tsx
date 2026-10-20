@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import CycleLockPanel from '@/components/CycleLockPanel';
+import ScoreVisibilityToggle from '@/components/ScoreVisibilityToggle';
 import MasterReportTables from '@/components/MasterReportTables';
 import { buildMasterRows } from '@/lib/masterReport';
 import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
@@ -320,9 +320,7 @@ export default function AdminDashboard() {
         {/* ADMIN TOOLS & MANAGEMENT */}
         <div className="print:hidden">
           <div className="mb-10">
-            <h2 className="text-2xl font-extrabold text-[#053b50] mb-2">Evaluation Cycles & Score Visibility</h2>
-            <p className="text-gray-500 font-medium mb-5">Each cycle belongs to one school level and has its own lock. New cycles start locked.</p>
-            <CycleLockPanel canManage />
+            <ScoreVisibilityToggle />
           </div>
 
           <h2 className="text-2xl font-extrabold text-[#053b50] mb-6">Admin Tools & Management</h2>

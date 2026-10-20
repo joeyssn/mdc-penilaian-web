@@ -22,7 +22,7 @@ export default function HRDDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [completedEvals, setCompletedEvals] = useState<Set<string>>(new Set());
   const [selectedTarget, setSelectedTarget] = useState<User | null>(null);
-  const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ABSENCE STATES
@@ -258,7 +258,7 @@ export default function HRDDashboard() {
                                 <div key={ind.id} className="flex justify-between items-center gap-4 p-4 rounded-lg bg-gray-50">
                                   <p className="font-medium text-sm w-2/3">{ind.text}</p>
                                   <div className="flex gap-2">
-                                    {['A', 'B', 'C', 'D'].map(val => (
+                                    {[1, 2, 3, 4].map(val => (
                                       <label key={val} className={`flex items-center justify-center w-10 h-10 rounded-md cursor-pointer font-bold ${scores[ind.id] === val ? 'bg-[#008c99] text-white' : 'bg-white text-gray-500'}`}>
                                         <input type="radio" className="hidden" onChange={() => setScores(p => ({...p, [ind.id]: val as any}))} required /> {val}
                                       </label>

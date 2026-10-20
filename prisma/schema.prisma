@@ -30,6 +30,7 @@ model rubric {
   evaluatees       String?
   isSelfReflection Boolean         @default(false) 
   intendedForRole  String          @default("STUDENT") 
+  schoolLevel      String          @default("SMP_SMA") // SD | SMP_SMA
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   evaluationlog    evaluationlog[]
@@ -180,6 +181,10 @@ model EvaluationWeight {
   selfWeight        Float    @default(20)
   observationWeight Float    @default(20)
   attendanceWeight Float    @default(20)
+  // SD / TK only: main evaluation (peer, self, supervisor, leaders) and its internal split
+  mainWeight        Float    @default(0)
+  supervisorWeight  Float    @default(0)
+  leaderWeight      Float    @default(0)
   updatedAt         DateTime @updatedAt
 }
 
@@ -206,4 +211,51 @@ model PerformanceWeight {
   weight      Float    // e.g., 0.25 (representing 25%)
   description String?
   updatedAt   DateTime @updatedAt
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model EvaluationCycle {
+  id           String           @id @default(uuid())
+  name         String
+  schoolLevel  String           // SD | SMP | SMA
+  status       String           @default("OPEN") // OPEN | CLOSED
+  scoresLocked Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  closedAt     DateTime?
+  lockEvents   ScoreLockEvent[]
+
+  @@index([schoolLevel, status])
+}
+
+model ScoreLockEvent {
+  id        String          @id @default(uuid())
+  cycleId   String
+  action    String          // LOCKED | UNLOCKED
+  actorId   String
+  actorName String
+  actorRole String
+  createdAt DateTime        @default(now())
+  cycle     EvaluationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  actorName  String
+  actorRole  String
+  action     String
+  entityType String
+  entityId   String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
 }

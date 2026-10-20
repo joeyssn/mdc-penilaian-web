@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifySession } from '@/lib/signedSession';
 
 // Added "default" here to fix the export error
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // 1. Identify which zone the user is trying to enter
@@ -13,19 +14,18 @@ export default function middleware(request: NextRequest) {
   if (!isAdminRoute && !isTeacherRoute) return NextResponse.next();
 
   // 2. Check for their ID badge (Cookie)
-  const sessionCookie = request.cookies.get('user_session')?.value;
+  const user = await verifySession(request.cookies.get('user_session')?.value);
 
-  // If no badge, kick them to login
-  if (!sessionCookie) {
+  // No valid (signed, unexpired) badge: kick them to login
+  if (!user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   try {
-    const user = JSON.parse(sessionCookie);
 
     // 3. Admin Security Check: Only ADMIN or DIRECTOR can enter /admin
     if (isAdminRoute && user.role !== 'ADMIN' && user.role !== 'DIRECTOR') {
-      return NextResponse.redirect(new URL('/teacher', request.url)); 
+      return NextResponse.redirect(new URL('/login', request.url));
     }
 
     // Let them through if they pass the checks!

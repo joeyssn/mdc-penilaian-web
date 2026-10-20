@@ -27,7 +27,7 @@ export default function StudentDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
 
     const [selectedTarget, setSelectedTarget] = useState<User | null>(null);
-    const [scores, setScores] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
+    const [scores, setScores] = useState<Record<string, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -57,7 +57,7 @@ export default function StudentDashboard() {
         return '';
     };
 
-    const handleScoreChange = (indicatorId: string, value: 'A' | 'B' | 'C' | 'D') => {
+    const handleScoreChange = (indicatorId: string, value: number) => {
         setScores(prev => ({ ...prev, [indicatorId]: value }));
     };
 
@@ -225,9 +225,9 @@ export default function StudentDashboard() {
                                                                     {indicator.text}
                                                                 </p>
                                                                 <div className="flex flex-wrap justify-center lg:justify-end gap-2 shrink-0 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
-                                                                    {['A', 'B', 'C', 'D'].map((val) => (
+                                                                    {[1, 2, 3, 4].map((val) => (
                                                                         <label key={val} className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-md cursor-pointer font-bold transition-all ${scores[indicator.id] === val ? 'bg-[#008c99] text-white shadow-md transform scale-105' : 'bg-gray-50 text-gray-500 hover:bg-gray-200'}`}>
-                                                                            <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val as 'A' | 'B' | 'C' | 'D')} required />
+                                                                            <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val)} required />
                                                                             {val}
                                                                         </label>
                                                                     ))}

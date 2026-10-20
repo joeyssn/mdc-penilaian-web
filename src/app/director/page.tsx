@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
+import { computeFinal, isSdProfile, resolveProfile } from '@/lib/weights';
 
 type User = { id: string; name: string; role: string; gender?: string | null; department?: string; };
 type Indicator = { id: string; text: string; weight: number };
@@ -36,7 +37,7 @@ export default function UnifiedDirectorDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [completedEvals, setCompletedEvals] = useState<Set<string>>(new Set());
   const [selectedTarget, setSelectedTarget] = useState<User | null>(null);
-  const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultWeights = { studentWeight: 25, peerWeight: 25, observationWeight: 25, attendanceWeight: 25 };
@@ -91,7 +92,7 @@ export default function UnifiedDirectorDashboard() {
           'PRINCIPAL': 'Director/Principal', 'DIRECTOR': 'Director/Principal',
           'VICE_PRINCIPAL': 'Vice-Principal', 'VICE_PRINCIPAL_KURIKULUM': 'Vice-Principal', 'VICE_PRINCIPAL_KESISWAAN': 'Vice-Principal'
         };
-        const myW = wData.find((w: any) => w.id === (roleMap[meData!.role.toUpperCase()] || 'Staff'));
+        const myW = resolveProfile(wData, meData!.role, (meData as any).level);
         if (myW) setMyWeights({ studentWeight: Number(myW.studentWeight), peerWeight: Number(myW.peerWeight), observationWeight: Number(myW.observationWeight), attendanceWeight: Number(myW.attendanceWeight) });
       }
     }
@@ -156,7 +157,7 @@ export default function UnifiedDirectorDashboard() {
     return 'Staff';
   };
 
-  const handleScoreChange = (indicatorId: string, value: 'A'|'B'|'C'|'D') => setScores(prev => ({ ...prev, [indicatorId]: value }));
+  const handleScoreChange = (indicatorId: string, value: number) => setScores(prev => ({ ...prev, [indicatorId]: value }));
 
   const submitEvaluation = async (e: FormEvent) => {
     e.preventDefault();
@@ -248,7 +249,7 @@ export default function UnifiedDirectorDashboard() {
               </div>
 
               <div className="mb-6">
-                <h4 className="font-bold mb-2">Rincian Penilaian (Skala 0-4):</h4>
+                <h4 className="font-bold mb-2">Rincian Penilaian (Skala 1-4):</h4>
                 <table className="w-full border-collapse border border-gray-300 text-xs">
                   <thead>
                     <tr className="bg-gray-100 print:bg-gray-200">
@@ -420,9 +421,9 @@ export default function UnifiedDirectorDashboard() {
                                 <div key={indicator.id} className="flex items-center justify-between gap-4 p-4 rounded-lg bg-gray-50">
                                   <p className="text-gray-700 font-medium md:w-2/3">{indicator.text}</p>
                                   <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-200">
-                                    {['A', 'B', 'C', 'D'].map((val) => (
+                                    {[1, 2, 3, 4].map((val) => (
                                       <label key={val} className={`flex items-center justify-center w-10 h-10 rounded-md cursor-pointer font-bold ${scores[indicator.id] === val ? 'bg-[#008c99] text-white shadow-md' : 'bg-gray-50 text-gray-500'}`}>
-                                        <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val as 'A'|'B'|'C'|'D')} required /> {val}
+                                        <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val)} required /> {val}
                                       </label>
                                     ))}
                                   </div>
@@ -480,28 +481,28 @@ export default function UnifiedDirectorDashboard() {
                       const userAbsence = absences.find(a => a.userId === row.id);
                       const aScore = userAbsence ? userAbsence.attendanceScore : NaN;
 
-                      const roleKey = getNormalizedRole(row.role);
-                       const activeWeights = weightsConfig[roleKey] || defaultWeights;
-
-                      let wStudent = activeWeights.studentWeight; let wPeer = activeWeights.peerWeight; 
-                      let wObs = activeWeights.observationWeight; let wAtt = activeWeights.attendanceWeight;
-
-                      let activeWeightSum = 0; let accumulatedScore = 0;
-                      if (!isNaN(sScore)) { activeWeightSum += wStudent; accumulatedScore += (sScore * wStudent); }
-                      if (!isNaN(pScore)) { activeWeightSum += wPeer; accumulatedScore += (pScore * wPeer); }
-                      if (!isNaN(oScore)) { activeWeightSum += wObs; accumulatedScore += (oScore * wObs); }
-                      if (!isNaN(aScore)) { activeWeightSum += wAtt; accumulatedScore += (aScore * wAtt); }
-
-                      const finalDynamicAvg = activeWeightSum > 0 ? (accumulatedScore / activeWeightSum).toFixed(2) : '-';
+                      const selfScore = parseFloat((row as any).selfAvg);
+                      const matched = resolveProfile(
+                        Object.entries(weightsConfig).map(([id, w]) => ({ id, ...w })),
+                        (row as any).roleKey || row.role,
+                        (row as any).level
+                      );
+                      const activeWeights = matched || defaultWeights;
+                      const sdRow = matched ? isSdProfile(matched.id) : false;
+                      const { final, incomplete, missing } = computeFinal(
+                        matched ? matched.id : 'DEFAULT', { selfWeight: 0, ...activeWeights },
+                        { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore, leader: oScore, supervisor: NaN }
+                      );
+                      const finalDynamicAvg = final === null ? '-' : final.toFixed(2);
 
                       return (
                         <tr key={row.id} className="hover:bg-gray-50 print:hover:bg-transparent transition-colors">
-                          <td className="py-4 px-6 font-bold text-gray-900">{row.name}<br/><span className="text-[10px] text-gray-500 uppercase tracking-widest">{row.role.replace('_', ' ')}</span></td>
+                          <td className="py-4 px-6 font-bold text-gray-900">{row.name}<br/><span className="text-[10px] text-gray-500 uppercase tracking-widest">{row.role.replace('_', ' ')}{sdRow ? ' · SD/TK' : ''}</span></td>
                           <td className="py-4 px-4 text-center font-extrabold text-[#008c99]">{row.studentAvg}</td>
                           <td className="py-4 px-4 text-center font-extrabold text-[#f39c12]">{row.peerAvg}</td>
                           <td className="py-4 px-4 text-center font-extrabold text-green-600">{obsGroup ? obsGroup.averageScore.toFixed(2) : '-'}</td>
                           <td className="py-4 px-4 text-center font-extrabold text-teal-600">{userAbsence ? userAbsence.attendanceScore.toFixed(1) : '-'}</td>
-                          <td className="py-4 px-6 text-center bg-blue-50/30 print:bg-transparent font-extrabold text-xl text-[#053b50]">{finalDynamicAvg}</td>
+                          <td className="py-4 px-6 text-center bg-blue-50/30 print:bg-transparent font-extrabold text-xl text-[#053b50]">{finalDynamicAvg}{incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum: {missing.join(', ')}</span>}</td>
                         </tr>
                       );
                     })}

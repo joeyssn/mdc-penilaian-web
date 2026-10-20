@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
+import { signSession, SESSION_MAX_AGE_SECONDS } from '@/lib/signedSession';
 
 export async function POST(req: Request) {
   try {
@@ -61,12 +62,12 @@ export async function POST(req: Request) {
     };
 
     const cookieStore = await cookies();
-    cookieStore.set('user_session', JSON.stringify(sessionData), {
+    cookieStore.set('user_session', await signSession(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 
+      maxAge: SESSION_MAX_AGE_SECONDS
     });
 
     return NextResponse.json(sessionData);

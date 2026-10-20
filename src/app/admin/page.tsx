@@ -4,11 +4,15 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import CycleLockPanel from '@/components/CycleLockPanel';
+import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
 
 type ReportRow = { 
   id: string; 
   name: string; 
   role: string; 
+  roleKey?: string; 
+  level?: string | null; 
   department: string; 
   studentCount: number; 
   peerCount: number; 
@@ -38,22 +42,33 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export default function AdminDashboard() {
-  const defaultWeights = { 
+  const defaultWeights: FullWeights = { 
     studentWeight: 20, 
     peerWeight: 20, 
     selfWeight: 20, 
     observationWeight: 20, 
-    attendanceWeight: 20 
+    attendanceWeight: 20,
+    mainWeight: 0, supervisorWeight: 0, leaderWeight: 0
   };
-  
-  const [weightsConfig, setWeightsConfig] = useState<Record<string, typeof defaultWeights>>({
-    'Teacher': { ...defaultWeights },
-    'Staff': { ...defaultWeights },
-    'Karyawan': { ...defaultWeights },
-    'Vice-Principal': { ...defaultWeights },
-    'Director/Principal': { ...defaultWeights }
+  const toFull = (w: any): FullWeights => ({
+    studentWeight: Number(w.studentWeight) || 0,
+    peerWeight: Number(w.peerWeight) || 0,
+    selfWeight: Number(w.selfWeight) || 0,
+    observationWeight: Number(w.observationWeight) || 0,
+    attendanceWeight: Number(w.attendanceWeight) || 0,
+    mainWeight: Number(w.mainWeight) || 0,
+    supervisorWeight: Number(w.supervisorWeight) || 0,
+    leaderWeight: Number(w.leaderWeight) || 0,
   });
-  const [selectedRoleWeight, setSelectedRoleWeight] = useState('Teacher');
+  // Valid = totals exactly 100 (SD / TK: overall split AND the split inside the main evaluation)
+  const isValidProfile = (id: string, w: FullWeights) =>
+    isSdProfile(id)
+      ? validateSdWeights(w) === null
+      : (w.studentWeight + w.peerWeight + w.selfWeight + w.observationWeight + w.attendanceWeight) === 100;
+  
+  const [weightsConfig, setWeightsConfig] = useState<Record<string, FullWeights>>({});
+  const [selectedRoleWeight, setSelectedRoleWeight] = useState('');
+  const [newProfileId, setNewProfileId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const [reportData, setReportData] = useState<ReportRow[]>([]);
@@ -81,21 +96,24 @@ export default function AdminDashboard() {
       const wRes = await fetch('/api/settings/weights');
       const wData = await wRes.json();
       if (!wData.error && Array.isArray(wData)) {
-        const loadedConfig: any = {};
-        const validRoles = ['Teacher', 'Staff', 'Karyawan', 'Vice-Principal', 'Director/Principal']; 
-        
-        wData.forEach((w: any) => { 
-          if (validRoles.includes(w.id)) {
-            loadedConfig[w.id] = {
-              studentWeight: Number(w.studentWeight) || 0,
-              peerWeight: Number(w.peerWeight) || 0,
-              selfWeight: Number(w.selfWeight) || 0,
-              observationWeight: Number(w.observationWeight) || 0,
-              attendanceWeight: Number(w.attendanceWeight) || 0
-            };
-          }
+        let loadedConfig: Record<string, FullWeights> = {};
+        wData.forEach((w: any) => { loadedConfig[w.id] = toFull(w); });
+        // One profile per role for SMP / SMA and a separate set for SD. A profile that has not been
+        // saved yet starts from the closest existing one (an SD profile from its SMP / SMA twin),
+        // or equal 20% weights. Nothing changes until you press Save.
+        const byId: Record<string, any> = { ...loadedConfig };
+        const ordered: Record<string, FullWeights> = {};
+        WEIGHT_PROFILES.forEach(id => {
+          const source = byId[id] || fallbackIds(id).map(f => byId[f]).find(Boolean);
+          ordered[id] = toFull(source || defaultWeights);
+          // SD / TK profiles use the main/student/HRD layout. One without it (an old profile or a copy
+          // of SMP / SMA) starts from 79 / 11 / 10 and 10 / 10 / 20 / 60; nothing changes until Save.
+          if (isSdProfile(id) && !isSdLayout(ordered[id])) ordered[id] = { ...SD_DEFAULT_WEIGHTS };
+          byId[id] = ordered[id];
         });
-        setWeightsConfig(prev => ({ ...prev, ...loadedConfig }));
+        loadedConfig = ordered;
+        setWeightsConfig(loadedConfig);
+        setSelectedRoleWeight(prev => (prev && loadedConfig[prev] ? prev : Object.keys(loadedConfig)[0]));
       }
 
       const rRes = await fetch('/api/director/report');
@@ -126,12 +144,12 @@ export default function AdminDashboard() {
   };
 
   const currentW = weightsConfig[selectedRoleWeight] || defaultWeights;
-  const currentTotal = 
-    currentW.studentWeight + 
-    currentW.peerWeight + 
-    currentW.selfWeight + 
-    currentW.observationWeight + 
-    currentW.attendanceWeight;
+  const sdSelected = isSdProfile(selectedRoleWeight);
+  const currentInner = currentW.peerWeight + currentW.selfWeight + currentW.supervisorWeight + currentW.leaderWeight;
+  const currentTotal = sdSelected
+    ? currentW.mainWeight + currentW.studentWeight + currentW.attendanceWeight
+    : currentW.studentWeight + currentW.peerWeight + currentW.selfWeight + currentW.observationWeight + currentW.attendanceWeight;
+  const currentValid = isValidProfile(selectedRoleWeight, currentW);
 
   const updateWeight = (field: string, value: number) => {
     setWeightsConfig(prev => ({ 
@@ -143,24 +161,20 @@ export default function AdminDashboard() {
     }));
   };
 
+  // Profiles that can still be added (not configured yet)
+  const availableProfileIds = WEIGHT_PROFILES.filter(id => !weightsConfig[id]);
+
   const handleSaveWeights = async () => {
-    const validRoles = ['Teacher', 'Staff', 'Karyawan', 'Vice-Principal', 'Director/Principal'];
+    const invalid = Object.entries(weightsConfig)
+      .filter(([id, w]) => !isValidProfile(id, w));
 
-    const invalidRoles = Object.entries(weightsConfig)
-      .filter(([role]) => validRoles.includes(role)) 
-      .filter(([role, w]) => (w.studentWeight + w.peerWeight + w.selfWeight + w.observationWeight + w.attendanceWeight) !== 100);
-
-    if (invalidRoles.length > 0) {
-      const names = invalidRoles.map(i => i[0]).join(', ');
-      return alert(`Error: The total percentage for ${names} is not exactly 100%! Please fix before saving.`);
+    if (invalid.length > 0) {
+      const names = invalid.map(([id]) => profileLabel(id)).join(', ');
+      return alert(`Error: The total percentage for ${names} is not valid: every total must be exactly 100%. Please fix before saving.`);
     }
 
     setIsSaving(true);
-    
-    const payload = Object.entries(weightsConfig)
-      .filter(([id]) => validRoles.includes(id))
-      .map(([id, w]) => ({ id, ...w }));
-    
+    const payload = Object.entries(weightsConfig).map(([id, w]) => ({ id, ...w }));
     const res = await fetch('/api/settings/weights', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -168,7 +182,26 @@ export default function AdminDashboard() {
     });
 
     if (res.ok) alert("Role-Based Scoring Weights Updated! The Director's Report is now locked into these new percentages.");
+    else alert((await res.json().catch(() => null))?.error || 'Failed to save weights.');
     setIsSaving(false);
+  };
+
+  const handleAddProfile = () => {
+    if (!newProfileId || weightsConfig[newProfileId]) return;
+    setWeightsConfig(prev => ({ ...prev, [newProfileId]: isSdProfile(newProfileId) ? { ...SD_DEFAULT_WEIGHTS } : { ...defaultWeights } }));
+    setSelectedRoleWeight(newProfileId);
+    setNewProfileId('');
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!selectedRoleWeight) return;
+    if (!confirm(`Delete the weight profile for ${profileLabel(selectedRoleWeight)}?\n\n${isSdProfile(selectedRoleWeight) ? 'SD people with this role will use the SMP / SMA profile for the same role.' : 'People with this role will be scored with equal 20% weights.'}`)) return;
+    const res = await fetch(`/api/settings/weights?id=${encodeURIComponent(selectedRoleWeight)}`, { method: 'DELETE' });
+    if (!res.ok) return alert((await res.json().catch(() => null))?.error || 'Failed to delete weight profile.');
+    const remaining = { ...weightsConfig };
+    delete remaining[selectedRoleWeight];
+    setWeightsConfig(remaining);
+    setSelectedRoleWeight(Object.keys(remaining)[0] || '');
   };
 
   const getNormalizedRole = (dbRole?: string) => {
@@ -283,6 +316,12 @@ export default function AdminDashboard() {
 
         {/* ADMIN TOOLS & MANAGEMENT */}
         <div className="print:hidden">
+          <div className="mb-10">
+            <h2 className="text-2xl font-extrabold text-[#053b50] mb-2">Evaluation Cycles & Score Visibility</h2>
+            <p className="text-gray-500 font-medium mb-5">Each cycle belongs to one school level and has its own lock. New cycles start locked.</p>
+            <CycleLockPanel canManage />
+          </div>
+
           <h2 className="text-2xl font-extrabold text-[#053b50] mb-6">Admin Tools & Management</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
@@ -359,30 +398,110 @@ export default function AdminDashboard() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                 Print Report
               </button>
-              <button onClick={handleSaveWeights} disabled={currentTotal !== 100 || isSaving} className="bg-[#e99a24] hover:bg-[#d68a1f] text-white px-6 py-3 rounded-xl font-bold shadow-md transition-all disabled:opacity-50 whitespace-nowrap">
+              <button onClick={handleSaveWeights} disabled={!currentValid || isSaving || Object.keys(weightsConfig).length === 0} className="bg-[#e99a24] hover:bg-[#d68a1f] text-white px-6 py-3 rounded-xl font-bold shadow-md transition-all disabled:opacity-50 whitespace-nowrap">
                 {isSaving ? 'Saving...' : 'Save Rule'}
               </button>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
-            <div className="mb-8">
-              <label className="font-bold text-gray-700 mr-4">Configure Weights For:</label>
-              <select 
-                value={selectedRoleWeight} 
-                onChange={(e) => setSelectedRoleWeight(e.target.value)}
-                className="border-2 border-[#008c99] text-[#053b50] font-bold rounded-xl px-4 py-2 bg-blue-50 outline-none w-full md:w-auto"
-              >
-                <option value="Teacher">Target: Teachers</option>
-                <option value="Staff">Target: Staff & HRD</option>
-                <option value="Karyawan">Target: Karyawan</option> 
-                <option value="Vice-Principal">Target: Vice-Principals</option>
-                <option value="Director/Principal">Target: Director/Principal</option>
-              </select>
+            <div className="mb-8 flex flex-col lg:flex-row lg:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <label className="font-bold text-gray-700">Configure Weights For:</label>
+                <select
+                  value={selectedRoleWeight}
+                  onChange={(e) => setSelectedRoleWeight(e.target.value)}
+                  disabled={Object.keys(weightsConfig).length === 0}
+                  className="border-2 border-[#008c99] text-[#053b50] font-bold rounded-xl px-4 py-2 bg-blue-50 outline-none w-full md:w-auto"
+                >
+                  <optgroup label="SMP / SMA">
+                    {Object.keys(weightsConfig).filter(id => !isSdProfile(id)).map(id => (
+                      <option key={id} value={id}>{roleLabel(id)}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="SD">
+                    {Object.keys(weightsConfig).filter(isSdProfile).map(id => (
+                      <option key={id} value={id}>{roleLabel(id)}</option>
+                    ))}
+                  </optgroup>
+                </select>
+                <button
+                  onClick={handleDeleteProfile}
+                  disabled={!selectedRoleWeight}
+                  className="text-red-600 hover:text-white hover:bg-red-600 border border-red-300 px-4 py-2 rounded-xl font-bold transition-all disabled:opacity-40 whitespace-nowrap"
+                >
+                  Delete
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 lg:ml-auto">
+                <select
+                  value={newProfileId}
+                  onChange={(e) => setNewProfileId(e.target.value)}
+                  disabled={availableProfileIds.length === 0}
+                  className="border border-gray-300 text-gray-700 rounded-xl px-4 py-2 bg-white outline-none"
+                >
+                  <option value="">{availableProfileIds.length === 0 ? 'All profiles added' : '+ Add profile for...'}</option>
+                  {availableProfileIds.map(id => <option key={id} value={id}>{profileLabel(id)}</option>)}
+                </select>
+                <button
+                  onClick={handleAddProfile}
+                  disabled={!newProfileId}
+                  className="bg-[#008c99] hover:bg-[#007b87] text-white px-4 py-2 rounded-xl font-bold transition-all disabled:opacity-40 whitespace-nowrap"
+                >
+                  Add
+                </button>
+              </div>
             </div>
+
+            {Object.keys(weightsConfig).length === 0 && (
+              <p className="mb-6 text-gray-500 font-medium">No weight profiles yet. Add one above to get started. Users without a profile are scored with equal 20% weights.</p>
+            )}
 
             {/* WEIGHT SLIDERS (5 CRITERIA) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {isSdProfile(selectedRoleWeight) ? (
+              <>
+              <div className="md:col-span-2 text-sm font-medium text-orange-800 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                SD / TK master report. The overall score is split between the <b>Main evaluation</b>, <b>Student</b> and <b>HRD</b>. The Main evaluation is itself made of Peer, Self, Supervisor and Leaders. Observation is not used.
+              </div>
+              <div className="space-y-6">
+                <h4 className="font-extrabold text-[#053b50] uppercase text-xs tracking-wider">Overall score split</h4>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Main Evaluation (Peer, Self, Supervisor, Leaders) <span className="text-[#053b50]">{currentW.mainWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.mainWeight} onChange={(e) => updateWeight('mainWeight', Number(e.target.value))} className="w-full accent-[#053b50]" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Student Evaluation <span className="text-[#008c99]">{currentW.studentWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.studentWeight} onChange={(e) => updateWeight('studentWeight', Number(e.target.value))} className="w-full accent-[#008c99]" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">HRD <span className="text-teal-600">{currentW.attendanceWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.attendanceWeight} onChange={(e) => updateWeight('attendanceWeight', Number(e.target.value))} className="w-full accent-teal-600" />
+                </div>
+              </div>
+              <div className="space-y-6">
+                <h4 className="font-extrabold text-[#053b50] uppercase text-xs tracking-wider">Inside the main evaluation</h4>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Peer <span className="text-[#f39c12]">{currentW.peerWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.peerWeight} onChange={(e) => updateWeight('peerWeight', Number(e.target.value))} className="w-full accent-[#f39c12]" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Self Reflection <span className="text-purple-600">{currentW.selfWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.selfWeight} onChange={(e) => updateWeight('selfWeight', Number(e.target.value))} className="w-full accent-purple-600" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Supervisor <span className="text-green-600">{currentW.supervisorWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.supervisorWeight} onChange={(e) => updateWeight('supervisorWeight', Number(e.target.value))} className="w-full accent-green-600" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Leaders (Principal / Vice Principal) <span className="text-rose-600">{currentW.leaderWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.leaderWeight} onChange={(e) => updateWeight('leaderWeight', Number(e.target.value))} className="w-full accent-rose-600" />
+                </div>
+              </div>
+              </>
+              ) : (
+              <>
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="font-bold text-gray-700 flex justify-between">Student Evaluation <span className="text-[#008c99]">{currentW.studentWeight}%</span></label>
@@ -409,8 +528,18 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className={`md:col-span-2 p-4 rounded-xl font-bold text-center text-lg transition-colors ${currentTotal === 100 ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>
-                Total Weight for {selectedRoleWeight}s: {currentTotal}% {currentTotal !== 100 && "(Adjust sliders so total equals exactly 100%)"}
+              </>
+              )}
+
+              <div className={`md:col-span-2 p-4 rounded-xl font-bold text-center text-lg transition-colors ${currentValid ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>
+                {sdSelected ? (
+                  <>
+                    Overall (Main + Student + HRD): {currentTotal}% &nbsp;·&nbsp; Inside Main: {currentInner}%
+                    {!currentValid && <span className="block text-sm font-semibold mt-1">Both totals must equal exactly 100%</span>}
+                  </>
+                ) : (
+                  <>Total Weight for {profileLabel(selectedRoleWeight)}: {currentTotal}% {currentTotal !== 100 && "(Adjust sliders so total equals exactly 100%)"}</>
+                )}
               </div>
             </div>
           </div>
@@ -451,31 +580,23 @@ export default function AdminDashboard() {
                   const aScore = userAbsence ? userAbsence.attendanceScore : NaN;
                   const attAvgDisplay = userAbsence ? userAbsence.attendanceScore.toFixed(1) : '-';
 
-                  const roleKey = getNormalizedRole(row.role);
-                  const activeWeights = weightsConfig[roleKey] || defaultWeights;
+                  const profileEntries = Object.entries(weightsConfig).map(([id, w]) => ({ id, ...w }));
+                  const matched = resolveProfile(profileEntries, row.roleKey || row.role, row.level);
+                  const activeWeights = matched || defaultWeights;
+                  const sdRow = matched ? isSdProfile(matched.id) : false;
 
-                  let wStudent = activeWeights.studentWeight; 
-                  let wPeer = activeWeights.peerWeight; 
-                  let wSelf = activeWeights.selfWeight;
-                  let wObs = activeWeights.observationWeight;
-                  let wAtt = activeWeights.attendanceWeight;
-
-                  let activeWeightSum = 0;
-                  let accumulatedScore = 0;
-
-                  if (!isNaN(sScore)) { activeWeightSum += wStudent; accumulatedScore += (sScore * wStudent); }
-                  if (!isNaN(pScore)) { activeWeightSum += wPeer; accumulatedScore += (pScore * wPeer); }
-                  if (!isNaN(selfScore)) { activeWeightSum += wSelf; accumulatedScore += (selfScore * wSelf); }
-                  if (!isNaN(oScore)) { activeWeightSum += wObs; accumulatedScore += (oScore * wObs); }
-                  if (!isNaN(aScore)) { activeWeightSum += wAtt; accumulatedScore += (aScore * wAtt); }
-
-                  const finalDynamicAvg = activeWeightSum > 0 ? (accumulatedScore / activeWeightSum).toFixed(2) : '-';
+                  const { final, incomplete, main, missing } = computeFinal(
+                    matched ? matched.id : 'DEFAULT', activeWeights,
+                    // Leaders = the principal / vice principal observation score. Supervisor scores are not collected yet.
+                    { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore, leader: oScore, supervisor: NaN }
+                  );
+                  const finalDynamicAvg = final === null ? '-' : final.toFixed(2);
 
                   return (
                     <tr key={row.id} className="hover:bg-gray-50 transition-colors print:hover:bg-transparent">
                       <td className="py-4 px-6">
                         <span className="font-bold text-gray-900 block">{row.name}</span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">{row.role.replace('_', ' ')}</span>
+                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">{row.role.replace('_', ' ')}{sdRow ? ' · SD/TK' : ''}</span>
                       </td>
                       <td className="py-4 px-4 text-center font-bold text-[#008c99]">{row.studentAvg !== '-' ? row.studentAvg : <span className="text-gray-300">-</span>}</td>
                       <td className="py-4 px-4 text-center font-bold text-[#f39c12]">{row.peerAvg !== '-' ? row.peerAvg : <span className="text-gray-300">-</span>}</td>
@@ -487,6 +608,8 @@ export default function AdminDashboard() {
                         <span className={`font-extrabold text-xl ${finalDynamicAvg === '-' ? 'text-gray-300' : 'text-[#053b50]'}`}>
                           {finalDynamicAvg}
                         </span>
+                        {incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum: {missing.join(', ')}</span>}
+                        {sdRow && main !== null && <span className="block text-[10px] text-gray-400">Main {main.toFixed(2)}</span>}
                       </td>
                     </tr>
                   );

@@ -27,7 +27,7 @@ export default function TeacherEvaluationPage() {
   
   // Evaluation States
   const [selectedTarget, setSelectedTarget] = useState<User | null>(null);
-  const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function TeacherEvaluationPage() {
     return '';
   };
 
-  const handleScoreChange = (indicatorId: string, value: 'A'|'B'|'C'|'D') => {
+  const handleScoreChange = (indicatorId: string, value: number) => {
     setScores(prev => ({ ...prev, [indicatorId]: value }));
   };
 
@@ -235,7 +235,7 @@ export default function TeacherEvaluationPage() {
                               
                               {/* A, B, C, D Scoring Inputs */}
                               <div className="flex gap-2 shrink-0 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
-                                {['A', 'B', 'C', 'D'].map((val) => (
+                                {[1, 2, 3, 4].map((val) => (
                                   <label 
                                     key={val} 
                                     className={`
@@ -248,7 +248,7 @@ export default function TeacherEvaluationPage() {
                                       name={indicator.id} 
                                       value={val}
                                       className="hidden"
-                                      onChange={() => handleScoreChange(indicator.id, val as 'A'|'B'|'C'|'D')}
+                                      onChange={() => handleScoreChange(indicator.id, val)}
                                       required
                                     />
                                     {val}

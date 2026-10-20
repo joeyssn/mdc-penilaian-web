@@ -4,6 +4,8 @@ import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { resolveProfile } from '@/lib/weights';
+import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 // --- TYPES ---
 type User = { id: string; name: string; role: string; gender?: string | null; department?: string; };
@@ -12,7 +14,7 @@ type Category = { id: string; title: string; indicators: Indicator[] };
 type Section = { id: string; title: string; categories: Category[] };
 type Rubric = { id: string; title: string; evaluators: string[]; evaluatees: string[]; sections: Section[] };
 type ScoreStats = { average: number; totalEvaluations: number; letterGrade: string; };
-type MyScores = { peer: ScoreStats; student: ScoreStats; };
+type MyScores = { peer: ScoreStats; student: ScoreStats; locked?: boolean };
 
 export default function KaryawanDashboard() {
   const router = useRouter();
@@ -24,7 +26,7 @@ export default function KaryawanDashboard() {
   
   const [completedEvals, setCompletedEvals] = useState<Set<string>>(new Set());
   const [selectedTarget, setSelectedTarget] = useState<User | null>(null);
-  const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 🚀 METRICS FOR THE TRUE FINAL SCORE
@@ -60,7 +62,7 @@ export default function KaryawanDashboard() {
     const wRes = await fetch('/api/settings/weights');
     const wData = await wRes.json();
     if (!wData.error && Array.isArray(wData)) {
-      const kWeight = wData.find((w: any) => w.id === 'Karyawan');
+      const kWeight = resolveProfile(wData, 'KARYAWAN', meData.level);
       if (kWeight) {
         setMyWeights({
           studentWeight: Number(kWeight.studentWeight) || 0,
@@ -123,7 +125,7 @@ export default function KaryawanDashboard() {
     return hasRequired && !hasExcluded;
   };
 
-  const handleScoreChange = (indicatorId: string, value: 'A'|'B'|'C'|'D') => {
+  const handleScoreChange = (indicatorId: string, value: number) => {
     setScores(prev => ({ ...prev, [indicatorId]: value }));
   };
 
@@ -209,7 +211,17 @@ export default function KaryawanDashboard() {
             </h1>
           )}
 
-          {myScores && (
+          {myScores?.locked && (
+            <>
+              <ScoresLockedNotice />
+              <div className="mt-6">
+                <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md flex justify-center transition-all text-sm md:text-base text-center">
+                  Complete My Self-Reflection
+                </Link>
+              </div>
+            </>
+          )}
+          {myScores && !myScores.locked && (
             <>
               {/* MASTER FINAL SCORE CARD */}
               <div className="bg-[#053b50] rounded-2xl px-6 py-6 md:px-8 md:py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shadow-md text-center md:text-left border border-gray-800">
@@ -366,9 +378,9 @@ export default function KaryawanDashboard() {
                                   <div key={indicator.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
                                     <p className="text-gray-700 font-medium lg:w-2/3 leading-snug text-sm md:text-base">{indicator.text}</p>
                                     <div className="flex flex-wrap justify-center lg:justify-end gap-2 shrink-0 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
-                                      {['A', 'B', 'C', 'D'].map((val) => (
+                                      {[1, 2, 3, 4].map((val) => (
                                         <label key={val} className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-md cursor-pointer font-bold transition-all ${scores[indicator.id] === val ? 'bg-[#008c99] text-white shadow-md transform scale-105' : 'bg-gray-50 text-gray-500 hover:bg-gray-200'}`}>
-                                          <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val as 'A'|'B'|'C'|'D')} required />
+                                          <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val)} required />
                                           {val}
                                         </label>
                                       ))}

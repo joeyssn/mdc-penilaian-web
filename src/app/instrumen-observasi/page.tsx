@@ -45,6 +45,13 @@ const FALLBACK_TEMPLATE = [
   }
 ];
 
+const SCALE = [
+  { value: 1, label: 'Kurang' },
+  { value: 2, label: 'Cukup' },
+  { value: 3, label: 'Baik' },
+  { value: 4, label: 'Sangat Baik' },
+];
+
 export default function InstrumenObservasiPage() {
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
@@ -65,6 +72,7 @@ export default function InstrumenObservasiPage() {
   const [catatanPositif, setCatatanPositif] = useState('');
   const [catatanDitingkatkan, setCatatanDitingkatkan] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -168,9 +176,10 @@ export default function InstrumenObservasiPage() {
   const submitObservation = async (e: FormEvent) => {
     e.preventDefault();
     
-    const totalQuestions = observationCategories.reduce((acc, cat) => acc + cat.indicators.length, 0);
-    if (Object.keys(scores).length < totalQuestions) {
-      alert("Mohon lengkapi semua penilaian (0-4) sebelum menyimpan.");
+    if (answeredCount < totalQuestions) {
+      setShowErrors(true);
+      const firstMissing = observationCategories.flatMap((c: any) => c.indicators).find((i: any) => !isAnswered(i.id));
+      if (firstMissing) document.getElementById(`q-${firstMissing.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -223,6 +232,21 @@ export default function InstrumenObservasiPage() {
     }
   };
 
+  // A question counts as answered only with a valid 1-4 value (older 0-4 records show 0 as unanswered)
+  const isAnswered = (id: string) => scores[id] >= 1 && scores[id] <= 4;
+  const totalQuestions = observationCategories.reduce((acc, cat) => acc + cat.indicators.length, 0);
+  const answeredCount = observationCategories.reduce(
+    (acc, cat) => acc + cat.indicators.filter((i: any) => isAnswered(i.id)).length, 0);
+  const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+  const categoryAverage = (cat: any) => {
+    const vals = cat.indicators.map((i: any) => scores[i.id]).filter((v: number) => v >= 1 && v <= 4);
+    return vals.length ? vals.reduce((a: number, b: number) => a + b, 0) / vals.length : 0;
+  };
+  // Running question numbers across all categories
+  const questionNumber: Record<string, number> = {};
+  let counter = 0;
+  observationCategories.forEach((cat: any) => cat.indicators.forEach((i: any) => { questionNumber[i.id] = ++counter; }));
+
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500">Memuat data...</div>;
   const { avgA, avgB, avgC, totalNA } = getAverages();
 
@@ -244,8 +268,29 @@ export default function InstrumenObservasiPage() {
             {editModeId ? 'Edit Instrumen Observasi' : 'Instrumen Observasi Kelas'}
           </h1>
           <p className="text-white/80 text-sm md:text-base">SMA Kristen Masa Depan Cerah</p>
-          <div className="mt-4 inline-block bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/10 text-xs md:text-sm">
-            <span className="font-bold text-[#e99a24]">Skor: </span> 0: Sangat Kurang, 1: Kurang, 2: Cukup, 3: Baik, 4: Sangat Baik
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-2 max-w-2xl mx-auto md:mx-0">
+            {SCALE.map(({ value, label }) => (
+              <div key={value} className="flex items-center gap-2 bg-white/15 border border-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                <span className="w-7 h-7 shrink-0 rounded-full bg-[#e99a24] text-white font-extrabold text-sm flex items-center justify-center">{value}</span>
+                <span className="text-sm font-semibold">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="sticky top-2 z-40 bg-white/95 backdrop-blur rounded-xl border border-gray-200 shadow-md px-4 py-3 flex items-center gap-4">
+          <div className="flex-1">
+            <div className="flex justify-between text-xs font-bold text-gray-600 mb-1">
+              <span>Terjawab {answeredCount} / {totalQuestions}</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-full bg-[#008c99] transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">NA</p>
+            <p className="text-xl font-extrabold text-[#053b50] leading-none">{totalNA > 0 ? totalNA.toFixed(2) : '-.--'}</p>
           </div>
         </div>
 
@@ -285,26 +330,60 @@ export default function InstrumenObservasiPage() {
 
           {observationCategories.map((category) => (
             <div key={category.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-100 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 text-lg">{category.title}</h3>
-                <div className="bg-[#008c99] text-white text-xs font-bold px-3 py-1 rounded-full">
-                  Rata-rata: {category.id === 'A' ? avgA.toFixed(2) : category.id === 'B' ? avgB.toFixed(2) : avgC.toFixed(2)}
+              <div className="bg-gray-100 px-5 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center gap-3">
+                <h3 className="font-bold text-gray-800 text-base md:text-lg">{category.title}</h3>
+                <div className="bg-[#008c99] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                  Rata-rata: {categoryAverage(category) > 0 ? categoryAverage(category).toFixed(2) : '-'}
                 </div>
               </div>
-              <div className="p-4 md:p-6 divide-y divide-gray-100">
-                {category.indicators.map((indicator: any) => (
-                  <div key={indicator.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <p className="text-gray-700 font-medium lg:w-2/3 text-sm md:text-base leading-snug">{indicator.text}</p>
-                    <div className="flex flex-wrap gap-2 shrink-0 bg-gray-50 p-1.5 rounded-lg border border-gray-200 shadow-sm justify-center">
-                      {[0, 1, 2, 3, 4].map((val) => (
-                        <label key={val} className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-md cursor-pointer font-bold transition-all ${scores[indicator.id] === val ? 'bg-[#e99a24] text-white shadow-md transform scale-105' : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'}`}>
-                          <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val)} required />
-                          {val}
-                        </label>
-                      ))}
+              <div className="p-3 md:p-5 space-y-1">
+                {category.indicators.map((indicator: any) => {
+                  const missing = showErrors && !isAnswered(indicator.id);
+                  return (
+                    <div
+                      key={indicator.id}
+                      id={`q-${indicator.id}`}
+                      className={`p-3 md:p-4 rounded-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 border transition-colors ${
+                        missing ? 'bg-red-50 border-red-300' : isAnswered(indicator.id) ? 'bg-teal-50/40 border-transparent' : 'border-transparent hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex gap-3 lg:w-1/2">
+                        <span className={`shrink-0 w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center ${isAnswered(indicator.id) ? 'bg-[#008c99] text-white' : 'bg-gray-200 text-gray-600'}`}>
+                          {questionNumber[indicator.id]}
+                        </span>
+                        <p className="text-gray-800 font-medium text-sm md:text-[15px] leading-snug">
+                          {indicator.text}
+                          {missing && <span className="block text-xs font-bold text-red-600 mt-1">Belum dinilai</span>}
+                        </p>
+                      </div>
+                      <div role="radiogroup" aria-label={indicator.text} className="grid grid-cols-4 gap-2 lg:w-[21rem] shrink-0">
+                        {SCALE.map(({ value, label }) => {
+                          const selected = scores[indicator.id] === value;
+                          return (
+                            <label key={value} className="cursor-pointer">
+                              <input
+                                type="radio"
+                                name={indicator.id}
+                                value={value}
+                                checked={selected}
+                                onChange={() => handleScoreChange(indicator.id, value)}
+                                className="sr-only peer"
+                              />
+                              <span className={`flex flex-col items-center justify-center py-2 rounded-lg border-2 text-center transition-all peer-focus-visible:ring-2 peer-focus-visible:ring-[#008c99] peer-focus-visible:ring-offset-1 ${
+                                selected
+                                  ? 'bg-[#e99a24] border-[#e99a24] text-white shadow-md'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-[#e99a24]/60 hover:bg-orange-50'
+                              }`}>
+                                <span className="text-lg font-extrabold leading-none">{value}</span>
+                                <span className="text-[10px] md:text-xs font-semibold mt-1 leading-tight">{label}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

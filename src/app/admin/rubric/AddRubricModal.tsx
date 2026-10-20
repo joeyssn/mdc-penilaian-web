@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
+  defaultLevel?: "SD" | "SMP_SMA";
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function AddRubricModal({ open, onClose, onSuccess }: Props) {
+export default function AddRubricModal({ defaultLevel = "SMP_SMA", open, onClose, onSuccess }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [schoolLevel, setSchoolLevel] = useState<string>(defaultLevel);
   const [loading, setLoading] = useState(false);
+
+  // New rubrics start in the school level tab that is currently open
+  useEffect(() => { if (open) setSchoolLevel(defaultLevel); }, [open, defaultLevel]);
 
   if (!open) return null;
 
@@ -26,7 +31,7 @@ export default function AddRubricModal({ open, onClose, onSuccess }: Props) {
       const res = await fetch("/api/rubric", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description }),
+        body: JSON.stringify({ title, description, schoolLevel }),
       });
 
       if (!res.ok) throw new Error("Failed to create rubric");
@@ -62,6 +67,18 @@ export default function AddRubricModal({ open, onClose, onSuccess }: Props) {
               placeholder="e.g. Evaluasi Guru 2026 Semester 1"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#008397]/50 focus:outline-none"
             />
+          </div>
+          <div>
+            <label className="block font-bold text-[#053b50] text-sm mb-2">School Level</label>
+            <select
+              value={schoolLevel}
+              onChange={(e) => setSchoolLevel(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white focus:ring-2 focus:ring-[#008397]/50 focus:outline-none"
+            >
+              <option value="SMP_SMA">SMP / SMA</option>
+              <option value="SD">SD</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">SD staff only see SD rubrics. Everyone else sees SMP / SMA rubrics.</p>
           </div>
           <div>
             <label className="block font-bold text-[#053b50] text-sm mb-2">Description (Optional)</label>

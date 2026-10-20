@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('user_session');
+    const sessionData = await getSession();
 
-    if (!sessionCookie) {
+    if (!sessionData) {
       return NextResponse.json({ error: "Not logged in" }, { status: 401 });
     }
-
-    const sessionData = JSON.parse(sessionCookie.value);
 
     // Fetch the FULL user details from the database
     const user = await prisma.user.findUnique({

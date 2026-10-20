@@ -17,7 +17,7 @@ export default function SelfReflectionPage() {
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
-  const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
 
@@ -30,6 +30,7 @@ export default function SelfReflectionPage() {
     const meRes = await fetch('/api/me');
     if (!meRes.ok) return router.push('/login');
     const meData = await meRes.json();
+    if (meData.role === 'STUDENT') return router.push('/student'); // students have no self-reflection
     setLoggedInUser(meData);
 
     // 2. Check if they already completed their self-reflection
@@ -64,7 +65,7 @@ export default function SelfReflectionPage() {
     return 'Staff';
   };
 
-  const handleScoreChange = (indicatorId: string, value: 'A'|'B'|'C'|'D') => {
+  const handleScoreChange = (indicatorId: string, value: number) => {
     setScores(prev => ({ ...prev, [indicatorId]: value }));
   };
 
@@ -117,12 +118,13 @@ export default function SelfReflectionPage() {
   const getBackLink = () => {
     if (!loggedInUser) return '/login';
     const r = loggedInUser.role.toUpperCase();
-    if (r === 'TEACHER') return '/teacher';
+    if (r === 'TEACHER') return '/teachers';
     if (r === 'KARYAWAN') return '/karyawan';
     if (r === 'HRD' || r === 'STAFF') return '/staff';
     if (r.includes('VICE_PRINCIPAL')) return '/vice-principal';
     if (r === 'PRINCIPAL') return '/principal';
     if (r === 'DIRECTOR') return '/director';
+    if (r === 'ADMIN') return '/admin';
     return '/login';
   };
 
@@ -185,9 +187,9 @@ export default function SelfReflectionPage() {
                             <div key={indicator.id} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
                               <p className="text-gray-800 font-medium md:w-2/3 leading-relaxed">{indicator.text}</p>
                               <div className="flex gap-2 shrink-0 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
-                                {['A', 'B', 'C', 'D'].map((val) => (
+                                {[1, 2, 3, 4].map((val) => (
                                   <label key={val} className={`flex items-center justify-center w-12 h-12 rounded-md cursor-pointer font-bold text-lg transition-all ${scores[indicator.id] === val ? 'bg-[#008c99] text-white shadow-md transform scale-105' : 'bg-gray-50 text-gray-500 hover:bg-gray-200'}`}>
-                                    <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val as 'A'|'B'|'C'|'D')} required />
+                                    <input type="radio" name={indicator.id} value={val} className="hidden" onChange={() => handleScoreChange(indicator.id, val)} required />
                                     {val}
                                   </label>
                                 ))}

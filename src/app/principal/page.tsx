@@ -4,6 +4,8 @@ import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { resolveProfile } from '@/lib/weights';
+import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 type User = { id: string; name: string; role: string; gender?: string | null; };
 type Indicator = { id: string; text: string; weight: number };
@@ -11,7 +13,7 @@ type Category = { id: string; title: string; indicators: Indicator[] };
 type Section = { id: string; title: string; categories: Category[] };
 type Rubric = { id: string; title: string; evaluators: string[]; evaluatees: string[]; sections: Section[] };
 type ScoreStats = { average: number; totalEvaluations: number; letterGrade: string; };
-type MyScores = { peer: ScoreStats; student: ScoreStats; };
+type MyScores = { peer: ScoreStats; student: ScoreStats; locked?: boolean };
 
 export default function PrincipalDashboard() {
   const router = useRouter();
@@ -23,7 +25,7 @@ export default function PrincipalDashboard() {
   
   const [completedEvals, setCompletedEvals] = useState<Set<string>>(new Set());
   const [selectedTarget, setSelectedTarget] = useState<User | null>(null);
-  const [scores, setScores] = useState<Record<string, 'A'|'B'|'C'|'D'>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 🚀 ONLY FETCHING PERSONAL METRICS NOW
@@ -57,7 +59,7 @@ export default function PrincipalDashboard() {
         'VICE_PRINCIPAL': 'Vice-Principal', 'VICE_PRINCIPAL_KURIKULUM': 'Vice-Principal', 'VICE_PRINCIPAL_KESISWAAN': 'Vice-Principal'
       };
       const mappedRole = roleMap[meData.role.toUpperCase()] || 'Vice-Principal';
-      const myWeight = wData.find((w: any) => w.id === mappedRole);
+      const myWeight = resolveProfile(wData, meData.role, meData.level);
       if (myWeight) {
         setMyWeights({
           studentWeight: Number(myWeight.studentWeight) || 0,
@@ -168,6 +170,8 @@ export default function PrincipalDashboard() {
         </div>
         <div className="flex gap-8 text-[15px] font-bold overflow-x-auto whitespace-nowrap scrollbar-hide">
           <span className="pb-1 transition-all border-b-2 text-[#053b50] border-[#008c99]">My Dashboard</span>
+          <Link href="/principal/rubrics" className="pb-1 transition-all border-b-2 border-transparent text-gray-500 hover:text-[#053b50]">Assign Rubrics</Link>
+          <Link href="/principal/cycles" className="pb-1 transition-all border-b-2 border-transparent text-gray-500 hover:text-[#053b50]">Score Visibility</Link>
         </div>
         <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">Logout</Link>
       </nav>
@@ -176,7 +180,15 @@ export default function PrincipalDashboard() {
         <div>
           {loggedInUser && <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50] mb-6 md:mb-8 text-center md:text-left">Hi, Welcome {getTitle(loggedInUser.gender)}{loggedInUser.name}</h1>}
 
-          {myScores && (
+          {myScores?.locked && (
+            <>
+              <ScoresLockedNotice />
+              <div className="mt-6">
+                <Link href="/self-reflection" className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+              </div>
+            </>
+          )}
+          {myScores && !myScores.locked && (
             <>
               <div className="bg-[#053b50] rounded-2xl px-6 py-6 md:px-8 md:py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 mb-6 shadow-md border border-gray-800">
                 <div>
@@ -320,7 +332,7 @@ export default function PrincipalDashboard() {
                                   <div key={ind.id} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 rounded-lg bg-gray-50">
                                     <p className="text-gray-700 font-medium text-sm md:text-base lg:w-2/3">{ind.text}</p>
                                     <div className="flex gap-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm shrink-0">
-                                      {['A', 'B', 'C', 'D'].map((val) => (
+                                      {[1, 2, 3, 4].map((val) => (
                                         <label key={val} className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-md cursor-pointer font-bold ${scores[ind.id] === val ? 'bg-[#008c99] text-white shadow-md' : 'bg-gray-50 text-gray-500'}`}>
                                           <input type="radio" name={ind.id} value={val} className="hidden" onChange={() => setScores(p => ({ ...p, [ind.id]: val as any }))} required /> {val}
                                         </label>

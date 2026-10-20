@@ -1,19 +1,23 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { isScoresLockedFor } from '@/lib/settings';
+import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
+import { toNumericScore } from '@/lib/scoreScale';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const session = cookieStore.get('user_session')?.value;
+    const user = await getSession();
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const user = JSON.parse(session);
+    // Admin can lock scores so users cannot see them yet
+    if (!SCORE_VIEWER_ROLES.includes(user.role) && (await isScoresLockedFor(user))) {
+      return NextResponse.json({ locked: true });
+    }
 
     // Fetch scores AND include the role of the person who graded them
     const userScores = await prisma.score.findMany({
@@ -30,14 +34,13 @@ export async function GET() {
     const calculateStats = (scores: any[]) => {
       if (scores.length === 0) return { average: 0, totalEvaluations: 0, letterGrade: '-' };
 
-      const valueMap: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
       let totalScore = 0;
       let totalWeight = 0;
       const uniqueGraders = new Set();
 
       scores.forEach(score => {
         const weight = score.rubricindicator.weight || 1;
-        const numValue = valueMap[score.value] || 0;
+        const numValue = toNumericScore(score.value);
         
         totalScore += numValue * weight;
         totalWeight += weight;

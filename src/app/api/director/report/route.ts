@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
+import { isScoresLockedFor } from '@/lib/settings';
+import { toNumericScore } from '@/lib/scoreScale';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const hideScores = !SCORE_VIEWER_ROLES.includes(session.role) && (await isScoresLockedFor(session));
+
     const allUsers = await prisma.user.findMany({
-      select: { id: true, name: true, role: true } 
+      select: { id: true, name: true, role: true, level: true }
     });
 
     const userMap = new Map();
@@ -22,13 +29,7 @@ export async function GET() {
       where: { targetId: { in: targetIds } }
     });
 
-    const getNumericValue = (val: string) => {
-      if (val === 'A') return 4;
-      if (val === 'B') return 3;
-      if (val === 'C') return 2;
-      if (val === 'D') return 1;
-      return 0;
-    };
+    const getNumericValue = (val: string) => toNumericScore(val);
 
     const calculateStats = (scores: any[]) => {
       if (scores.length === 0) return { avg: '-', count: 0 };
@@ -68,14 +69,23 @@ export async function GET() {
       }
 
       // 🚀 FIX 3: Make the role look clean on the frontend!
-      let displayRole = user.role;
+      let displayRole: string = user.role;
       if (user.role === 'VICE_PRINCIPAL_KURIKULUM') displayRole = 'VP Kurikulum';
       if (user.role === 'VICE_PRINCIPAL_KESISWAAN') displayRole = 'VP Kesiswaan';
+
+      if (hideScores) {
+        return {
+          id: user.id, name: user.name, role: displayRole, roleKey: user.role, level: user.level ?? null, department: '-',
+          studentCount: 0, studentAvg: '-', peerCount: 0, peerAvg: '-', selfCount: 0, selfAvg: '-', overallAvg: '-',
+        };
+      }
 
       return {
         id: user.id,
         name: user.name,
         role: displayRole,
+        roleKey: user.role,
+        level: user.level ?? null,
         department: '-', 
         studentCount: studentStats.count,
         studentAvg: studentStats.avg,

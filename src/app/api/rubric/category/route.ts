@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { denyUnlessRole, RUBRIC_EDITOR_ROLES } from "@/lib/session";
 
 export async function POST(req: Request) {
+  const denied = await denyUnlessRole(RUBRIC_EDITOR_ROLES);
+  if (denied) return denied;
   try {
     const { title, sectionId } = await req.json();
     const category = await prisma.rubriccategory.create({
@@ -21,6 +24,8 @@ export async function POST(req: Request) {
   }
 }
 export async function PUT(req: Request) {
+  const denied = await denyUnlessRole(RUBRIC_EDITOR_ROLES);
+  if (denied) return denied;
   try {
     const { id, title } = await req.json();
     const category = await prisma.rubriccategory.update({
@@ -35,6 +40,8 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const denied = await denyUnlessRole(RUBRIC_EDITOR_ROLES);
+  if (denied) return denied;
   try {
     const { id } = await req.json();
     await prisma.rubriccategory.delete({

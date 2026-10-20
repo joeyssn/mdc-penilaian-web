@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { denyUnlessRole, RUBRIC_EDITOR_ROLES } from "@/lib/session";
 
 export async function POST(req: Request) {
+  const denied = await denyUnlessRole(RUBRIC_EDITOR_ROLES);
+  if (denied) return denied;
   try {
     const { text, weight, categoryId } = await req.json();
     const indicator = await prisma.rubricindicator.create({
@@ -23,6 +26,8 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const denied = await denyUnlessRole(RUBRIC_EDITOR_ROLES);
+  if (denied) return denied;
   try {
     const { id, text, weight } = await req.json();
     const indicator = await prisma.rubricindicator.update({
@@ -37,6 +42,8 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const denied = await denyUnlessRole(RUBRIC_EDITOR_ROLES);
+  if (denied) return denied;
   try {
     const { id } = await req.json();
     await prisma.rubricindicator.delete({

@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
+import { isScoresLockedFor } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+    // While scores are locked, only admin/director see everything. Observers (principal / vice
+    // principals) still see the observations they wrote, but never ones about themselves.
+    let where = {};
+    if (!SCORE_VIEWER_ROLES.includes(session.role) && (await isScoresLockedFor(session))) {
+      where = { observerId: session.id, NOT: { targetId: session.id } };
+    }
+
     const observations = await prisma.observation.findMany({
+      where,
       orderBy: { createdAt: 'desc' }
     });
     return NextResponse.json(observations);

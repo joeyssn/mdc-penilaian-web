@@ -219,32 +219,6 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 }
 
-model EvaluationCycle {
-  id           String           @id @default(uuid())
-  name         String
-  schoolLevel  String           // SD | SMP | SMA
-  status       String           @default("OPEN") // OPEN | CLOSED
-  scoresLocked Boolean          @default(true)
-  createdAt    DateTime         @default(now())
-  closedAt     DateTime?
-  lockEvents   ScoreLockEvent[]
-
-  @@index([schoolLevel, status])
-}
-
-model ScoreLockEvent {
-  id        String          @id @default(uuid())
-  cycleId   String
-  action    String          // LOCKED | UNLOCKED
-  actorId   String
-  actorName String
-  actorRole String
-  createdAt DateTime        @default(now())
-  cycle     EvaluationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-
-  @@index([cycleId])
-}
-
 model AuditLog {
   id         String   @id @default(uuid())
   actorId    String

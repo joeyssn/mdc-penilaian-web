@@ -10,7 +10,7 @@ import { Rubric } from "./types";
 
 // Added "Vice-Principal" to the available roles
 // Find your roles array in your rubric manager and add 'Karyawan' to it
-const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"];
+const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan", "Student"];
 export default function RubricPage() {
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +23,8 @@ export default function RubricPage() {
   const [editingRubric, setEditingRubric] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [levelFilter, setLevelFilter] = useState<"SMP_SMA" | "SD">("SMP_SMA");
+  const [editSchoolLevel, setEditSchoolLevel] = useState("SMP_SMA");
   const [editIsSelfReflection, setEditIsSelfReflection] = useState(false); // 🚀 ADDED STATE
 
   const [editingSettings, setEditingSettings] = useState(false);
@@ -37,14 +39,13 @@ export default function RubricPage() {
 
       if (Array.isArray(data)) {
         setRubrics(data);
-        if (data.length > 0) {
-          const activeId = preserveSelection && selectedRubricId ? selectedRubricId : data[0].id;
-          setSelectedRubricId(activeId);
-          
-          const activeRubric = data.find((r: Rubric) => r.id === activeId) || data[0];
-          setEvaluators(activeRubric.evaluators || []);
-          setEvaluatees(activeRubric.evaluatees || []);
-        }
+        // SD and SMP / SMA are managed separately: only pick a rubric from the active level
+        const inLevel = data.filter((r: any) => (r.schoolLevel === "SD" ? "SD" : "SMP_SMA") === levelFilter);
+        const keep = preserveSelection && inLevel.find((r: Rubric) => r.id === selectedRubricId);
+        const active = keep || inLevel[0];
+        setSelectedRubricId(active ? active.id : "");
+        setEvaluators(active?.evaluators || []);
+        setEvaluatees(active?.evaluatees || []);
       }
     } catch (err) {
       console.error(err);
@@ -97,7 +98,7 @@ export default function RubricPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         // 🚀 INCLUDED isSelfReflection IN SAVE PAYLOAD
-        body: JSON.stringify({ id: selectedRubricId, title: editTitle, description: editDesc, isSelfReflection: editIsSelfReflection }),
+        body: JSON.stringify({ id: selectedRubricId, title: editTitle, description: editDesc, isSelfReflection: editIsSelfReflection, schoolLevel: editSchoolLevel }),
       });
       setEditingRubric(false);
       fetchRubrics(true);
@@ -122,6 +123,9 @@ export default function RubricPage() {
 
   // NOTE: If TypeScript complains about `isSelfReflection` not existing on `r`, 
   // you need to add `isSelfReflection?: boolean;` inside your ./types.ts file!
+  const levelOf = (r: any) => (r.schoolLevel === "SD" ? "SD" : "SMP_SMA");
+  const visibleRubrics = rubrics.filter((r: any) => levelOf(r) === levelFilter);
+  const levelName = levelFilter === "SD" ? "SD" : "SMP / SMA";
   const rubric = rubrics.find((r: any) => r.id === selectedRubricId);
 
   return (
@@ -148,19 +152,37 @@ export default function RubricPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
             <h1 className="text-4xl font-extrabold text-[#053b50] tracking-tight">Manage Rubrics</h1>
-            <p className="text-gray-500 mt-2 text-sm">Configure evaluation criteria and access permissions.</p>
+            <p className="text-gray-500 mt-2 text-sm">SD and SMP / SMA have separate rubrics. Pick a school level, then configure its evaluation criteria and access permissions.</p>
           </div>
           <button onClick={() => setShowAddRubric(true)} className="bg-[#053b50] hover:bg-[#032838] text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition shadow-sm">
-            + Create New Rubric
+            + Create New {levelName} Rubric
           </button>
+        </div>
+
+        <div className="mb-6 inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
+          {([["SMP_SMA", "SMP / SMA"], ["SD", "SD"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setLevelFilter(key);
+                const first = rubrics.find((r: any) => levelOf(r) === key);
+                setSelectedRubricId(first ? first.id : "");
+                setEvaluators(first?.evaluators || []);
+                setEvaluatees(first?.evaluatees || []);
+              }}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition ${levelFilter === key ? (key === "SD" ? "bg-[#e99a24] text-white" : "bg-[#008397] text-white") : "text-gray-600 hover:bg-gray-100"}`}
+            >
+              {label} ({rubrics.filter((r: any) => levelOf(r) === key).length})
+            </button>
+          ))}
         </div>
 
         {loading ? (
            <div className="py-20 text-center font-bold text-gray-400">Loading data...</div>
         ) : !rubric ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
-            <p className="text-gray-500 mb-4">No rubrics exist yet.</p>
-            <button onClick={() => setShowAddRubric(true)} className="bg-[#008397] text-white px-6 py-2.5 rounded-lg font-semibold text-sm">Create your first Rubric</button>
+            <p className="text-gray-500 mb-4">No {levelName} rubrics exist yet.</p>
+            <button onClick={() => setShowAddRubric(true)} className="bg-[#008397] text-white px-6 py-2.5 rounded-lg font-semibold text-sm">Create the first {levelName} Rubric</button>
           </div>
         ) : (
           <>
@@ -171,7 +193,8 @@ export default function RubricPage() {
                 onChange={(e) => setSelectedRubricId(e.target.value)}
                 className="bg-white border border-gray-300 text-[#053b50] font-semibold rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#008397]/50 focus:outline-none shadow-sm"
               >
-                {rubrics.map((r) => (
+                {visibleRubrics.length === 0 && <option value="">No rubrics for this level</option>}
+                {visibleRubrics.map((r: any) => (
                   <option key={r.id} value={r.id}>{r.title}</option>
                 ))}
               </select>
@@ -184,6 +207,14 @@ export default function RubricPage() {
                      <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-bold text-lg text-[#053b50]" placeholder="Rubric Title" />
                      <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 resize-none" placeholder="Description" rows={2} />
                      
+                     <div className="flex items-center gap-3">
+                       <label className="text-sm font-bold text-[#053b50]">School level:</label>
+                       <select value={editSchoolLevel} onChange={(e) => setEditSchoolLevel(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-semibold bg-white">
+                         <option value="SMP_SMA">SMP / SMA</option>
+                         <option value="SD">SD</option>
+                       </select>
+                     </div>
+
                      {/* 🚀 THE ADDED CHECKBOX */}
                      <label className="flex items-center gap-2 mt-2 w-fit cursor-pointer text-sm font-bold text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
                        <input type="checkbox" checked={editIsSelfReflection} onChange={(e) => setEditIsSelfReflection(e.target.checked)} className="w-4 h-4 accent-green-600" />
@@ -194,6 +225,9 @@ export default function RubricPage() {
                   <div>
                     <div className="flex items-center gap-3">
                       <h2 className="text-2xl font-bold text-[#053b50]">{rubric.title}</h2>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider ${levelOf(rubric) === "SD" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
+                        {levelOf(rubric) === "SD" ? "SD" : "SMP / SMA"}
+                      </span>
                       {/* 🚀 THE ADDED BADGE */}
                       {rubric.isSelfReflection && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Self-Reflection</span>}
                     </div>
@@ -210,7 +244,7 @@ export default function RubricPage() {
                    ) : (
                       <>
                         {/* 🚀 SETS THE INITIAL CHECKBOX VALUE WHEN CLICKING EDIT */}
-                        <button onClick={() => { setEditTitle(rubric.title); setEditDesc(rubric.description || ""); setEditIsSelfReflection(rubric.isSelfReflection || false); setEditingRubric(true); }} className="text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg shadow-sm transition">Edit Info</button>
+                        <button onClick={() => { setEditTitle(rubric.title); setEditDesc(rubric.description || ""); setEditIsSelfReflection(rubric.isSelfReflection || false); setEditSchoolLevel(levelOf(rubric)); setEditingRubric(true); }} className="text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg shadow-sm transition">Edit Info</button>
                         <button onClick={() => setEditingSettings(!editingSettings)} className="text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg shadow-sm transition">{editingSettings ? "Cancel Rules" : "Access Rules"}</button>
                         <button onClick={handleDeleteRubric} className="text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-2 rounded-lg shadow-sm transition">Delete</button>
                       </>
@@ -291,7 +325,7 @@ export default function RubricPage() {
 
       </main>
 
-      <AddRubricModal open={showAddRubric} onClose={() => setShowAddRubric(false)} onSuccess={() => fetchRubrics(true)} />
+      <AddRubricModal defaultLevel={levelFilter} open={showAddRubric} onClose={() => setShowAddRubric(false)} onSuccess={() => fetchRubrics(true)} />
       
       {rubric && (
         <AddSectionModal rubricId={rubric.id} open={showAddSection} onClose={() => setShowAddSection(false)} onSuccess={() => fetchRubrics(true)} />

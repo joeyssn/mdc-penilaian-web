@@ -15,8 +15,6 @@ export async function getSession(): Promise<SessionUser | null> {
 export const SCORE_VIEWER_ROLES = ['ADMIN', 'DIRECTOR'];
 // Roles that may create / edit / delete rubric content and weights.
 export const RUBRIC_EDITOR_ROLES = ['ADMIN', 'DIRECTOR'];
-// Roles that may lock / unlock scores for an evaluation cycle.
-export const SCORE_UNLOCKER_ROLES = ['ADMIN', 'PRINCIPAL'];
 // Roles that may only assign rubrics (evaluators / evaluatees).
 export const RUBRIC_ASSIGNER_ROLES = ['ADMIN', 'DIRECTOR', 'PRINCIPAL'];
 

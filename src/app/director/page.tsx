@@ -4,7 +4,9 @@ import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
-import { computeFinal, isSdProfile, resolveProfile } from '@/lib/weights';
+import { resolveProfile } from '@/lib/weights';
+import MasterReportTables from '@/components/MasterReportTables';
+import { buildMasterRows } from '@/lib/masterReport';
 
 type User = { id: string; name: string; role: string; gender?: string | null; department?: string; };
 type Indicator = { id: string; text: string; weight: number };
@@ -279,6 +281,8 @@ export default function UnifiedDirectorDashboard() {
     );
   }
 
+  const masterRows = buildMasterRows(reportData as any, weightsConfig, groupedObservations, absences);
+
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans print:bg-white">
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 print:hidden gap-4">
@@ -453,63 +457,8 @@ export default function UnifiedDirectorDashboard() {
             </div>
             <button onClick={() => window.print()} className="bg-[#008c99] text-white font-bold py-3 px-6 rounded-xl shadow-md print:hidden">Print Data</button>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden print:border-none print:shadow-none mt-6">
-            {isReportLoading ? (
-              <div className="p-12 text-center text-gray-500 font-bold">Generating Report...</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200 print:bg-gray-100">
-                      <th className="py-4 px-6 font-bold text-gray-600 uppercase text-xs">Staff Name</th>
-                      <th className="py-4 px-4 font-bold text-[#008c99] uppercase text-xs text-center">Student Score</th>
-                      <th className="py-4 px-4 font-bold text-[#f39c12] uppercase text-xs text-center">Peer Score</th>
-                      <th className="py-4 px-4 font-bold text-green-600 uppercase text-xs text-center">Observation</th>
-                      <th className="py-4 px-4 font-bold text-teal-600 uppercase text-xs text-center">Attendance</th>
-                      <th className="py-4 px-6 font-extrabold text-white bg-[#053b50] uppercase text-xs text-center print:bg-transparent print:text-black">Final Average</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {/* 🚀 HIDDEN ADMINS AND STUDENTS */}
-                    {reportData
-                      .filter((row) => row.role.toUpperCase() !== 'STUDENT' && row.role.toUpperCase() !== 'ADMIN')
-                      .map((row) => {
-                      const sScore = parseFloat(row.studentAvg);
-                      const pScore = parseFloat(row.peerAvg);
-                      const obsGroup = groupedObservations.find(g => g.targetId === row.id);
-                      const oScore = obsGroup ? obsGroup.averageScore : NaN;
-                      const userAbsence = absences.find(a => a.userId === row.id);
-                      const aScore = userAbsence ? userAbsence.attendanceScore : NaN;
-
-                      const selfScore = parseFloat((row as any).selfAvg);
-                      const matched = resolveProfile(
-                        Object.entries(weightsConfig).map(([id, w]) => ({ id, ...w })),
-                        (row as any).roleKey || row.role,
-                        (row as any).level
-                      );
-                      const activeWeights = matched || defaultWeights;
-                      const sdRow = matched ? isSdProfile(matched.id) : false;
-                      const { final, incomplete, missing } = computeFinal(
-                        matched ? matched.id : 'DEFAULT', { selfWeight: 0, ...activeWeights },
-                        { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore, leader: oScore, supervisor: NaN }
-                      );
-                      const finalDynamicAvg = final === null ? '-' : final.toFixed(2);
-
-                      return (
-                        <tr key={row.id} className="hover:bg-gray-50 print:hover:bg-transparent transition-colors">
-                          <td className="py-4 px-6 font-bold text-gray-900">{row.name}<br/><span className="text-[10px] text-gray-500 uppercase tracking-widest">{row.role.replace('_', ' ')}{sdRow ? ' · SD/TK' : ''}</span></td>
-                          <td className="py-4 px-4 text-center font-extrabold text-[#008c99]">{row.studentAvg}</td>
-                          <td className="py-4 px-4 text-center font-extrabold text-[#f39c12]">{row.peerAvg}</td>
-                          <td className="py-4 px-4 text-center font-extrabold text-green-600">{obsGroup ? obsGroup.averageScore.toFixed(2) : '-'}</td>
-                          <td className="py-4 px-4 text-center font-extrabold text-teal-600">{userAbsence ? userAbsence.attendanceScore.toFixed(1) : '-'}</td>
-                          <td className="py-4 px-6 text-center bg-blue-50/30 print:bg-transparent font-extrabold text-xl text-[#053b50]">{finalDynamicAvg}{incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum: {missing.join(', ')}</span>}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <div className="mt-6">
+            <MasterReportTables rows={masterRows} loading={isReportLoading} />
           </div>
         </div>
       )}

@@ -18,7 +18,7 @@ type Rubric = {
   sections: Section[];
 };
 
-const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan'];
+const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan', 'Student'];
 
 // Principal view: can assign who evaluates whom, but the rubric content itself is read-only.
 export default function PrincipalRubricAssignmentPage() {
@@ -29,6 +29,7 @@ export default function PrincipalRubricAssignmentPage() {
   const [evaluatees, setEvaluatees] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [levelName, setLevelName] = useState('');
 
   const load = async (keepSelection = false) => {
     const meRes = await fetch('/api/me');
@@ -36,6 +37,7 @@ export default function PrincipalRubricAssignmentPage() {
     const me = await meRes.json();
     if (me.role !== 'PRINCIPAL' && me.role !== 'DIRECTOR' && me.role !== 'ADMIN') return router.push('/login');
 
+    setLevelName(String(me.level || '').toUpperCase() === 'SD' ? 'SD' : 'SMP / SMA');
     const res = await fetch('/api/rubric', { cache: 'no-store' });
     const data = await res.json();
     if (Array.isArray(data)) {
@@ -96,7 +98,7 @@ export default function PrincipalRubricAssignmentPage() {
 
       <div className="max-w-5xl mx-auto px-6 pt-10 space-y-8">
         <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Rubrics</h1>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Rubrics{levelName && <span className="text-[#e99a24]"> · {levelName}</span>}</h1>
           <p className="text-gray-500 mt-2 font-medium">Choose which roles evaluate which roles. Rubric content can only be edited by the admin.</p>
         </div>
 

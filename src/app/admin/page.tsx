@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import CycleLockPanel from '@/components/CycleLockPanel';
+import ScoreVisibilityToggle from '@/components/ScoreVisibilityToggle';
+import MasterReportTables from '@/components/MasterReportTables';
+import { buildMasterRows } from '@/lib/masterReport';
 import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
 
 type ReportRow = { 
@@ -144,6 +146,7 @@ export default function AdminDashboard() {
   };
 
   const currentW = weightsConfig[selectedRoleWeight] || defaultWeights;
+  const masterRows = buildMasterRows(reportData, weightsConfig, groupedObservations, absences);
   const sdSelected = isSdProfile(selectedRoleWeight);
   const currentInner = currentW.peerWeight + currentW.selfWeight + currentW.supervisorWeight + currentW.leaderWeight;
   const currentTotal = sdSelected
@@ -317,9 +320,7 @@ export default function AdminDashboard() {
         {/* ADMIN TOOLS & MANAGEMENT */}
         <div className="print:hidden">
           <div className="mb-10">
-            <h2 className="text-2xl font-extrabold text-[#053b50] mb-2">Evaluation Cycles & Score Visibility</h2>
-            <p className="text-gray-500 font-medium mb-5">Each cycle belongs to one school level and has its own lock. New cycles start locked.</p>
-            <CycleLockPanel canManage />
+            <ScoreVisibilityToggle />
           </div>
 
           <h2 className="text-2xl font-extrabold text-[#053b50] mb-6">Admin Tools & Management</h2>
@@ -545,81 +546,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* LIVE PREVIEW TABLE WITH 5 SCORE COLUMNS */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden print:border-none print:shadow-none mt-8">
-          <div className="bg-gray-100 px-6 py-4 border-b border-gray-200 print:hidden">
-            <h3 className="font-bold text-gray-800">Live Preview Table</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-white border-b border-gray-200 print:bg-gray-100">
-                  <th className="py-4 px-6 font-bold text-gray-600 uppercase text-xs tracking-wider">Staff Name</th>
-                  <th className="py-4 px-4 font-bold text-[#008c99] uppercase text-xs tracking-wider text-center">Student<br/><span className="text-[10px] text-gray-400 font-normal">Score</span></th>
-                  <th className="py-4 px-4 font-bold text-[#f39c12] uppercase text-xs tracking-wider text-center">Peer<br/><span className="text-[10px] text-gray-400 font-normal">Score</span></th>
-                  <th className="py-4 px-4 font-bold text-purple-600 uppercase text-xs tracking-wider text-center">Self<br/><span className="text-[10px] text-gray-400 font-normal">Score</span></th>
-                  <th className="py-4 px-4 font-bold text-green-600 uppercase text-xs tracking-wider text-center">Observation<br/><span className="text-[10px] text-gray-400 font-normal">Avg Score</span></th>
-                  <th className="py-4 px-4 font-bold text-teal-600 uppercase text-xs tracking-wider text-center">Attendance<br/><span className="text-[10px] text-gray-400 font-normal">HRD Score</span></th>
-                  <th className="py-4 px-6 font-extrabold text-[#053b50] bg-blue-50 uppercase text-xs tracking-wider text-center border-l border-blue-100 print:bg-transparent print:border-l-0">Simulated Final Average<br/><span className="text-[10px] text-gray-500 font-normal">(Scale 1-4)</span></th>
-                </tr>
-              </thead>
-              
-              <tbody className="divide-y divide-gray-100">
-                {reportData
-                  .filter((row) => row.role.toUpperCase() !== 'STUDENT' && row.role.toUpperCase() !== 'ADMIN')
-                  .map((row) => {
-                  const sScore = parseFloat(row.studentAvg);
-                  const pScore = parseFloat(row.peerAvg);
-                  const selfScore = parseFloat(row.selfAvg);
-                  
-                  const obsGroup = groupedObservations.find(g => g.targetId === row.id);
-                  const oScore = obsGroup ? obsGroup.averageScore : NaN;
-                  const obsAvgDisplay = obsGroup ? obsGroup.averageScore.toFixed(2) : '-';
-
-                  const userAbsence = absences.find(a => a.userId === row.id);
-                  const aScore = userAbsence ? userAbsence.attendanceScore : NaN;
-                  const attAvgDisplay = userAbsence ? userAbsence.attendanceScore.toFixed(1) : '-';
-
-                  const profileEntries = Object.entries(weightsConfig).map(([id, w]) => ({ id, ...w }));
-                  const matched = resolveProfile(profileEntries, row.roleKey || row.role, row.level);
-                  const activeWeights = matched || defaultWeights;
-                  const sdRow = matched ? isSdProfile(matched.id) : false;
-
-                  const { final, incomplete, main, missing } = computeFinal(
-                    matched ? matched.id : 'DEFAULT', activeWeights,
-                    // Leaders = the principal / vice principal observation score. Supervisor scores are not collected yet.
-                    { student: sScore, peer: pScore, self: selfScore, observation: oScore, attendance: aScore, leader: oScore, supervisor: NaN }
-                  );
-                  const finalDynamicAvg = final === null ? '-' : final.toFixed(2);
-
-                  return (
-                    <tr key={row.id} className="hover:bg-gray-50 transition-colors print:hover:bg-transparent">
-                      <td className="py-4 px-6">
-                        <span className="font-bold text-gray-900 block">{row.name}</span>
-                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">{row.role.replace('_', ' ')}{sdRow ? ' · SD/TK' : ''}</span>
-                      </td>
-                      <td className="py-4 px-4 text-center font-bold text-[#008c99]">{row.studentAvg !== '-' ? row.studentAvg : <span className="text-gray-300">-</span>}</td>
-                      <td className="py-4 px-4 text-center font-bold text-[#f39c12]">{row.peerAvg !== '-' ? row.peerAvg : <span className="text-gray-300">-</span>}</td>
-                      <td className="py-4 px-4 text-center font-bold text-purple-600">{row.selfAvg !== '-' ? row.selfAvg : <span className="text-gray-300">-</span>}</td>
-                      <td className="py-4 px-4 text-center font-bold text-green-600">{obsAvgDisplay !== '-' ? obsAvgDisplay : <span className="text-gray-300">-</span>}</td>
-                      <td className="py-4 px-4 text-center font-bold text-teal-600">{attAvgDisplay !== '-' ? attAvgDisplay : <span className="text-gray-300">-</span>}</td>
-                      
-                      <td className="py-4 px-6 text-center bg-blue-50/50 border-l border-blue-100 print:bg-transparent print:border-l-0">
-                        <span className={`font-extrabold text-xl ${finalDynamicAvg === '-' ? 'text-gray-300' : 'text-[#053b50]'}`}>
-                          {finalDynamicAvg}
-                        </span>
-                        {incomplete && <span className="block text-[10px] font-bold text-amber-600 uppercase">Belum: {missing.join(', ')}</span>}
-                        {sdRow && main !== null && <span className="block text-[10px] text-gray-400">Main {main.toFixed(2)}</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {reportData.filter((row) => row.role.toUpperCase() !== 'STUDENT' && row.role.toUpperCase() !== 'ADMIN').length === 0 && (
-                  <tr><td colSpan={7} className="py-8 text-center text-gray-500 font-bold">Belum ada data evaluasi di database.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        {/* MASTER REPORT: SD / TK and SMP / SMA in separate downloadable tables */}
+        <div className="mt-8">
+          <MasterReportTables rows={masterRows} />
         </div>
       </div>
     </div>

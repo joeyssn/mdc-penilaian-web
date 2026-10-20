@@ -124,13 +124,29 @@ export default function SemesterHistoryPage() {
             </p>
           </div>
 
-          <button
-            onClick={exportToCSV}
-            disabled={records.length === 0}
-            className="bg-[#008c99] hover:bg-[#00737e] text-white font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            📥 Export Filtered CSV
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <a
+              href="/api/admin/semester/export"
+              className="bg-[#053b50] hover:bg-[#032838] text-white font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
+            >
+              📦 Download Full Archive (.xlsx)
+            </a>
+            {selectedSemester && (
+              <a
+                href={`/api/admin/semester/export?semester=${encodeURIComponent(selectedSemester)}`}
+                className="bg-[#008c99] hover:bg-[#00737e] text-white font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
+              >
+                📥 This Semester (.xlsx)
+              </a>
+            )}
+            <button
+              onClick={exportToCSV}
+              disabled={records.length === 0}
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-3 px-5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              Summary CSV
+            </button>
+          </div>
         </div>
 
         {/* Filter Controls Bar */}

@@ -11,7 +11,7 @@ export default function SdShell({ title, subtitle, home, tabs, children }: {
 }) {
   const path = usePathname();
   return (
-    <div className="min-h-screen bg-[#f7f8f9] font-sans">
+    <div className="min-h-screen bg-[#f7f8f9] font-sans text-gray-900 [color-scheme:light] [&_input]:text-gray-900 [&_select]:text-gray-900 [&_select]:bg-white [&_option]:text-gray-900 [&_table]:text-gray-900">
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4">
         <div className="flex items-center">
           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />

@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { getSession } from "@/lib/session";
+import { inScope, normLevel, scopeOf } from "@/lib/levelScope";
 
 export const dynamic = 'force-dynamic';
 
 // 1. GET: Fetch all users (used by Admin Students & Admin Users pages)
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const scope = scopeOf(session);
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -17,10 +22,11 @@ export async function GET() {
         gender: true,
         department: true,
         className: true, // 🚀 Crucial for the Student page
+        level: true,
       },
       orderBy: { name: 'asc' }
     });
-    return NextResponse.json(users);
+    return NextResponse.json(users.filter(x => inScope(scope, x.level)));
   } catch (error) {
     console.error("GET USERS ERROR:", error);
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
@@ -31,7 +37,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, nis_niy, password, role, gender, department, className } = body;
+    const { name, nis_niy, password, role, gender, department, className, level } = body;
 
     // Securely hash the password before saving
     const hashedPassword = await bcrypt.hash(password || 'default123', 10);
@@ -45,6 +51,7 @@ export async function POST(req: Request) {
         gender: gender || null,
         department: department || null,
         className: className || null,
+        level: normLevel(level),
       }
     });
 
@@ -59,7 +66,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const data = await req.json();
-    const { id, name, nis_niy, email, role, department, gender, className, password } = data;
+    const { id, name, nis_niy, email, role, department, gender, className, password, level } = data;
 
     if (!id) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
@@ -72,6 +79,7 @@ export async function PUT(req: Request) {
     if (role !== undefined) updateData.role = role;
     if (department !== undefined) updateData.department = department;
     if (gender !== undefined) updateData.gender = gender;
+    if (level !== undefined) updateData.level = normLevel(level);
     
     // 🚀 Update the class name for students
     if (className !== undefined) updateData.className = className;

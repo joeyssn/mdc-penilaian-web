@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
+import { inScope, normLevel, scopeOf } from "@/lib/levelScope";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const scope = scopeOf(session);
     const teachers = await prisma.user.findMany({
       // We now fetch DIRECTOR and PRINCIPAL separately
       where: { role: { in: ['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN','VICE_PRINCIPAL_KESISWAAN','VICE_PRINCIPAL_KURIKULUM','KARYAWAN'] } }, 
@@ -15,11 +20,12 @@ export async function GET() {
         gender: true,
         email: true,
         nis_niy: true,
-        department: true 
+        department: true,
+        level: true
       }
     });
 
-    return NextResponse.json(teachers);
+    return NextResponse.json(teachers.filter(u => inScope(scope, u.level)));
   } catch (error) {
     console.error("API TEACHERS ERROR:", error);
     return NextResponse.json({ error: "Failed to fetch teachers" }, { status: 500 });
@@ -28,7 +34,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, email, gender, role, department, nis_niy } = await req.json();
+    const { name, email, gender, role, department, nis_niy, level } = await req.json();
 
     const newUser = await prisma.user.create({
       data: {
@@ -39,6 +45,7 @@ export async function POST(req: Request) {
         department: department || 'UMUM',
         role, // We can just pass the role directly now!
         nis_niy, 
+        level: normLevel(level),
         password: nis_niy, 
       }
     });
@@ -55,7 +62,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { id, name, email, gender, role, department, nis_niy } = await req.json();
+    const { id, name, email, gender, role, department, nis_niy, level } = await req.json();
 
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -66,6 +73,7 @@ export async function PUT(req: Request) {
         department: department || 'UMUM',
         role, // We can just pass the role directly now!
         nis_niy,
+        level: normLevel(level),
       }
     });
     

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { inScope, scopeOf } from '@/lib/levelScope';
 import { fail, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES, isSdUser } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
@@ -12,10 +13,11 @@ export async function GET() {
     select: { id: true, name: true, role: true, level: true, className: true },
     orderBy: { name: 'asc' },
   });
-  const sd = users.filter(isSdUser);
+  const scope = scopeOf(g.session);
+  const sd = users.filter(u => isSdUser(u) && inScope(scope, u.level));
   return NextResponse.json({
     teachers: sd.filter(u => u.role === 'TEACHER'),
-    supervisors: users.filter(u => u.role !== 'STUDENT'),
+    supervisors: users.filter(u => u.role !== 'STUDENT' && inScope(scope, u.level)),
     students: sd.filter(u => u.role === 'STUDENT'),
   });
 }

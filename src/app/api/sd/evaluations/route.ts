@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
 import { isScoresLockedFor } from '@/lib/settings';
 import { averageOf, categoryOf, canPeerEvaluate, SUBJECT_LABEL, type MemberLite } from '@/lib/sd/rules';
-import { fail, openPeriod, publishedMembers, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES } from '@/lib/sd/access';
+import { scopeOf } from '@/lib/levelScope';
+import { fail, groupScopeWhere, openPeriod, publishedMembers, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,7 +104,7 @@ export async function GET(req: Request) {
     prisma.sdEvaluation.findMany({ where: { periodId }, select: { type: true, targetId: true, average: true } }),
     prisma.supervisorAssignment.findMany({ where: { periodId, active: true }, select: { teacherId: true } }),
     prisma.studentAssignment.findMany({ where: { periodId }, select: { teacherId: true } }),
-    prisma.groupMember.findMany({ where: { group: { periodId, status: 'PUBLISHED' } }, include: { teacher: { select: { id: true, name: true } }, group: { select: { name: true } } } }),
+    prisma.groupMember.findMany({ where: { group: { periodId, status: 'PUBLISHED', ...groupScopeWhere(scopeOf(g.session)) } }, include: { teacher: { select: { id: true, name: true } }, group: { select: { name: true } } } }),
   ]);
   const ids = [...new Set([...members.map(m => m.teacherId)])];
   const rows = ids.map(id => {

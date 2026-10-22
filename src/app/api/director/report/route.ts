@@ -4,6 +4,7 @@ import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
 import { isScoresLockedFor } from '@/lib/settings';
 import { toNumericScore } from '@/lib/scoreScale';
 import { isSdGroupLevel } from '@/lib/weights';
+import { inScope, scopeOf } from '@/lib/levelScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,8 @@ export async function GET() {
     allUsers.forEach(u => userMap.set(u.id, u));
 
     // 🚀 FIX 1: Add BOTH VP roles so they appear as rows in the table
-    const targetUsers = allUsers.filter(u => 
+    const scope = scopeOf(session); // a school's principal / admin only sees their own school
+    const targetUsers = allUsers.filter(u => inScope(scope, u.level) && 
       ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL','HRD','KARYAWAN'].includes((u.role || '').toUpperCase())
     );
     const targetIds = targetUsers.map(u => u.id);

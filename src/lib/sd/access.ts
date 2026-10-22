@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession, type SessionUser } from '@/lib/session';
 import { isSdGroupLevel } from '@/lib/weights';
+import { scopeOf, type Level } from '@/lib/levelScope';
 
 // Who may do what in the SD teacher evaluation system. "Admin SD" is the existing ADMIN role.
 export const GROUP_MANAGE_ROLES = ['PRINCIPAL', 'ADMIN'];
@@ -30,18 +31,25 @@ export async function can(session: SessionUser, p: SdPermission): Promise<boolea
   return false;
 }
 
+// The SD teacher evaluation system belongs to TK and SD. A principal / admin of SMP or SMA has no access to it.
+export const SD_SCHOOLS: Level[] = ['TK', 'SD'];
+const wrongSchool = (s: SessionUser) => { const sc = scopeOf(s); return sc !== null && !SD_SCHOOLS.includes(sc); };
+export const schoolOf = (s: SessionUser) => scopeOf(s); // null = sees TK and SD
+
 type Guard = { session: SessionUser; error?: undefined } | { session?: undefined; error: NextResponse };
 
 export async function requireRole(roles: string[]): Promise<Guard> {
   const session = await getSession();
   if (!session) return { error: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }) };
   if (!roles.includes(session.role)) return { error: NextResponse.json({ error: 'You do not have permission to do this.' }, { status: 403 }) };
+  if (wrongSchool(session)) return { error: NextResponse.json({ error: 'This system is only for TK and SD.' }, { status: 403 }) };
   return { session };
 }
 
 export async function requirePermission(p: SdPermission): Promise<Guard> {
   const session = await getSession();
   if (!session) return { error: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }) };
+  if (wrongSchool(session)) return { error: NextResponse.json({ error: 'This system is only for TK and SD.' }, { status: 403 }) };
   if (!(await can(session, p))) return { error: NextResponse.json({ error: `You do not have the "${p}" permission.` }, { status: 403 }) };
   return { session };
 }
@@ -53,9 +61,12 @@ export const fail = (error: string | string[], status = 400) =>
 export const openPeriod = () => prisma.evalPeriod.findFirst({ where: { status: 'OPEN' } });
 
 // Members of every PUBLISHED group of a period, keyed by group.
-export async function publishedMembers(periodId: string) {
+// `scope` limits the result to one school's groups (groups without a school label stay visible).
+export const groupScopeWhere = (scope: Level | null) => (scope ? { OR: [{ level: scope }, { level: null }] } : {});
+
+export async function publishedMembers(periodId: string, scope: Level | null = null) {
   return prisma.groupMember.findMany({
-    where: { group: { periodId, status: 'PUBLISHED' } },
+    where: { group: { periodId, status: 'PUBLISHED', ...groupScopeWhere(scope) } },
     include: { group: { select: { id: true, classOne: true, classTwo: true, name: true } }, teacher: { select: { id: true, name: true, role: true, level: true } } },
   });
 }

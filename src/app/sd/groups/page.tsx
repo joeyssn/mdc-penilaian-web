@@ -24,7 +24,7 @@ export default function SdGroupsPage() {
   const [perms, setPerms] = useState<any>(null);
   const [problems, setProblems] = useState<Record<string, string[]>>({});
   const [newPeriod, setNewPeriod] = useState('');
-  const [g, setG] = useState({ name: '', classOne: '', classTwo: '' });
+  const [g, setG] = useState({ name: '', classOne: '', classTwo: '', level: 'SD' });
   const [m, setM] = useState<Record<string, { teacherId: string; className: string; subject: string }>>({});
   const [sv, setSv] = useState({ supervisorId: '', teacherId: '' });
 
@@ -107,10 +107,13 @@ export default function SdGroupsPage() {
           <h2 className="text-xl font-extrabold text-[#053b50]">Groups</h2>
           {!locked && (
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-wrap gap-2 items-end">
+              {!['TK', 'SD'].includes(me?.level) && (
+                <select className={input} value={g.level} onChange={e => setG({ ...g, level: e.target.value })}><option value="SD">SD</option><option value="TK">TK</option></select>
+              )}
               <input className={input} placeholder="Group name" value={g.name} onChange={e => setG({ ...g, name: e.target.value })} />
               <input className={input} placeholder="Class 1 (e.g. 1A)" value={g.classOne} onChange={e => setG({ ...g, classOne: e.target.value })} />
               <input className={input} placeholder="Class 2 (e.g. 1B)" value={g.classTwo} onChange={e => setG({ ...g, classTwo: e.target.value })} />
-              <button className={btn} onClick={async () => { if (await call('/api/sd/groups', 'POST', { ...g, periodId })) { setG({ name: '', classOne: '', classTwo: '' }); refresh(); } }}>Create group</button>
+              <button className={btn} onClick={async () => { if (await call('/api/sd/groups', 'POST', { ...g, periodId })) { setG({ name: '', classOne: '', classTwo: '', level: g.level }); refresh(); } }}>Create group</button>
             </div>
           )}
           {groups.map(gr => {
@@ -121,7 +124,7 @@ export default function SdGroupsPage() {
               <div key={gr.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-lg font-extrabold text-[#053b50]">{gr.name} <span className="text-gray-500 font-normal">· {gr.classOne} + {gr.classTwo}</span></h3>
+                    <h3 className="text-lg font-extrabold text-[#053b50]">{gr.name} <span className="text-gray-500 font-normal">· {gr.classOne} + {gr.classTwo}{gr.level ? ` · ${gr.level}` : ''}</span></h3>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gr.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : gr.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{gr.status}</span>
                   </div>
                   {!locked && (

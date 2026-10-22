@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { validateClasses, validateGroupForPublish, validateMember, validatePartnership, type MemberLite, type Subject } from '@/lib/sd/rules';
+import { normLevel, scopeOf } from '@/lib/levelScope';
 import { can, fail, isSdUser, requireRole, GROUP_MANAGE_ROLES } from '@/lib/sd/access';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -17,7 +18,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const action: string = body.action;
 
   const group = await prisma.teacherGroup.findUnique({ where: { id }, include: { members: true, period: true } });
-  if (!group) return fail('Group not found.', 404);
+  const scope = scopeOf(session);
+  if (!group || (scope && group.level && normLevel(group.level) !== scope)) return fail('Group not found.', 404);
   if (group.period.status === 'CLOSED') return fail('This period is closed. Its groups are read-only.', 409);
 
   const sensitive = ['publish', 'unpublish', 'deactivate'].includes(action);
@@ -41,6 +43,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       if (errs.length) return fail(errs);
       const teacher = await prisma.user.findUnique({ where: { id: teacherId } });
       if (!teacher || teacher.role !== 'TEACHER' || !isSdUser(teacher)) return fail('Only SD / TK teacher accounts can join a group.');
+      if (group.level && normLevel(teacher.level) !== normLevel(group.level)) return fail(`${teacher.name} belongs to ${teacher.level}, not ${group.level}.`);
       try {
         const m = await prisma.groupMember.create({ data: { groupId: id, teacherId, className: className.trim(), subject: subject as Subject } });
         await writeAudit(session, 'SD_MEMBER_ADDED', 'TeacherGroup', id, { teacherId, className, subject });
@@ -107,7 +110,8 @@ export async function DELETE(_: Request, ctx: Ctx) {
   const guard = await requireRole(GROUP_MANAGE_ROLES); if (guard.error) return guard.error;
   const { id } = await ctx.params;
   const g = await prisma.teacherGroup.findUnique({ where: { id }, include: { _count: { select: { evaluations: true } } } });
-  if (!g) return fail('Group not found.', 404);
+  const sc = scopeOf(guard.session);
+  if (!g || (sc && g.level && normLevel(g.level) !== sc)) return fail('Group not found.', 404);
   if (g.status !== 'DRAFT') return fail('Only draft groups can be deleted. Deactivate a published group instead.', 409);
   if (g._count.evaluations > 0) return fail('This group already has evaluations and cannot be deleted.', 409);
   await prisma.teacherGroup.delete({ where: { id } });

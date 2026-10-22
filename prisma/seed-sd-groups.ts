@@ -39,7 +39,7 @@ async function main() {
 
   const period = await prisma.evalPeriod.upsert({ where: { name: 'Demo SD Semester' }, update: {}, create: { name: 'Demo SD Semester', status: 'OPEN' } });
   let group = await prisma.teacherGroup.findFirst({ where: { periodId: period.id, name: 'Kelompok 1' } });
-  if (!group) group = await prisma.teacherGroup.create({ data: { name: 'Kelompok 1', periodId: period.id, classOne: '4A', classTwo: '4B', createdById: principal.id } });
+  if (!group) group = await prisma.teacherGroup.create({ data: { name: 'Kelompok 1', periodId: period.id, classOne: '4A', classTwo: '4B', level: 'SD', createdById: principal.id } });
 
   for (const [login, className, subject] of ROSTER) {
     const t = teachers.find(x => x.email === `${login}@mdc.sch.id`)!;

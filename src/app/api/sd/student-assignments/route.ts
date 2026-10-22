@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { teachersForClass, type MemberLite } from '@/lib/sd/rules';
+import { inScope, scopeOf } from '@/lib/levelScope';
 import { fail, publishedMembers, requireRole } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const periodId = url.searchParams.get('periodId'), className = url.searchParams.get('className');
   if (!periodId) return fail('periodId is required.');
-  const members = await publishedMembers(periodId);
+  const scope = scopeOf(g.session);
+  const members = await publishedMembers(periodId, scope);
   const classes = [...new Set(members.flatMap(m => [m.group.classOne, m.group.classTwo]))].sort();
   if (!className) return NextResponse.json({ classes });
 
@@ -25,8 +27,8 @@ export async function GET(req: Request) {
     const full = members.find(x => x.id === m.id)!;
     return { teacherId: m.teacherId, name: full.teacher.name, subject: m.subject, group: full.group.name };
   });
-  const students = (await prisma.user.findMany({ where: { role: 'STUDENT' }, select: { id: true, name: true, className: true }, orderBy: { name: 'asc' } }))
-    .filter(s => ci(s.className) === ci(className));
+  const students = (await prisma.user.findMany({ where: { role: 'STUDENT' }, select: { id: true, name: true, className: true, level: true }, orderBy: { name: 'asc' } }))
+    .filter(s => ci(s.className) === ci(className) && inScope(scope, s.level));
   const assigns = await prisma.studentAssignment.findMany({
     where: { periodId, studentId: { in: students.map(s => s.id) } },
     include: { evaluations: { select: { id: true } } },
@@ -52,7 +54,9 @@ export async function PUT(req: Request) {
 
   const students = await prisma.user.findMany({ where: { id: { in: studentIds }, role: 'STUDENT' }, select: { id: true, name: true, className: true, level: true } });
   if (students.length !== new Set(studentIds).size) return fail('Every selected user must be a student.');
-  const members = (await publishedMembers(periodId)) as unknown as MemberLite[];
+  const scope = scopeOf(g.session);
+  if (students.some(s => !inScope(scope, s.level))) return fail('You can only assign students of your own school.', 403);
+  const members = (await publishedMembers(periodId, scope)) as unknown as MemberLite[];
 
   const wanted: { studentId: string; teacherId: string }[] = [];
   for (const s of students) {

@@ -320,6 +320,7 @@ export default function AdminDashboard() {
         {/* ADMIN TOOLS & MANAGEMENT */}
         <div className="print:hidden">
           <div className="mb-10">
+            <Link href="/sd/groups" className="inline-block mb-4 mr-3 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">SD Groups &amp; Supervisors</Link>
             <ScoreVisibilityToggle />
           </div>
 

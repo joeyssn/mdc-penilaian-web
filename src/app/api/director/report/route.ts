@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
 import { isScoresLockedFor } from '@/lib/settings';
 import { toNumericScore } from '@/lib/scoreScale';
+import { isSdGroupLevel } from '@/lib/weights';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,15 @@ export async function GET() {
     const allScores = await prisma.score.findMany({
       where: { targetId: { in: targetIds } }
     });
+
+    // SD / TK teachers: peer, supervisor and student scores come from the SD evaluation workflow
+    // (current period = the open one, else the most recently created), kept as three separate sources.
+    const period = (await prisma.evalPeriod.findFirst({ where: { status: 'OPEN' } })) ?? (await prisma.evalPeriod.findFirst({ orderBy: { createdAt: 'desc' } }));
+    const sdEvals = period ? await prisma.sdEvaluation.findMany({ where: { periodId: period.id, targetId: { in: targetIds } }, select: { type: true, targetId: true, average: true } }) : [];
+    const sdStat = (userId: string, type: string) => {
+      const l = sdEvals.filter(e => e.type === type && e.targetId === userId);
+      return { avg: l.length ? (l.reduce((a, e) => a + e.average, 0) / l.length).toFixed(1) : '-', count: l.length };
+    };
 
     const getNumericValue = (val: string) => toNumericScore(val);
 
@@ -58,8 +68,10 @@ export async function GET() {
                ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'PRINCIPAL','HRD','KARYAWAN'].includes(graderRole.toUpperCase());
       });
 
-      const studentStats = calculateStats(studentScores);
-      const peerStats = calculateStats(peerScores);
+      const sd = isSdGroupLevel(user.level) && user.role === 'TEACHER';
+      const studentStats = sd ? sdStat(user.id, 'STUDENT') : calculateStats(studentScores);
+      const peerStats = sd ? sdStat(user.id, 'PEER') : calculateStats(peerScores);
+      const supervisorStats = sd ? sdStat(user.id, 'SUPERVISOR') : { avg: '-', count: 0 };
       const selfStats = calculateStats(selfScores);
 
       let overallAvg = '-';
@@ -76,7 +88,7 @@ export async function GET() {
       if (hideScores) {
         return {
           id: user.id, name: user.name, role: displayRole, roleKey: user.role, level: user.level ?? null, department: '-',
-          studentCount: 0, studentAvg: '-', peerCount: 0, peerAvg: '-', selfCount: 0, selfAvg: '-', overallAvg: '-',
+          studentCount: 0, studentAvg: '-', peerCount: 0, peerAvg: '-', supervisorAvg: '-', selfCount: 0, selfAvg: '-', overallAvg: '-',
         };
       }
 
@@ -91,6 +103,7 @@ export async function GET() {
         studentAvg: studentStats.avg,
         peerCount: peerStats.count,
         peerAvg: peerStats.avg,
+        supervisorAvg: supervisorStats.avg,
         selfCount: selfStats.count,
         selfAvg: selfStats.avg,
         overallAvg: overallAvg,

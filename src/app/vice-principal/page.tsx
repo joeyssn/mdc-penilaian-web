@@ -171,6 +171,8 @@ export default function PrincipalDashboard() {
         <div className="flex gap-8 text-[15px] font-bold overflow-x-auto whitespace-nowrap scrollbar-hide">
           <span className="pb-1 transition-all border-b-2 text-[#053b50] border-[#008c99]">My Dashboard</span>
         </div>
+        <Link href="/sd/student-assignments" className="pb-1 transition-all border-b-2 border-transparent text-gray-500 hover:text-[#053b50]">Student Assignments</Link>
+        <Link href="/sd/tasks" className="pb-1 transition-all border-b-2 border-transparent text-gray-500 hover:text-[#053b50]">My Evaluations</Link>
         <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">Logout</Link>
       </nav>
 

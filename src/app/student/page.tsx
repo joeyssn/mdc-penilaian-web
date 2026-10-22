@@ -117,7 +117,8 @@ export default function StudentDashboard() {
                     <div className="flex gap-6 md:gap-10 text-[14px] md:text-[15px] font-medium text-gray-800">
                         <Link href="/student" className="text-black border-b-2 border-black pb-1">Home</Link>
                     </div>
-                    <Link href="/login" className="hidden md:block text-red-500 hover:text-red-700 text-[15px] font-medium transition-colors">Logout</Link>
+                    <Link href="/sd/tasks" className="hidden md:block text-[#008c99] hover:underline text-[15px] font-medium">My Evaluations</Link>
+        <Link href="/login" className="hidden md:block text-red-500 hover:text-red-700 text-[15px] font-medium transition-colors">Logout</Link>
                 </div>
             </nav>
 

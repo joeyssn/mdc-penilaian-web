@@ -168,6 +168,7 @@ export default function StaffDashboard() {
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
       <nav className="bg-white py-4 px-4 md:px-12 shadow-sm flex justify-between items-center z-50 border-b border-gray-200">
         <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={200} height={50} className="h-8 md:h-12 w-auto" priority />
+        <Link href="/sd/tasks" className="text-[#008c99] hover:underline text-[15px] font-bold">My Evaluations</Link>
         <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold">Logout</Link>
       </nav>
 

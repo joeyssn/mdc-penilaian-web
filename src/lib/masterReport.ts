@@ -21,7 +21,7 @@ export type MasterRow = {
 
 type ReportInput = {
   id: string; name: string; role: string; roleKey?: string; level?: string | null;
-  studentAvg: string; peerAvg: string; selfAvg: string;
+  studentAvg: string; peerAvg: string; selfAvg: string; supervisorAvg?: string;
 };
 
 type WeightsById = Record<string, any>;
@@ -41,6 +41,7 @@ export function buildMasterRows(
       const student = parseFloat(r.studentAvg);
       const peer = parseFloat(r.peerAvg);
       const self = parseFloat(r.selfAvg);
+      const supervisor = parseFloat(r.supervisorAvg ?? '-'); // NaN until a supervisor has scored
       const obs = observations.find(o => o.targetId === r.id);
       const observation = obs ? obs.averageScore : NaN;
       const abs = absences.find(a => a.userId === r.id);
@@ -50,14 +51,13 @@ export function buildMasterRows(
       const result = computeFinal(
         matched ? matched.id : 'DEFAULT',
         matched ? { selfWeight: 0, ...matched } : fallback,
-        // Supervisor scores are not collected yet, so SD / TK rows stay incomplete until they are.
-        { student, peer, self, observation, attendance, leader: observation, supervisor: NaN }
+        { student, peer, self, observation, attendance, leader: observation, supervisor }
       );
 
       return {
         id: r.id, name: r.name, role: r.role,
         group: isSdGroupLevel(r.level) ? 'SD' : 'SMP',
-        student, peer, self, supervisor: NaN, leader: observation, observation, attendance,
+        student, peer, self, supervisor, leader: observation, observation, attendance,
         main: result.main, final: result.final, incomplete: result.incomplete, missing: result.missing,
       } as MasterRow;
     })

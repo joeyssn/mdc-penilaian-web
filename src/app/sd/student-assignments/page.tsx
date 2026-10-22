@@ -54,7 +54,7 @@ export default function StudentAssignmentsPage() {
   const total = students.reduce((a, s) => a + s.assigned.length, 0);
 
   return (
-    <SdShell title="Student → Teacher Assignments" subtitle="Students evaluate only the teachers you assign here. Nothing is assigned automatically." home="/vice-principal" tabs={[{ href: '/sd/student-assignments', label: 'Student Assignments' }, { href: '/sd/tasks', label: 'My Evaluations' }]}>
+    <SdShell title="Student → Teacher Assignments" subtitle="Students evaluate only the teachers you assign here. Nothing is assigned automatically.">
       <div className="flex flex-wrap gap-2">
         <select className="border border-gray-200 rounded-xl px-3 py-2 bg-white text-sm" value={periodId} onChange={e => setPeriodId(e.target.value)}>{periods.map(p => <option key={p.id} value={p.id}>{p.name} — {p.status}</option>)}</select>
         <select className="border border-gray-200 rounded-xl px-3 py-2 bg-white text-sm" value={className} onChange={e => setClassName(e.target.value)}>{classes.map(c => <option key={c}>{c}</option>)}</select>

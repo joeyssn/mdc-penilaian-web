@@ -73,7 +73,7 @@ export default function SdGroupsPage() {
   const ghost = 'px-3 py-1.5 rounded-xl text-xs font-bold border border-gray-200 bg-white text-[#053b50] hover:bg-gray-50';
 
   return (
-    <SdShell title="SD Teacher Groups & Supervisors" subtitle="Each group has exactly two classes. Peer scoring stays inside the group and inside EXACT / NON-EXACT." home={me?.role === 'ADMIN' ? '/admin' : '/principal'} tabs={[{ href: '/sd/groups', label: 'Groups & Supervisors' }, { href: '/sd/tasks', label: 'My Evaluations' }]}>
+    <SdShell title="SD Teacher Groups & Supervisors" subtitle="Each group has exactly two classes. Peer scoring stays inside the group and inside EXACT / NON-EXACT.">
       {/* Period */}
       <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
         <h2 className="text-lg font-extrabold text-[#053b50]">Evaluation period</h2>

@@ -53,7 +53,7 @@ export default function SdTasksPage() {
   );
 
   return (
-    <SdShell title="My Evaluations" subtitle={t?.period ? `Period: ${t.period.name}` : 'No evaluation period is open right now.'} home={me?.role === 'STUDENT' ? '/student' : me?.role === 'PRINCIPAL' ? '/principal' : me?.role === 'VICE_PRINCIPAL_KESISWAAN' ? '/vice-principal' : me?.role === 'STAFF' ? '/staff' : '/teachers'} tabs={[{ href: '/sd/tasks', label: 'My Evaluations' }]}>
+    <SdShell title="My Evaluations" subtitle={t?.period ? `Period: ${t.period.name}` : 'No evaluation period is open right now.'}>
       {t?.group && (
         <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 text-sm space-y-3">
           <h2 className="text-lg font-extrabold text-[#053b50]">{t.groups.length > 1 ? 'Your groups' : 'Your group'}</h2>

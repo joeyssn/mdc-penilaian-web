@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import SdShell from '@/components/SdShell';
 
 const SCALE = [[1, 'Kurang'], [2, 'Cukup'], [3, 'Baik'], [4, 'Sangat Baik']] as const;
 type Target = { teacherId: string; name: string; className?: string; subject?: string; category?: string; isPartner?: boolean };
@@ -39,13 +39,13 @@ export default function SdTasksPage() {
   };
 
   const Card = ({ title, hint, pending, done, type }: { title: string; hint: string; pending: Target[]; done: Target[]; type: 'PEER' | 'SUPERVISOR' | 'STUDENT' }) => (
-    <section className="bg-white border rounded-2xl p-5 space-y-3">
-      <div><h2 className="font-bold">{title}</h2><p className="text-sm text-gray-500">{hint}</p></div>
+    <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
+      <div><h2 className="text-lg font-extrabold text-[#053b50]">{title}</h2><p className="text-sm text-gray-500">{hint}</p></div>
       {pending.length === 0 && done.length === 0 && <p className="text-sm text-gray-400">Nothing assigned to you.</p>}
       {pending.map(p => (
         <div key={p.teacherId} className="flex items-center justify-between gap-3 border rounded-xl p-3">
-          <div className="text-sm"><b>{p.name}</b>{p.subject && <span className="text-gray-500"> · {p.subject} {p.className}</span>}{p.isPartner && <span className="ml-2 text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">Partner</span>}</div>
-          <button className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white" onClick={() => { setAnswers({}); setOpen({ type, target: p }); }}>Evaluate</button>
+          <div className="text-sm"><b>{p.name}</b>{p.subject && <span className="text-gray-500"> · {p.subject} {p.className}</span>}{p.isPartner && <span className="ml-2 text-xs font-bold bg-[#e6f4f5] text-[#008c99] px-2 py-0.5 rounded-full">Partner</span>}</div>
+          <button className="px-3 py-1.5 rounded-xl text-sm font-bold bg-[#008c99] text-white" onClick={() => { setAnswers({}); setOpen({ type, target: p }); }}>Evaluate</button>
         </div>
       ))}
       {done.map(p => <div key={p.teacherId} className="text-sm text-green-700 border border-green-200 bg-green-50 rounded-xl p-3">✓ {p.name} — submitted</div>)}
@@ -53,15 +53,10 @@ export default function SdTasksPage() {
   );
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-8 space-y-6">
-      <header className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold">My Evaluations</h1><p className="text-sm text-gray-500">{t?.period ? `Period: ${t.period.name}` : 'No evaluation period is open right now.'}</p></div>
-        <Link href={me?.role === 'STUDENT' ? '/student' : '/teachers'} className="px-3 py-2 rounded-lg text-sm font-semibold border">Back</Link>
-      </header>
-
+    <SdShell title="My Evaluations" subtitle={t?.period ? `Period: ${t.period.name}` : 'No evaluation period is open right now.'} home={me?.role === 'STUDENT' ? '/student' : me?.role === 'PRINCIPAL' ? '/principal' : me?.role === 'VICE_PRINCIPAL_KESISWAAN' ? '/vice-principal' : me?.role === 'STAFF' ? '/staff' : '/teachers'} tabs={[{ href: '/sd/tasks', label: 'My Evaluations' }]}>
       {t?.group && (
-        <section className="bg-white border rounded-2xl p-5 text-sm space-y-1">
-          <h2 className="font-bold">Your group: {t.group.name}</h2>
+        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 text-sm space-y-1">
+          <h2 className="text-lg font-extrabold text-[#053b50]">Your group: {t.group.name}</h2>
           <p className="text-gray-500">Classes: {t.group.classOne} and {t.group.classTwo}</p>
           {t.membership.map((m: any, i: number) => <p key={i}>{m.subject} · {m.className} · <b>{m.category === 'EXACT' ? 'EXACT' : 'NON-EXACT'}</b> · partner: {m.partner ?? '—'}</p>)}
           {t.mySupervisors.length > 0 && <p>Supervisor: {t.mySupervisors.join(', ')}</p>}
@@ -81,13 +76,13 @@ export default function SdTasksPage() {
                 <p className="text-sm text-gray-500">{rubric.title} · {indicators.length - unanswered}/{indicators.length} answered</p>
                 {rubric.sections.map((s: any) => s.categories.map((c: any) => (
                   <div key={c.id} className="space-y-3">
-                    <h4 className="font-semibold text-indigo-700">{c.title}</h4>
+                    <h4 className="font-semibold text-[#008c99]">{c.title}</h4>
                     {c.indicators.map((i: any) => (
                       <div key={i.id} className={`rounded-xl border p-3 ${!answers[i.id] ? '' : 'bg-gray-50'}`}>
                         <p className="text-sm mb-2">{i.text}</p>
                         <div className="flex gap-2">
                           {SCALE.map(([v, l]) => (
-                            <label key={v} className={`flex-1 text-center rounded-lg border py-2 text-xs font-semibold cursor-pointer ${answers[i.id] === v ? 'bg-indigo-600 text-white border-indigo-600' : 'hover:bg-gray-100'}`}>
+                            <label key={v} className={`flex-1 text-center rounded-lg border py-2 text-xs font-semibold cursor-pointer ${answers[i.id] === v ? 'bg-[#008c99] text-white border-[#008c99]' : 'hover:bg-gray-100'}`}>
                               <input type="radio" className="sr-only" name={i.id} checked={answers[i.id] === v} onChange={() => setAnswers({ ...answers, [i.id]: v })} />{v}<br /><span className="font-normal">{l}</span>
                             </label>
                           ))}
@@ -96,12 +91,12 @@ export default function SdTasksPage() {
                     ))}
                   </div>
                 )))}
-                <button disabled={saving} onClick={submit} className="w-full py-3 rounded-xl font-bold bg-indigo-600 text-white disabled:opacity-50">{saving ? 'Submitting…' : 'Submit evaluation'}</button>
+                <button disabled={saving} onClick={submit} className="w-full py-3 rounded-xl font-bold bg-[#008c99] text-white disabled:opacity-50">{saving ? 'Submitting…' : 'Submit evaluation'}</button>
               </>
             )}
           </div>
         </div>
       )}
-    </div>
+    </SdShell>
   );
 }

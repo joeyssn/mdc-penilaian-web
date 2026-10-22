@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import SdShell from '@/components/SdShell';
 
 const SUBJECTS = [['MATEMATIKA', 'Matematika (EXACT)'], ['IPA', 'IPA (EXACT)'], ['BAHASA_INDONESIA', 'Bahasa Indonesia (NON-EXACT)'], ['PPKN', 'PPKN (NON-EXACT)']];
 const label = (s: string) => SUBJECTS.find(x => x[0] === s)?.[1] ?? s;
@@ -68,23 +68,15 @@ export default function SdGroupsPage() {
   };
 
   const locked = period?.status === 'CLOSED';
-  const input = 'border rounded-lg px-3 py-2 text-sm';
-  const btn = 'px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40';
-  const ghost = 'px-3 py-1.5 rounded-lg text-xs font-semibold border hover:bg-gray-50';
+  const input = 'border border-gray-200 rounded-xl px-3 py-2 bg-white text-sm';
+  const btn = 'px-3 py-2 rounded-xl text-sm font-bold bg-[#008c99] text-white hover:bg-[#007b87] disabled:opacity-40';
+  const ghost = 'px-3 py-1.5 rounded-xl text-xs font-bold border border-gray-200 bg-white text-[#053b50] hover:bg-gray-50';
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">SD Teacher Groups &amp; Supervisors</h1>
-          <p className="text-sm text-gray-500">Each group has exactly two classes. Peer scoring stays inside the group and inside EXACT / NON-EXACT.</p>
-        </div>
-        <Link href={me?.role === 'PRINCIPAL' ? '/principal' : '/admin'} className={ghost}>Back</Link>
-      </header>
-
+    <SdShell title="SD Teacher Groups & Supervisors" subtitle="Each group has exactly two classes. Peer scoring stays inside the group and inside EXACT / NON-EXACT." home={me?.role === 'ADMIN' ? '/admin' : '/principal'} tabs={[{ href: '/sd/groups', label: 'Groups & Supervisors' }, { href: '/sd/tasks', label: 'My Evaluations' }]}>
       {/* Period */}
-      <section className="bg-white border rounded-2xl p-5 space-y-3">
-        <h2 className="font-bold">Evaluation period</h2>
+      <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
+        <h2 className="text-lg font-extrabold text-[#053b50]">Evaluation period</h2>
         <div className="flex flex-wrap gap-2 items-center">
           <select className={input} value={periodId} onChange={e => setPeriodId(e.target.value)}>
             {periods.map(p => <option key={p.id} value={p.id}>{p.name} — {p.status}</option>)}
@@ -112,9 +104,9 @@ export default function SdGroupsPage() {
       {/* Groups */}
       {period && (
         <section className="space-y-4">
-          <h2 className="font-bold text-lg">Groups</h2>
+          <h2 className="text-xl font-extrabold text-[#053b50]">Groups</h2>
           {!locked && (
-            <div className="bg-white border rounded-2xl p-5 flex flex-wrap gap-2 items-end">
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-wrap gap-2 items-end">
               <input className={input} placeholder="Group name" value={g.name} onChange={e => setG({ ...g, name: e.target.value })} />
               <input className={input} placeholder="Class 1 (e.g. 1A)" value={g.classOne} onChange={e => setG({ ...g, classOne: e.target.value })} />
               <input className={input} placeholder="Class 2 (e.g. 1B)" value={g.classTwo} onChange={e => setG({ ...g, classTwo: e.target.value })} />
@@ -126,10 +118,10 @@ export default function SdGroupsPage() {
             const f = m[gr.id] ?? { teacherId: '', className: gr.classOne, subject: 'MATEMATIKA' };
             const set = (v: Partial<typeof f>) => setM({ ...m, [gr.id]: { ...f, ...v } });
             return (
-              <div key={gr.id} className="bg-white border rounded-2xl p-5 space-y-3">
+              <div key={gr.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="font-bold">{gr.name} <span className="text-gray-500 font-normal">· {gr.classOne} + {gr.classTwo}</span></h3>
+                    <h3 className="text-lg font-extrabold text-[#053b50]">{gr.name} <span className="text-gray-500 font-normal">· {gr.classOne} + {gr.classTwo}</span></h3>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gr.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : gr.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{gr.status}</span>
                   </div>
                   {!locked && (
@@ -188,8 +180,8 @@ export default function SdGroupsPage() {
 
       {/* Supervisors */}
       {period && (
-        <section className="bg-white border rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold">Supervisors</h2>
+        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
+          <h2 className="text-lg font-extrabold text-[#053b50]">Supervisors</h2>
           <p className="text-sm text-gray-500">A supervisor is an additional evaluator. It does not depend on group or category and does not change the teacher&apos;s partner.</p>
           {may('supervisors') && !locked && (
             <div className="flex flex-wrap gap-2">
@@ -210,8 +202,8 @@ export default function SdGroupsPage() {
 
       {/* Progress */}
       {period && progress.length > 0 && (
-        <section className="bg-white border rounded-2xl p-5 space-y-2 overflow-x-auto">
-          <h2 className="font-bold">Evaluation progress (three separate sources)</h2>
+        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-2 overflow-x-auto">
+          <h2 className="text-lg font-extrabold text-[#053b50]">Evaluation progress (three separate sources)</h2>
           <table className="w-full text-sm">
             <thead><tr className="text-left text-gray-500"><th className="py-1">Teacher</th><th>Group</th><th>Category</th><th>Peer</th><th>Supervisor</th><th>Student</th></tr></thead>
             <tbody>
@@ -227,6 +219,6 @@ export default function SdGroupsPage() {
           </table>
         </section>
       )}
-    </div>
+    </SdShell>
   );
 }

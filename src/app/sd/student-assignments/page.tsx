@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import SdShell from '@/components/SdShell';
 
 async function call(url: string, method: string, body?: unknown) {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -46,41 +46,35 @@ export default function StudentAssignmentsPage() {
     if (await call('/api/sd/student-assignments', 'PUT', { periodId, studentIds: students, teacherIds: selTeachers, mode })) load();
   };
   const toggle = (arr: string[], set: (a: string[]) => void, id: string) => set(arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id]);
-  const btn = 'px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40';
-  const ghost = 'px-3 py-2 rounded-lg text-sm font-semibold border hover:bg-gray-50';
+  const btn = 'px-3 py-2 rounded-xl text-sm font-bold bg-[#008c99] text-white hover:bg-[#007b87] disabled:opacity-40';
+  const ghost = 'px-3 py-2 rounded-xl text-sm font-bold border border-gray-200 bg-white text-[#053b50] hover:bg-gray-50';
   const students = data?.students ?? [];
   const missing = students.filter(s => s.assigned.length === 0);
   const submitted = students.reduce((a, s) => a + s.assigned.filter((x: any) => x.submitted).length, 0);
   const total = students.reduce((a, s) => a + s.assigned.length, 0);
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">Student → Teacher Assignments</h1>
-          <p className="text-sm text-gray-500">Students evaluate only the teachers you assign here. Nothing is assigned automatically.</p></div>
-        <Link href="/vice-principal" className={ghost}>Back</Link>
-      </header>
-
+    <SdShell title="Student → Teacher Assignments" subtitle="Students evaluate only the teachers you assign here. Nothing is assigned automatically." home="/vice-principal" tabs={[{ href: '/sd/student-assignments', label: 'Student Assignments' }, { href: '/sd/tasks', label: 'My Evaluations' }]}>
       <div className="flex flex-wrap gap-2">
-        <select className="border rounded-lg px-3 py-2 text-sm" value={periodId} onChange={e => setPeriodId(e.target.value)}>{periods.map(p => <option key={p.id} value={p.id}>{p.name} — {p.status}</option>)}</select>
-        <select className="border rounded-lg px-3 py-2 text-sm" value={className} onChange={e => setClassName(e.target.value)}>{classes.map(c => <option key={c}>{c}</option>)}</select>
+        <select className="border border-gray-200 rounded-xl px-3 py-2 bg-white text-sm" value={periodId} onChange={e => setPeriodId(e.target.value)}>{periods.map(p => <option key={p.id} value={p.id}>{p.name} — {p.status}</option>)}</select>
+        <select className="border border-gray-200 rounded-xl px-3 py-2 bg-white text-sm" value={className} onChange={e => setClassName(e.target.value)}>{classes.map(c => <option key={c}>{c}</option>)}</select>
       </div>
       {classes.length === 0 && periodId && <p className="text-sm text-gray-500">No published groups in this period yet, so there are no teachers to assign.</p>}
 
       {data && (
         <>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="bg-white border rounded-xl p-3"><div className="text-2xl font-bold">{students.length}</div><div className="text-xs text-gray-500">students</div></div>
-            <div className="bg-white border rounded-xl p-3"><div className={`text-2xl font-bold ${missing.length ? 'text-red-600' : ''}`}>{missing.length}</div><div className="text-xs text-gray-500">without assignment</div></div>
-            <div className="bg-white border rounded-xl p-3"><div className="text-2xl font-bold">{submitted}/{total}</div><div className="text-xs text-gray-500">submitted</div></div>
+            <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4"><div className="text-3xl font-extrabold text-[#008c99]">{students.length}</div><div className="text-xs text-gray-500">students</div></div>
+            <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4"><div className={`text-3xl font-extrabold ${missing.length ? 'text-red-600' : 'text-[#008c99]'}`}>{missing.length}</div><div className="text-xs text-gray-500">without assignment</div></div>
+            <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4"><div className="text-3xl font-extrabold text-[#008c99]">{submitted}/{total}</div><div className="text-xs text-gray-500">submitted</div></div>
           </div>
 
           {canEdit && (
-            <div className="bg-white border rounded-2xl p-5 space-y-3">
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
               <p className="font-semibold text-sm">1. Pick teachers  2. Pick students  3. Apply</p>
               <div className="flex flex-wrap gap-2">
                 {data.eligible.map(t => (
-                  <label key={t.teacherId} className={`px-3 py-1.5 rounded-full border text-sm cursor-pointer ${selTeachers.includes(t.teacherId) ? 'bg-indigo-600 text-white border-indigo-600' : ''}`}>
+                  <label key={t.teacherId} className={`px-3 py-1.5 rounded-full border text-sm cursor-pointer ${selTeachers.includes(t.teacherId) ? 'bg-[#008c99] text-white border-[#008c99]' : ''}`}>
                     <input type="checkbox" className="sr-only" checked={selTeachers.includes(t.teacherId)} onChange={() => toggle(selTeachers, setSelTeachers, t.teacherId)} />{t.name} · {t.subject}
                   </label>
                 ))}
@@ -114,6 +108,6 @@ export default function StudentAssignmentsPage() {
           </div>
         </>
       )}
-    </div>
+    </SdShell>
   );
 }

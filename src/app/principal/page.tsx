@@ -1,5 +1,6 @@
 'use client';
 
+import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -164,16 +165,7 @@ export default function PrincipalDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
-      <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4">
-        <div className="flex items-center">
-           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
-        </div>
-        <div className="flex gap-8 text-[15px] font-bold overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <span className="pb-1 transition-all border-b-2 text-[#053b50] border-[#008c99]">My Dashboard</span>
-          <Link href="/principal/rubrics" className="pb-1 transition-all border-b-2 border-transparent text-gray-500 hover:text-[#053b50]">Assign Rubrics</Link>
-        </div>
-        <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">Logout</Link>
-      </nav>
+      <RoleNav />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-20 space-y-8 md:space-y-12">
         <div>

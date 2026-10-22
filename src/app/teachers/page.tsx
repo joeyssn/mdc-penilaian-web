@@ -1,5 +1,6 @@
 'use client';
 
+import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -177,10 +178,7 @@ export default function TeacherDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
-      <nav className="bg-white py-4 px-4 md:px-12 shadow-sm flex justify-between items-center z-50 border-b border-gray-200">
-        <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={200} height={50} className="h-8 md:h-12 w-auto" priority />
-        <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold">Logout</Link>
-      </nav>
+      <RoleNav />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-20 space-y-8 md:space-y-12">
         <div>

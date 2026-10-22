@@ -1,5 +1,6 @@
 'use client';
 
+import RoleNav from '@/components/RoleNav';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -225,18 +226,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-[#f7f8f9] font-sans print:bg-white pb-20 print:pb-0">
       
       {/* NAVIGATION HEADER */}
-      <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 print:hidden gap-4">
-        <div className="flex items-center">
-           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
-        </div>
-        <div className="flex gap-8 text-[15px] font-bold overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <span className="pb-1 border-b-2 text-[#053b50] border-[#008c99]">
-            Live Overview & Weights
-          </span>
-        </div>
-
-        <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">Logout</Link>
-      </nav>
+      <RoleNav />
 
       <div className="max-w-7xl mx-auto px-6 pt-10 space-y-12 print:pt-0">
         
@@ -320,6 +310,7 @@ export default function AdminDashboard() {
         {/* ADMIN TOOLS & MANAGEMENT */}
         <div className="print:hidden">
           <div className="mb-10">
+            <Link href="/sd/groups" className="inline-block mb-4 mr-3 px-4 py-2 rounded-lg bg-[#008c99] hover:bg-[#007b87] text-white text-sm font-bold">SD Groups &amp; Supervisors</Link>
             <ScoreVisibilityToggle />
           </div>
 

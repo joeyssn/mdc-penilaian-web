@@ -112,6 +112,14 @@ model user {
   score_score_graderIdTouser                 score[]          @relation("score_graderIdTouser")
   score_score_targetIdTouser                 score[]          @relation("score_targetIdTouser")
 
+  sdMemberships               GroupMember[]
+  supervisingAssignments      SupervisorAssignment[] @relation("SupSupervisor")
+  supervisedAssignments       SupervisorAssignment[] @relation("SupTeacher")
+  studentAssignmentsAsStudent StudentAssignment[]    @relation("SaStudent")
+  studentAssignmentsAsTeacher StudentAssignment[]    @relation("SaTeacher")
+  sdEvalsGiven                SdEvaluation[]         @relation("SdEvalEvaluator")
+  sdEvalsReceived             SdEvaluation[]         @relation("SdEvalTarget")
+
   @@index([role]) // 🚀 This makes filtering students on your dedicated page lightning fast!
 }
 
@@ -232,4 +240,148 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([actorId])
+}
+
+
+// ───────────── SD teacher evaluation system ─────────────
+
+enum SdSubject {
+  MATEMATIKA
+  IPA
+  BAHASA_INDONESIA
+  PPKN
+}
+
+enum PeriodStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum GroupStatus {
+  DRAFT
+  PUBLISHED
+  INACTIVE
+}
+
+enum SdEvalType {
+  PEER
+  SUPERVISOR
+  STUDENT
+}
+
+model EvalPeriod {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  status      PeriodStatus @default(DRAFT)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  groups      TeacherGroup[]
+  supervisors SupervisorAssignment[]
+  students    StudentAssignment[]
+  evaluations SdEvaluation[]
+}
+
+// A group has exactly two distinct classes (classOne / classTwo). Teacher count is flexible.
+model TeacherGroup {
+  id          String      @id @default(uuid())
+  name        String
+  periodId    String
+  classOne    String
+  classTwo    String
+  level       String?     // TK | SD — which school owns the group
+  status      GroupStatus @default(DRAFT)
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  period      EvalPeriod  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  members     GroupMember[]
+  evaluations SdEvaluation[]
+
+  @@unique([periodId, name])
+  @@index([periodId])
+}
+
+// One teacher teaching one subject in one class of the group. Category (EXACT / NON-EXACT) comes from the subject.
+model GroupMember {
+  id        String      @id @default(uuid())
+  groupId   String
+  teacherId String
+  className String
+  subject   SdSubject
+  partnerId String?     @unique
+  createdAt DateTime    @default(now())
+  group     TeacherGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  teacher   user         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  partner   GroupMember? @relation("Partner", fields: [partnerId], references: [id], onDelete: SetNull)
+  partnerOf GroupMember? @relation("Partner")
+
+  @@unique([groupId, className, subject])
+  @@index([teacherId])
+}
+
+model SupervisorAssignment {
+  id           String     @id @default(uuid())
+  periodId     String
+  supervisorId String
+  teacherId    String
+  active       Boolean    @default(true)
+  assignedById String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  period       EvalPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  supervisor   user       @relation("SupSupervisor", fields: [supervisorId], references: [id], onDelete: Cascade)
+  teacher      user       @relation("SupTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  evaluations  SdEvaluation[]
+
+  @@unique([periodId, supervisorId, teacherId])
+  @@index([supervisorId])
+  @@index([teacherId])
+}
+
+model StudentAssignment {
+  id           String     @id @default(uuid())
+  periodId     String
+  studentId    String
+  teacherId    String
+  assignedById String
+  createdAt    DateTime   @default(now())
+  period       EvalPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  student      user       @relation("SaStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher      user       @relation("SaTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  evaluations  SdEvaluation[]
+
+  @@unique([periodId, studentId, teacherId])
+  @@index([studentId])
+  @@index([teacherId])
+}
+
+// Peer, supervisor and student evaluations live in one table, always distinguished by `type`.
+// `context` is a snapshot (class, subject, category, partner flag) so later reassignment never rewrites history.
+model SdEvaluation {
+  id                     String       @id @default(uuid())
+  type                   SdEvalType
+  periodId               String
+  evaluatorId            String
+  targetId               String
+  groupId                String?
+  supervisorAssignmentId String?
+  studentAssignmentId    String?
+  rubricId               String
+  answers                Json
+  average                Float
+  context                Json?
+  status                 String       @default("SUBMITTED")
+  submittedAt            DateTime     @default(now())
+  period                 EvalPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  evaluator              user         @relation("SdEvalEvaluator", fields: [evaluatorId], references: [id], onDelete: Cascade)
+  target                 user         @relation("SdEvalTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  group                  TeacherGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  supervisorAssignment   SupervisorAssignment? @relation(fields: [supervisorAssignmentId], references: [id], onDelete: Restrict)
+  studentAssignment      StudentAssignment?    @relation(fields: [studentAssignmentId], references: [id], onDelete: Restrict)
+
+  @@unique([type, periodId, evaluatorId, targetId])
+  @@index([targetId])
+  @@index([evaluatorId])
+  @@index([periodId, type])
 }

@@ -8,7 +8,7 @@ type Cycle = {
 };
 
 // canManage = admin: can also create / close cycles. Principals can only lock / unlock.
-export default function CycleLockPanel({ canManage }: { canManage: boolean }) {
+  export default function CycleLockPanel({ canManage }: { canManage: boolean }) {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);

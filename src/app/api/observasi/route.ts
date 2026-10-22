@@ -1,3 +1,4 @@
+import { filterRowsByUserScope, scopeOf } from '@/lib/levelScope';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
@@ -21,7 +22,7 @@ export async function GET() {
       where,
       orderBy: { createdAt: 'desc' }
     });
-    return NextResponse.json(observations);
+    return NextResponse.json(await filterRowsByUserScope(scopeOf(session), observations, o => o.targetId));
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch observations" }, { status: 500 });
   }

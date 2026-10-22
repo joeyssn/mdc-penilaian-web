@@ -12,6 +12,7 @@ type User = {
   email?: string | null;
   gender?: string | null;
   department?: string | null; 
+  level?: string | null;
 };
 
 export default function TeacherManagementPage() {
@@ -35,6 +36,7 @@ export default function TeacherManagementPage() {
     gender: 'Laki-Laki', 
     role: 'TEACHER',
     department: 'UMUM', 
+    level: '',
     nis_niy: ''
   });
 
@@ -166,13 +168,14 @@ export default function TeacherManagementPage() {
       gender: teacher.gender || 'Laki-Laki', 
       role: teacher.role || 'TEACHER',
       department: teacher.department || 'UMUM', 
+      level: teacher.level || '',
       nis_niy: teacher.nis_niy || ''
     });
     setIsEditModalOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', gender: 'Laki-Laki', role: 'TEACHER', department: 'UMUM', nis_niy: '' });
+    setFormData({ name: '', email: '', gender: 'Laki-Laki', role: 'TEACHER', department: 'UMUM', level: '', nis_niy: '' });
     setSelectedTeacher(null);
   };
 
@@ -263,17 +266,18 @@ export default function TeacherManagementPage() {
                   <th className="px-6 py-4 font-bold">NIY</th>
                   <th className="px-6 py-4 font-bold">Role</th>
                   <th className="px-6 py-4 font-bold">Department</th>
+                  <th className="px-6 py-4 font-bold">School</th>
                   <th className="px-6 py-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 font-bold">Loading...</td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500 font-bold">Loading...</td>
                   </tr>
                 ) : filteredTeachers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 font-bold">No data found.</td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500 font-bold">No data found.</td>
                   </tr>
                 ) : (
                   filteredTeachers.map(teacher => (
@@ -304,6 +308,9 @@ export default function TeacherManagementPage() {
                         }`}>
                           {teacher.department || 'UMUM'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-[#e6f4f5] text-[#008c99]">{teacher.level || 'All / not set'}</span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button 
@@ -380,7 +387,8 @@ function TeacherForm({ formData, setFormData, onSubmit, submitLabel, submitColor
         <InputGroup label="Nama Lengkap" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
         <InputGroup label="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
         <SelectGroup label="Jenis Kelamin" value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} options={['Laki-Laki', 'Perempuan']} />
-        <SelectGroup label="Jabatan/Bagian" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN']} />                
+        <SelectGroup label="Jabatan/Bagian" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'KARYAWAN', 'HRD', 'DIRECTOR', 'PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'ADMIN']} />
+        <SelectGroup label="Jenjang (TK / SD / SMP / SMA — kosongkan untuk HRD, Direktur, Admin pusat)" value={formData.level} onChange={(e) => setFormData({...formData, level: e.target.value})} options={['', 'TK', 'SD', 'SMP', 'SMA']} />                
         <SelectGroup label="Departemen/Jurusan" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} options={['UMUM', 'IPA', 'IPS']} />
         <InputGroup label="NIY / NIS" value={formData.nis_niy} onChange={(e) => setFormData({...formData, nis_niy: e.target.value})} required />
       </div>

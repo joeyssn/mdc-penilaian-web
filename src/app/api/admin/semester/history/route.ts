@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { denyUnlessRole } from '@/lib/session';
 
 export async function GET(req: Request) {
+  const denied = await denyUnlessRole(['ADMIN', 'DIRECTOR']);
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(req.url);
     const semester = searchParams.get('semester');

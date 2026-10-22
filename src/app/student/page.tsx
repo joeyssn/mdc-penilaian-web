@@ -1,5 +1,6 @@
 'use client';
 
+import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -107,19 +108,7 @@ export default function StudentDashboard() {
   
     return (
         <div className="min-h-screen bg-[#f7f8f9] font-sans">
-            <nav className="bg-white py-4 px-4 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 md:gap-0">
-                <div className="flex items-center w-full md:w-auto justify-between">
-                    <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-8 md:h-12 w-auto" priority />
-                    <Link href="/login" className="md:hidden text-red-500 font-bold text-sm">Logout</Link>
-                </div>
-
-                <div className="flex items-center gap-6 md:gap-10">
-                    <div className="flex gap-6 md:gap-10 text-[14px] md:text-[15px] font-medium text-gray-800">
-                        <Link href="/student" className="text-black border-b-2 border-black pb-1">Home</Link>
-                    </div>
-                    <Link href="/login" className="hidden md:block text-red-500 hover:text-red-700 text-[15px] font-medium transition-colors">Logout</Link>
-                </div>
-            </nav>
+            <RoleNav />
 
             <div className="max-w-5xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-20 space-y-8 md:space-y-12">
                 <div>

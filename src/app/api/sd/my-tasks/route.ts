@@ -11,32 +11,40 @@ export async function GET() {
   const session = await getSession();
   if (!session) return fail('Not authenticated', 401);
   const period = await openPeriod();
-  const empty = { period: null as any, group: null as any, membership: [] as any[], peer: { targets: [] as any[], submitted: [] as any[] }, supervisor: { pending: [] as any[], submitted: [] as any[] }, student: { pending: [] as any[], submitted: [] as any[] }, mySupervisors: [] as string[] };
+  const empty = { period: null as any, group: null as any, groups: [] as any[], membership: [] as any[], peer: { targets: [] as any[], submitted: [] as any[] }, supervisor: { pending: [] as any[], submitted: [] as any[] }, student: { pending: [] as any[], submitted: [] as any[] }, mySupervisors: [] as string[] };
   if (!period) return NextResponse.json(empty);
 
   const out = { ...empty, period: { id: period.id, name: period.name } };
   const done = await prisma.sdEvaluation.findMany({ where: { periodId: period.id, evaluatorId: session.id }, select: { type: true, targetId: true, submittedAt: true } });
   const doneSet = (t: string) => new Set(done.filter(d => d.type === t).map(d => d.targetId));
 
-  // Peer: only teachers who belong to a published group
+  // Peer: a teacher may belong to several published groups; targets are collected from all of them.
   if (session.role === 'TEACHER') {
     const all = await publishedMembers(period.id);
-    const mine = all.find(m => m.teacherId === session.id);
-    if (mine) {
-      const groupMembers = all.filter(m => m.groupId === mine.groupId);
-      const nameOf = new Map(groupMembers.map(m => [m.teacherId, m.teacher.name]));
-      const targets = peerTargets(session.id, groupMembers as unknown as MemberLite[]);
-      const submittedIds = doneSet('PEER');
-      out.group = { id: mine.group.id, name: mine.group.name, classOne: mine.group.classOne, classTwo: mine.group.classTwo };
-      out.membership = groupMembers.filter(m => m.teacherId === session.id).map(m => ({
-        className: m.className, subject: SUBJECT_LABEL[m.subject], category: categoryOf(m.subject),
-        partner: groupMembers.find(x => x.id === m.partnerId)?.teacher.name ?? null,
-      }));
-      const row = (t: any) => ({ teacherId: t.teacherId, name: nameOf.get(t.teacherId), className: t.className, subject: SUBJECT_LABEL[t.subject as keyof typeof SUBJECT_LABEL], category: t.category, isPartner: t.isPartner });
-      out.peer.targets = targets.filter(t => !submittedIds.has(t.teacherId)).map(row);
-      // Submitted ones are not "eligible" any more, but the teacher still sees that they are done.
-      out.peer.submitted = peerTargets(session.id, groupMembers as unknown as MemberLite[], new Set()).filter(t => submittedIds.has(t.teacherId)).map(row);
+    const submittedIds = doneSet('PEER');
+    const groupIds = [...new Set(all.filter(m => m.teacherId === session.id).map(m => m.groupId))];
+    const groups: any[] = [], membership: any[] = [];
+    const targets = new Map<string, any>(), submitted = new Map<string, any>();
+    for (const gid of groupIds) {
+      const gm = all.filter(m => m.groupId === gid);
+      const g0 = gm[0].group;
+      const nameOf = new Map(gm.map(m => [m.teacherId, m.teacher.name]));
+      groups.push({ id: g0.id, name: g0.name, classOne: g0.classOne, classTwo: g0.classTwo });
+      for (const m of gm.filter(x => x.teacherId === session.id)) {
+        membership.push({ group: g0.name, className: m.className, subject: SUBJECT_LABEL[m.subject], category: categoryOf(m.subject), partner: gm.find(x => x.id === m.partnerId)?.teacher.name ?? null });
+      }
+      for (const t of peerTargets(session.id, gm as unknown as MemberLite[])) {
+        const row = { teacherId: t.teacherId, name: nameOf.get(t.teacherId), className: t.className, subject: SUBJECT_LABEL[t.subject as keyof typeof SUBJECT_LABEL], category: t.category, isPartner: t.isPartner, group: g0.name };
+        const bucket = submittedIds.has(t.teacherId) ? submitted : targets;
+        const prev = bucket.get(t.teacherId);
+        if (!prev || (row.isPartner && !prev.isPartner)) bucket.set(t.teacherId, row);
+      }
     }
+    out.group = groups[0] ?? null;      // kept for older callers
+    out.groups = groups;
+    out.membership = membership;
+    out.peer.targets = [...targets.values()];
+    out.peer.submitted = [...submitted.values()];
     const sups = await prisma.supervisorAssignment.findMany({ where: { periodId: period.id, teacherId: session.id, active: true }, include: { supervisor: { select: { name: true } } } });
     out.mySupervisors = sups.map(s => s.supervisor.name);
   }

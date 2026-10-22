@@ -28,12 +28,20 @@ export async function POST(req: Request) {
   if ((type as EvalType) === 'PEER') {
     if (session.role !== 'TEACHER') return fail('Only teachers can submit peer evaluations.', 403);
     const all = await publishedMembers(period.id);
-    const mine = all.find(m => m.teacherId === session.id);
-    if (!mine) return fail('You are not in a published group for this period.', 403);
-    const members = all.filter(m => m.groupId === mine.groupId);
+    const myGroupIds = [...new Set(all.filter(m => m.teacherId === session.id).map(m => m.groupId))];
+    if (myGroupIds.length === 0) return fail('You are not in a published group for this period.', 403);
     const submitted = new Set((await prisma.sdEvaluation.findMany({ where: { type: 'PEER', periodId: period.id, evaluatorId: session.id }, select: { targetId: true } })).map(e => e.targetId));
-    const res = canPeerEvaluate(session.id, targetId, members as unknown as MemberLite[], submitted);
+    // A teacher may be in several groups: the evaluation is allowed if ANY of them makes the target eligible.
+    let res: ReturnType<typeof canPeerEvaluate> = { ok: false, reason: 'That teacher is not in any of your groups.' };
+    let members: typeof all = [];
+    for (const gid of myGroupIds) {
+      const gm = all.filter(m => m.groupId === gid);
+      const r = canPeerEvaluate(session.id, targetId, gm as unknown as MemberLite[], submitted);
+      if (r.ok) { res = r; members = gm; break; }
+      if (r.reason.startsWith('You already')) { res = r; break; }
+    }
     if (!res.ok) return fail(res.reason, res.reason.startsWith('You already') ? 409 : 403);
+    const mine = members[0];
     groupId = mine.groupId;
     const me = members.filter(m => m.teacherId === session.id);
     context = {
@@ -106,8 +114,8 @@ export async function GET(req: Request) {
     };
     // Expected peer evaluations = other teachers of the same category in the group (a standing figure, not an assignment table).
     return {
-      teacherId: id, name: ms[0].teacher.name, group: ms[0].group.name,
-      subjects: ms.map(m => `${SUBJECT_LABEL[m.subject]} ${m.className}`), category: categoryOf(ms[0].subject),
+      teacherId: id, name: ms[0].teacher.name, group: [...new Set(ms.map(m => m.group.name))].join(', '),
+      subjects: ms.map(m => `${SUBJECT_LABEL[m.subject]} ${m.className}`), category: [...new Set(ms.map(m => categoryOf(m.subject)))].join(' + '),
       peer: part('PEER'), supervisor: part('SUPERVISOR', sups.filter(s => s.teacherId === id).length), student: part('STUDENT', studs.filter(s => s.teacherId === id).length),
     };
   });

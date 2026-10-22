@@ -20,7 +20,8 @@ export async function GET(req: Request) {
   const classes = [...new Set(members.flatMap(m => [m.group.classOne, m.group.classTwo]))].sort();
   if (!className) return NextResponse.json({ classes });
 
-  const eligible = teachersForClass(className, members as unknown as MemberLite[]).map(m => {
+  const seen = new Set<string>();
+  const eligible = teachersForClass(className, members as unknown as MemberLite[]).filter(m => !seen.has(m.teacherId) && seen.add(m.teacherId)).map(m => {
     const full = members.find(x => x.id === m.id)!;
     return { teacherId: m.teacherId, name: full.teacher.name, subject: m.subject, group: full.group.name };
   });

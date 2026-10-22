@@ -72,4 +72,15 @@ test('G: reassigning a partner changes future eligibility only', () => {
   assert.ok(!peerTargets('tMath1A', without).some(t => t.teacherId === 'tSci1A'));
   assert.equal(peerTargets('tMath1A', without).length, 2);
 });
+test('multi-group: a teacher in two groups is eligible per group, and categories are judged per membership', () => {
+  const B: MemberLite[] = [
+    mk('b1', 'B', 'tMath1A', '2A', 'MATEMATIKA', 'b2'), mk('b2', 'B', 'tSci2A', '2A', 'IPA', 'b1'),
+    mk('b3', 'B', 'tBI2B', '2B', 'BAHASA_INDONESIA', 'b4'), mk('b4', 'B', 'tPPKN2B', '2B', 'PPKN', 'b3'),
+  ];
+  // tMath1A teaches in both groups; groups are evaluated separately
+  assert.deepEqual(peerTargets('tMath1A', B).map(t => t.teacherId), ['tSci2A']);
+  assert.equal(canPeerEvaluate('tMath1A', 'tSci2A', A).ok, false, 'tSci2A is not in group A');
+  assert.equal(canPeerEvaluate('tMath1A', 'tSci2A', B).ok, true);
+  assert.equal(canPeerEvaluate('tMath1A', 'tBI2B', B).ok, false, 'category still enforced in group B');
+});
 console.log(`\n${n} tests passed`);

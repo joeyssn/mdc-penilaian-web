@@ -41,9 +41,6 @@ export async function PATCH(req: Request, ctx: Ctx) {
       if (errs.length) return fail(errs);
       const teacher = await prisma.user.findUnique({ where: { id: teacherId } });
       if (!teacher || teacher.role !== 'TEACHER' || !isSdUser(teacher)) return fail('Only SD / TK teacher accounts can join a group.');
-      // A teacher belongs to one group per period.
-      const other = await prisma.groupMember.findFirst({ where: { teacherId, group: { periodId: group.periodId, id: { not: id }, status: { not: 'INACTIVE' } } }, include: { group: true } });
-      if (other) return fail(`${teacher.name} is already in group "${other.group.name}" for this period.`, 409);
       try {
         const m = await prisma.groupMember.create({ data: { groupId: id, teacherId, className: className.trim(), subject: subject as Subject } });
         await writeAudit(session, 'SD_MEMBER_ADDED', 'TeacherGroup', id, { teacherId, className, subject });

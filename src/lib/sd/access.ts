@@ -14,7 +14,8 @@ const KEY = (p: SdPermission) => `sdAdmin_${p}`;
 
 export async function adminPermissions(): Promise<Record<SdPermission, boolean>> {
   const rows = await prisma.appSetting.findMany({ where: { key: { in: (['publish', 'supervisors', 'periods'] as SdPermission[]).map(KEY) } } });
-  const on = (p: SdPermission) => rows.find(r => r.key === KEY(p))?.value === 'true';
+  // Admin SD may assign evaluators by default (the Principal can switch it off); other sensitive actions stay off until switched on.
+  const on = (p: SdPermission) => { const v = rows.find(r => r.key === KEY(p))?.value; return p === 'supervisors' ? v !== 'false' : v === 'true'; };
   return { publish: on('publish'), supervisors: on('supervisors'), periods: on('periods') };
 }
 
@@ -26,7 +27,8 @@ export async function setAdminPermission(p: SdPermission, value: boolean) {
 
 export async function can(session: SessionUser, p: SdPermission): Promise<boolean> {
   if (session.role === 'PRINCIPAL') return true;
-  if (session.role === 'ADMIN') return (await adminPermissions())[p];
+  // Admin SD can always edit who evaluates whom; opening / closing periods stays with the Principal unless delegated
+  if (session.role === 'ADMIN') return p === 'supervisors' ? true : (await adminPermissions())[p];
   return false;
 }
 

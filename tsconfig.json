@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "tests", "prisma/seed-sd.ts", "prisma/seed-sd-assignments.ts"]
+  "exclude": ["node_modules", "tests", "prisma/seed-sd.ts", "prisma/seed-sd-assignments.ts", "prisma/cancel-sd-person.ts"]
 }

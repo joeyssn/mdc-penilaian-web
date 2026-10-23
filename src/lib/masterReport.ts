@@ -1,3 +1,4 @@
+import { leaderScore } from '@/lib/sd/rules';
 import { computeFinal, isSdGroupLevel, resolveProfile } from '@/lib/weights';
 
 // One row of the master report, already scored. NaN = no score yet.
@@ -21,7 +22,7 @@ export type MasterRow = {
 
 type ReportInput = {
   id: string; name: string; role: string; roleKey?: string; level?: string | null;
-  studentAvg: string; peerAvg: string; selfAvg: string; supervisorAvg?: string;
+  studentAvg: string; peerAvg: string; selfAvg: string; supervisorAvg?: string; koordinatorAvg?: string;
 };
 
 type WeightsById = Record<string, any>;
@@ -41,6 +42,7 @@ export function buildMasterRows(
       const student = parseFloat(r.studentAvg);
       const peer = parseFloat(r.peerAvg);
       const self = parseFloat(r.selfAvg);
+      const koordinator = parseFloat(r.koordinatorAvg ?? '-'); // NaN until a koordinator has scored
       const supervisor = parseFloat(r.supervisorAvg ?? '-'); // NaN until a supervisor has scored
       const obs = observations.find(o => o.targetId === r.id);
       const observation = obs ? obs.averageScore : NaN;
@@ -48,16 +50,18 @@ export function buildMasterRows(
       const attendance = abs ? abs.attendanceScore : NaN;
 
       const matched = resolveProfile(profiles, r.roleKey || r.role, r.level);
+      // Leaders = the average of the leader inputs that exist: principal / vice principal observation and the koordinator evaluation
+      const leader = leaderScore(observation, koordinator);
       const result = computeFinal(
         matched ? matched.id : 'DEFAULT',
         matched ? { selfWeight: 0, ...matched } : fallback,
-        { student, peer, self, observation, attendance, leader: observation, supervisor }
+        { student, peer, self, observation, attendance, leader, supervisor }
       );
 
       return {
         id: r.id, name: r.name, role: r.role,
         group: isSdGroupLevel(r.level) ? 'SD' : 'SMP',
-        student, peer, self, supervisor, leader: observation, observation, attendance,
+        student, peer, self, supervisor, leader, observation, attendance,
         main: result.main, final: result.final, incomplete: result.incomplete, missing: result.missing,
       } as MasterRow;
     })

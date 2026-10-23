@@ -310,7 +310,7 @@ export default function AdminDashboard() {
         {/* ADMIN TOOLS & MANAGEMENT */}
         <div className="print:hidden">
           <div className="mb-10">
-            <Link href="/sd/groups" className="inline-block mb-4 mr-3 px-4 py-2 rounded-lg bg-[#008c99] hover:bg-[#007b87] text-white text-sm font-bold">SD Groups &amp; Supervisors</Link>
+            <Link href="/sd/assignments" className="inline-block mb-4 mr-3 px-4 py-2 rounded-lg bg-[#008c99] hover:bg-[#007b87] text-white text-sm font-bold">Assign Evaluators</Link>
             <ScoreVisibilityToggle />
           </div>
 

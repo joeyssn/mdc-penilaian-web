@@ -13,6 +13,8 @@ interface ArchiveRecord {
   evalLogsData: any[] | null;
   observationsData: any[] | null;
   absenceData: any | null;
+  sdData?: any[] | null;
+  labelsData?: { users: Record<string, string>; indicators: Record<string, string>; rubrics: Record<string, string> } | null;
   archivedAt: string;
 }
 
@@ -23,6 +25,24 @@ export default function SemesterHistoryPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [records, setRecords] = useState<ArchiveRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [live, setLive] = useState<{ users: Record<string, string>; indicators: Record<string, string> }>({ users: {}, indicators: {} });
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const userName = (rec: ArchiveRecord, id: string) => rec.labelsData?.users?.[id] ?? live.users[id] ?? '(unknown user)';
+  const question = (rec: ArchiveRecord, id: string) => rec.labelsData?.indicators?.[id] ?? live.indicators[id] ?? '(question no longer exists)';
+  const LETTER_TO_NUM: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
+
+  // Save one edited score; the server returns the updated record
+  const editScore = async (rec: ArchiveRecord, body: Record<string, unknown>, key: string) => {
+    setSavingId(key);
+    try {
+      const res = await fetch('/api/admin/semester/archive', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recordId: rec.id, ...body }) });
+      const data = await res.json();
+      if (!res.ok) return alert(data.error || 'Could not save the change.');
+      setRecords(rs => rs.map(r => (r.id === data.id ? data : r)));
+      setActiveModalRecord(data);
+    } finally { setSavingId(null); }
+  };
 
   // Modal detail viewer
   const [activeModalRecord, setActiveModalRecord] = useState<ArchiveRecord | null>(null);
@@ -49,6 +69,7 @@ export default function SemesterHistoryPage() {
           setSelectedSemester(data.activeSemester);
         }
         setRecords(data.records || []);
+        if (data.live) setLive(data.live);
       }
     } catch (err) {
       console.error("Failed to load archive history", err);
@@ -259,7 +280,7 @@ export default function SemesterHistoryPage() {
                           onClick={() => setActiveModalRecord(rec)}
                           className="text-[#008c99] hover:underline font-bold text-xs"
                         >
-                          View Full Breakdown
+                          View / Edit Scores
                         </button>
                       </td>
                     </tr>
@@ -293,17 +314,28 @@ export default function SemesterHistoryPage() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 font-sans">
-              {/* Scores Section */}
+              {/* Scores Section (editable) */}
               <div>
-                <h3 className="text-sm font-extrabold text-gray-800 uppercase tracking-wide mb-3">
+                <h3 className="text-sm font-extrabold text-gray-800 uppercase tracking-wide mb-1">
                   Archived Rubric Scores ({activeModalRecord.scoresData?.length || 0})
                 </h3>
+                <p className="text-xs text-gray-500 mb-3">Change a score with the dropdown. Every change is saved at once and written to the audit log.</p>
                 {activeModalRecord.scoresData && activeModalRecord.scoresData.length > 0 ? (
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-xs font-mono space-y-2 max-h-48 overflow-y-auto">
-                    {activeModalRecord.scoresData.map((s, idx) => (
-                      <div key={idx} className="flex justify-between border-b border-gray-200 pb-1">
-                        <span>Indicator ID: {s.indicatorId}</span>
-                        <span className="font-bold text-indigo-700">Value: {s.value}</span>
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 text-xs divide-y divide-gray-200 max-h-72 overflow-y-auto">
+                    {activeModalRecord.scoresData.map((s: any) => (
+                      <div key={s.id} className="flex items-center justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-gray-800 truncate">{question(activeModalRecord, s.indicatorId)}</p>
+                          <p className="text-gray-500">by {userName(activeModalRecord, s.graderId)}</p>
+                        </div>
+                        <select
+                          disabled={savingId === s.id}
+                          value={LETTER_TO_NUM[s.value] ?? ''}
+                          onChange={(e) => editScore(activeModalRecord, { kind: 'score', scoreId: s.id, value: Number(e.target.value) }, s.id)}
+                          className="border border-gray-300 rounded-lg px-2 py-1 font-bold text-gray-800 bg-white"
+                        >
+                          {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
                       </div>
                     ))}
                   </div>
@@ -311,6 +343,40 @@ export default function SemesterHistoryPage() {
                   <p className="text-xs text-gray-400 italic">No score entries recorded.</p>
                 )}
               </div>
+
+              {/* SD evaluations (editable) */}
+              {activeModalRecord.sdData && activeModalRecord.sdData.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-extrabold text-gray-800 uppercase tracking-wide mb-3">
+                    SD Evaluations ({activeModalRecord.sdData.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {activeModalRecord.sdData.map((ev: any) => (
+                      <details key={ev.id} className="bg-gray-50 rounded-xl border border-gray-200 text-xs">
+                        <summary className="p-3 cursor-pointer font-bold text-gray-800 flex justify-between gap-3">
+                          <span>{ev.type} · by {userName(activeModalRecord, ev.evaluatorId)}</span>
+                          <span className="text-[#008c99]">avg {Number(ev.average).toFixed(2)}</span>
+                        </summary>
+                        <div className="divide-y divide-gray-200 border-t border-gray-200">
+                          {(ev.answers || []).map((a: any) => (
+                            <div key={a.indicatorId} className="flex items-center justify-between gap-3 p-3">
+                              <p className="text-gray-700 min-w-0">{question(activeModalRecord, a.indicatorId)}</p>
+                              <select
+                                disabled={savingId === ev.id + a.indicatorId}
+                                value={a.value}
+                                onChange={(e) => editScore(activeModalRecord, { kind: 'sd', evaluationId: ev.id, indicatorId: a.indicatorId, value: Number(e.target.value) }, ev.id + a.indicatorId)}
+                                className="border border-gray-300 rounded-lg px-2 py-1 font-bold text-gray-800 bg-white"
+                              >
+                                {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Observations Section */}
               <div>

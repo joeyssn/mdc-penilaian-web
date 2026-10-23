@@ -5,7 +5,8 @@ import SdShell from '@/components/SdShell';
 
 const SCALE = [[1, 'Kurang'], [2, 'Cukup'], [3, 'Baik'], [4, 'Sangat Baik']] as const;
 type Target = { teacherId: string; name: string; className?: string; subject?: string; category?: string; isPartner?: boolean };
-type Open = { type: 'PEER' | 'SUPERVISOR' | 'STUDENT'; target: Target } | null;
+type EvalKind = 'PEER' | 'SUPERVISOR' | 'KOORDINATOR' | 'STUDENT';
+type Open = { type: EvalKind; target: Target } | null;
 
 export default function SdTasksPage() {
   const [me, setMe] = useState<any>(null);
@@ -38,13 +39,13 @@ export default function SdTasksPage() {
     setOpen(null); setAnswers({}); load();
   };
 
-  const Card = ({ title, hint, pending, done, type }: { title: string; hint: string; pending: Target[]; done: Target[]; type: 'PEER' | 'SUPERVISOR' | 'STUDENT' }) => (
+  const Card = ({ title, hint, pending, done, type }: { title: string; hint: string; pending: Target[]; done: Target[]; type: EvalKind }) => (
     <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
       <div><h2 className="text-lg font-extrabold text-[#053b50]">{title}</h2><p className="text-sm text-gray-500">{hint}</p></div>
       {pending.length === 0 && done.length === 0 && <p className="text-sm text-gray-400">Nothing assigned to you.</p>}
       {pending.map(p => (
         <div key={p.teacherId} className="flex items-center justify-between gap-3 border rounded-xl p-3">
-          <div className="text-sm"><b>{p.name}</b>{p.subject && <span className="text-gray-500"> · {p.subject} {p.className}</span>}{(p as any).group && t.groups.length > 1 && <span className="text-gray-400"> · {(p as any).group}</span>}{p.isPartner && <span className="ml-2 text-xs font-bold bg-[#e6f4f5] text-[#008c99] px-2 py-0.5 rounded-full">Partner</span>}</div>
+          <div className="text-sm"><b>{p.name}</b>{p.subject && <span className="text-gray-500"> · {p.subject} {p.className}</span>}</div>
           <button className="px-3 py-1.5 rounded-xl text-sm font-bold bg-[#008c99] text-white" onClick={() => { setAnswers({}); setOpen({ type, target: p }); }}>Evaluate</button>
         </div>
       ))}
@@ -54,22 +55,22 @@ export default function SdTasksPage() {
 
   return (
     <SdShell title="My Evaluations" subtitle={t?.period ? `Period: ${t.period.name}` : 'No evaluation period is open right now.'}>
-      {t?.group && (
-        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 text-sm space-y-3">
-          <h2 className="text-lg font-extrabold text-[#053b50]">{t.groups.length > 1 ? 'Your groups' : 'Your group'}</h2>
-          {t.groups.map((g: any) => (
-            <div key={g.id} className="space-y-1">
-              <p className="font-bold">{g.name} <span className="text-gray-500 font-normal">· {g.classOne} and {g.classTwo}</span></p>
-              {t.membership.filter((m: any) => m.group === g.name).map((m: any, i: number) => <p key={i}>{m.subject} · {m.className} · <b>{m.category === 'EXACT' ? 'EXACT' : 'NON-EXACT'}</b> · partner: {m.partner ?? '—'}</p>)}
-            </div>
-          ))}
-          {t.mySupervisors.length > 0 && <p>Supervisor: {t.mySupervisors.join(', ')}</p>}
+      {t && ['SUPERVISOR', 'PEER', 'KOORDINATOR'].some(k => t.myEvaluators?.[k]?.length) && (
+        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 text-sm space-y-1">
+          <h2 className="text-lg font-extrabold text-[#053b50]">Who evaluates you</h2>
+          {t.myEvaluators.SUPERVISOR.length > 0 && <p>Supervisor: {t.myEvaluators.SUPERVISOR.join(', ')}</p>}
+          {t.myEvaluators.PEER.length > 0 && <p>Peers: {t.myEvaluators.PEER.join(', ')}</p>}
+          {t.myEvaluators.KOORDINATOR.length > 0 && <p>Koordinator: {t.myEvaluators.KOORDINATOR.join(', ')}</p>}
         </section>
       )}
 
-      {t?.group && <Card type="PEER" title="Peer evaluations" hint="Teachers of your own category in either class of your group." pending={t.peer.targets} done={t.peer.submitted} />}
-      {t && (t.supervisor.pending.length + t.supervisor.submitted.length > 0) && <Card type="SUPERVISOR" title="Supervisor evaluations" hint="Teachers assigned to you as supervisor." pending={t.supervisor.pending} done={t.supervisor.submitted} />}
-      {me?.role === 'STUDENT' && t && <Card type="STUDENT" title="Teachers to evaluate" hint="Only the teachers assigned to you by the Vice Principal for Student Affairs." pending={t.student.pending} done={t.student.submitted} />}
+      {t && (t.PEER.pending.length + t.PEER.submitted.length > 0) && <Card type="PEER" title="Peer evaluations" hint="Teachers the principal asked you to evaluate as a peer." pending={t.PEER.pending} done={t.PEER.submitted} />}
+      {t && (t.SUPERVISOR.pending.length + t.SUPERVISOR.submitted.length > 0) && <Card type="SUPERVISOR" title="Supervisor evaluations" hint="Teachers assigned to you as supervisor." pending={t.SUPERVISOR.pending} done={t.SUPERVISOR.submitted} />}
+      {t && (t.KOORDINATOR.pending.length + t.KOORDINATOR.submitted.length > 0) && <Card type="KOORDINATOR" title="Koordinator evaluations" hint="Teachers assigned to you as koordinator." pending={t.KOORDINATOR.pending} done={t.KOORDINATOR.submitted} />}
+      {me?.role === 'STUDENT' && t && <Card type="STUDENT" title="Teachers to evaluate" hint="Only the teachers assigned to you by the Vice Principal for Student Affairs." pending={t.STUDENT.pending} done={t.STUDENT.submitted} />}
+      {t?.period && ['PEER', 'SUPERVISOR', 'KOORDINATOR', 'STUDENT'].every(k => t[k].pending.length + t[k].submitted.length === 0) && (
+        <p className="text-sm text-gray-500">Nothing has been assigned to you in this period.</p>
+      )}
 
       {open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-4">

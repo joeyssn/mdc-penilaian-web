@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
-import { teachersForClass, type MemberLite } from '@/lib/sd/rules';
-import { inScope, scopeOf } from '@/lib/levelScope';
-import { fail, publishedMembers, requireRole } from '@/lib/sd/access';
+import { inScope, normLevel, scopeOf } from '@/lib/levelScope';
+import { fail, isSdUser, requireRole } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,17 +17,14 @@ export async function GET(req: Request) {
   const periodId = url.searchParams.get('periodId'), className = url.searchParams.get('className');
   if (!periodId) return fail('periodId is required.');
   const scope = scopeOf(g.session);
-  const members = await publishedMembers(periodId, scope);
-  const classes = [...new Set(members.flatMap(m => [m.group.classOne, m.group.classTwo]))].sort();
+  const people = await prisma.user.findMany({ where: { role: { in: ['STUDENT', 'TEACHER'] } }, select: { id: true, name: true, role: true, className: true, level: true }, orderBy: { name: 'asc' } });
+  const visible = people.filter(u => isSdUser(u) && inScope(scope, u.level));
+  const allStudents = visible.filter(u => u.role === 'STUDENT');
+  const classes = [...new Set(allStudents.map(s => s.className).filter(Boolean) as string[])].sort();
   if (!className) return NextResponse.json({ classes });
 
-  const seen = new Set<string>();
-  const eligible = teachersForClass(className, members as unknown as MemberLite[]).filter(m => !seen.has(m.teacherId) && seen.add(m.teacherId)).map(m => {
-    const full = members.find(x => x.id === m.id)!;
-    return { teacherId: m.teacherId, name: full.teacher.name, subject: m.subject, group: full.group.name };
-  });
-  const students = (await prisma.user.findMany({ where: { role: 'STUDENT' }, select: { id: true, name: true, className: true, level: true }, orderBy: { name: 'asc' } }))
-    .filter(s => ci(s.className) === ci(className) && inScope(scope, s.level));
+  const students = allStudents.filter(s => ci(s.className) === ci(className));
+  const eligible = visible.filter(u => u.role === 'TEACHER').map(t => ({ teacherId: t.id, name: t.name, subject: t.className ? `class ${t.className}` : '', level: t.level, sameClass: ci(t.className) === ci(className) }));
   const assigns = await prisma.studentAssignment.findMany({
     where: { periodId, studentId: { in: students.map(s => s.id) } },
     include: { evaluations: { select: { id: true } } },
@@ -37,7 +33,7 @@ export async function GET(req: Request) {
     classes, eligible,
     students: students.map(s => {
       const mine = assigns.filter(a => a.studentId === s.id);
-      return { ...s, assigned: mine.map(a => ({ assignmentId: a.id, teacherId: a.teacherId, submitted: a.evaluations.length > 0 })) };
+      return { id: s.id, name: s.name, className: s.className, assigned: mine.map(a => ({ assignmentId: a.id, teacherId: a.teacherId, submitted: a.evaluations.length > 0 })) };
     }),
   });
 }
@@ -52,21 +48,19 @@ export async function PUT(req: Request) {
   if (!period) return fail('Period not found.', 404);
   if (period.status === 'CLOSED') return fail('This period is closed. Assignments are locked.', 409);
 
-  const students = await prisma.user.findMany({ where: { id: { in: studentIds }, role: 'STUDENT' }, select: { id: true, name: true, className: true, level: true } });
-  if (students.length !== new Set(studentIds).size) return fail('Every selected user must be a student.');
   const scope = scopeOf(g.session);
+  const students = await prisma.user.findMany({ where: { id: { in: studentIds }, role: 'STUDENT' }, select: { id: true, name: true, level: true } });
+  if (students.length !== new Set(studentIds).size) return fail('Every selected user must be a student.');
   if (students.some(s => !inScope(scope, s.level))) return fail('You can only assign students of your own school.', 403);
-  const members = (await publishedMembers(periodId, scope)) as unknown as MemberLite[];
-
-  const wanted: { studentId: string; teacherId: string }[] = [];
-  for (const s of students) {
-    const ok = new Set(teachersForClass(s.className, members).map(m => m.teacherId));
-    for (const t of teacherIds) {
-      if (mode !== 'remove' && !ok.has(t)) return fail(`A selected teacher does not teach ${s.name}'s class (${s.className ?? 'no class'}) in a published group.`);
-      wanted.push({ studentId: s.id, teacherId: t });
-    }
+  const teachers = await prisma.user.findMany({ where: { id: { in: teacherIds }, role: 'TEACHER' }, select: { id: true, name: true, level: true } });
+  if (mode !== 'remove') {
+    if (teachers.length !== new Set(teacherIds).size) return fail('Every selected teacher must be a teacher account.');
+    // a student evaluates teachers of their own school (TK students -> TK teachers, SD -> SD)
+    const bad = students.flatMap(s => teachers.filter(t => normLevel(t.level) !== normLevel(s.level)).map(t => `${s.name} / ${t.name}`));
+    if (bad.length) return fail(`Teacher and student must be in the same school: ${bad.slice(0, 3).join(', ')}.`);
   }
 
+  const wanted = students.flatMap(s => teacherIds.map((t: string) => ({ studentId: s.id, teacherId: t })));
   const existing = await prisma.studentAssignment.findMany({ where: { periodId, studentId: { in: students.map(s => s.id) } }, include: { evaluations: { select: { id: true } } } });
   const key = (a: { studentId: string; teacherId: string }) => `${a.studentId}|${a.teacherId}`;
   const wantedKeys = new Set(wanted.map(key));

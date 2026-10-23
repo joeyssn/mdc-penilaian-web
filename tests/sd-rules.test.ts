@@ -9,12 +9,13 @@ test('nobody evaluates themselves, in any role', () => {
   for (const r of ['SUPERVISOR', 'PEER', 'KOORDINATOR'] as const)
     assert.ok(validateAssignment('t1', { id: 't1', role: 'TEACHER' }, r).length > 0);
 });
-test('peers must be teachers; supervisors and koordinators may be teachers, staff or vice principals', () => {
-  assert.equal(validateAssignment('t1', { id: 't2', role: 'TEACHER' }, 'PEER').length, 0);
-  assert.ok(validateAssignment('t1', { id: 's1', role: 'STAFF' }, 'PEER').length > 0);
-  assert.equal(validateAssignment('t1', { id: 's1', role: 'STAFF' }, 'SUPERVISOR').length, 0);
-  assert.equal(validateAssignment('t1', { id: 'v1', role: 'VICE_PRINCIPAL_KURIKULUM' }, 'KOORDINATOR').length, 0);
-  assert.ok(validateAssignment('t1', { id: 'st', role: 'STUDENT' }, 'KOORDINATOR').length > 0);
+test('everyone picked must be a teacher account, for every role', () => {
+  for (const r of ['SUPERVISOR', 'PEER', 'KOORDINATOR'] as const) {
+    assert.equal(validateAssignment('t1', { id: 't2', role: 'TEACHER' }, r).length, 0);
+    assert.ok(validateAssignment('t1', { id: 's1', role: 'STAFF' }, r).length > 0, 'staff is not allowed');
+    assert.ok(validateAssignment('t1', { id: 'v1', role: 'VICE_PRINCIPAL_KURIKULUM' }, r).length > 0);
+    assert.ok(validateAssignment('t1', { id: 'st', role: 'STUDENT' }, r).length > 0);
+  }
   assert.ok(validateAssignment('t1', { id: 'x', role: 'TEACHER' }, 'BOSS' as any).length > 0);
 });
 test('submitting needs an active assignment of exactly that type', () => {

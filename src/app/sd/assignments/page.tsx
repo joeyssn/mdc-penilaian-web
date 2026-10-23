@@ -17,27 +17,31 @@ async function call(url: string, method: string, body?: unknown) {
   return data;
 }
 
+const STEPS = ['Teacher', 'Supervisor', 'Peers', 'Koordinator', 'Review'] as const;
+
 export default function SdAssignmentsPage() {
   const [me, setMe] = useState<any>(null);
   const [periods, setPeriods] = useState<any[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [teachers, setTeachers] = useState<any[]>([]);
-  const [cand, setCand] = useState<{ teachers: any[]; leaders: any[] }>({ teachers: [], leaders: [] });
+  const [cand, setCand] = useState<{ teachers: any[]; others: any[] }>({ teachers: [], others: [] });
+  const [progress, setProgress] = useState<Record<string, any>>({});
   const [perms, setPerms] = useState<any>(null);
   const [newPeriod, setNewPeriod] = useState('');
-  const [search, setSearch] = useState('');
-  const [step, setStep] = useState(0);              // 0 teacher, 1 supervisor, 2 peer, 3 koordinator, 4 review
+
+  const [step, setStep] = useState(0);
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<Role, string[]>>({ SUPERVISOR: [], PEER: [], KOORDINATOR: [] });
-  const [find, setFind] = useState('');
+  const [search, setSearch] = useState('');
+  const [fromDb, setFromDb] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [done, setDone] = useState(false);
 
   const period = periods.find(p => p.id === periodId);
   const locked = period?.status === 'CLOSED';
   const isPrincipal = me?.role === 'PRINCIPAL';
   const may = (p: 'supervisors' | 'periods') => isPrincipal || (me?.role === 'ADMIN' && perms?.adminSd?.[p]);
-  const canEdit = may('supervisors') && !locked;
+  const canAssign = may('supervisors') && !locked;
 
   const loadPeriods = useCallback(async () => {
     const ps = await (await fetch('/api/sd/periods')).json();
@@ -45,54 +49,79 @@ export default function SdAssignmentsPage() {
   }, []);
   const loadData = useCallback(async (id: string) => {
     if (!id) return;
-    const a = await fetch(`/api/sd/assignments?periodId=${id}`);
+    const [a, pr] = await Promise.all([fetch(`/api/sd/assignments?periodId=${id}`), fetch(`/api/sd/evaluations?periodId=${id}`)]);
     if (a.ok) setTeachers((await a.json()).teachers ?? []);
+    if (pr.ok) setProgress(Object.fromEntries((await pr.json()).map((r: any) => [r.teacherId, r])));
   }, []);
+  const loadCandidates = useCallback(async () => { const t = await fetch('/api/sd/teachers'); if (t.ok) setCand(await t.json()); }, []);
 
   useEffect(() => { (async () => {
     setMe(await (await fetch('/api/me')).json());
-    loadPeriods();
-    const t = await fetch('/api/sd/teachers'); if (t.ok) setCand(await t.json());
+    loadPeriods(); loadCandidates();
     const p = await fetch('/api/sd/permissions'); if (p.ok) setPerms(await p.json());
-  })(); }, [loadPeriods]);
-  useEffect(() => { loadData(periodId); setStep(0); setTeacherId(null); }, [periodId, loadData]);
+  })(); }, [loadPeriods, loadCandidates]);
+  useEffect(() => { loadData(periodId); restart(); }, [periodId, loadData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const teacher = teachers.find(t => t.id === teacherId);
-  const chooseTeacher = (t: any) => {
-    setTeacherId(t.id); setNotice(''); setFind('');
-    setDraft({ SUPERVISOR: t.SUPERVISOR.map((x: any) => x.evaluatorId), PEER: t.PEER.map((x: any) => x.evaluatorId), KOORDINATOR: t.KOORDINATOR.map((x: any) => x.evaluatorId) });
-    setStep(1);
-  };
-  const go = (n: number) => { setFind(''); setStep(n); };
-  const toggle = (role: Role, id: string) => setDraft(d => ({ ...d, [role]: d[role].includes(id) ? d[role].filter(x => x !== id) : [...d[role], id] }));
-  const nameOf = (id: string) => [...cand.leaders, ...cand.teachers].find(x => x.id === id)?.name ?? '—';
+  const nameOf = (id: string) => [...cand.teachers, ...teachers, ...cand.others].find(x => x.id === id)?.name ?? '…';
 
+  function restart() { setStep(0); setTeacherId(null); setSearch(''); setFromDb(false); setDone(false); setDraft({ SUPERVISOR: [], PEER: [], KOORDINATOR: [] }); }
+  const pickTeacher = (t: any) => {
+    setTeacherId(t.id);
+    setDraft({ SUPERVISOR: t.SUPERVISOR.map((x: any) => x.evaluatorId), PEER: t.PEER.map((x: any) => x.evaluatorId), KOORDINATOR: t.KOORDINATOR.map((x: any) => x.evaluatorId) });
+    setSearch(''); setFromDb(false); setStep(1);
+  };
+  const go = (n: number) => { setStep(n); setSearch(''); setFromDb(false); };
+  const toggle = (role: Role, id: string) => setDraft(d => ({ ...d, [role]: d[role].includes(id) ? d[role].filter(x => x !== id) : [...d[role], id] }));
+
+  const addFromDb = async (u: any) => {
+    const r = await call('/api/sd/teachers', 'POST', { userId: u.id });
+    if (r) { await Promise.all([loadCandidates(), loadData(periodId)]); setFromDb(false); setSearch(''); }
+  };
+
+  const changedRoles = teacher ? ROLES.filter(r => JSON.stringify([...draft[r.key]].sort()) !== JSON.stringify(teacher[r.key].map((x: any) => x.evaluatorId).sort())) : [];
   const saveAll = async () => {
     if (!teacher) return;
     setSaving(true);
-    for (const r of ROLES) {
-      const now = teacher[r.key].map((x: any) => x.evaluatorId).sort().join(',');
-      if (now === [...draft[r.key]].sort().join(',')) continue;       // unchanged
-      const res = await call('/api/sd/assignments', 'PUT', { periodId, teacherId: teacher.id, role: r.key, evaluatorIds: draft[r.key] });
-      if (!res) { setSaving(false); return; }
+    for (const r of changedRoles) {
+      const ok = await call('/api/sd/assignments', 'PUT', { periodId, teacherId: teacher.id, role: r.key, evaluatorIds: draft[r.key] });
+      if (!ok) { setSaving(false); return; }
     }
-    setSaving(false);
-    setNotice(`Saved for ${teacher.name}.`);
-    await loadData(periodId);
-    setTeacherId(null); setStep(0);
+    setSaving(false); setDone(true); loadData(periodId);
   };
 
-  const list = useMemo(() => teachers.filter(t => t.name.toLowerCase().includes(search.toLowerCase())), [teachers, search]);
+  const q = search.trim().toLowerCase();
   const input = 'border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white';
   const btn = 'px-5 py-2.5 rounded-xl text-sm font-bold bg-[#008c99] text-white hover:bg-[#007b87] disabled:opacity-40';
   const ghost = 'px-5 py-2.5 rounded-xl text-sm font-bold border border-gray-200 bg-white text-[#053b50] hover:bg-gray-50';
   const card = 'bg-white border border-gray-100 rounded-2xl shadow-sm p-6';
-  const STEPS = ['Teacher', 'Supervisor', 'Peer', 'Koordinator', 'Review'];
-  const role = step >= 1 && step <= 3 ? ROLES[step - 1] : null;
-  const done = (t: any) => t.SUPERVISOR.length > 0 && t.PEER.length > 0 && t.KOORDINATOR.length > 0;
+
+  // Step 1 list: teachers; steps 2-4: teachers except the one being evaluated
+  const pool = (step === 1 || step === 2 || step === 3 ? cand.teachers.filter(x => x.id !== teacherId) : cand.teachers).filter(x => !q || x.name.toLowerCase().includes(q));
+  const dbPool = cand.others.filter(x => !q || x.name.toLowerCase().includes(q));
+  const roleOfStep = step === 1 ? 'SUPERVISOR' : step === 2 ? 'PEER' : step === 3 ? 'KOORDINATOR' : null;
+  const roleInfo = ROLES.find(r => r.key === roleOfStep);
+  const taken = (id: string) => ROLES.filter(r => r.key !== roleOfStep && draft[r.key].includes(id)).map(r => r.label);
+
+  const AddFromDb = () => (
+    <div className="border-t pt-3 mt-1">
+      {!fromDb ? (
+        <button className="text-sm font-bold text-[#008c99] hover:underline" onClick={() => setFromDb(true)}>+ Teacher not in the list? Add from the database</button>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">Teacher accounts that have no school yet. Choosing one makes them a {isPrincipal ? 'TK / SD' : 'SD'} teacher.</p>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+            {dbPool.map(u => <button key={u.id} onClick={() => addFromDb(u)} className="px-3 py-1.5 rounded-full border border-dashed border-[#008c99] text-sm text-[#008c99] font-semibold hover:bg-[#e6f4f5]">+ {u.name}</button>)}
+            {dbPool.length === 0 && <p className="text-sm text-gray-400">No teacher without a school was found.</p>}
+          </div>
+          <button className="text-xs text-gray-500 underline" onClick={() => setFromDb(false)}>Close</button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <SdShell title="Assign Evaluators" subtitle="Follow the steps: pick a teacher, then click the people who evaluate them.">
+    <SdShell title="Assign Evaluators" subtitle="Step by step: choose the teacher, then who supervises, who is a peer and who is the koordinator.">
       <section className={`${card} space-y-3`}>
         <h2 className="text-lg font-extrabold text-[#053b50]">Evaluation period</h2>
         <div className="flex flex-wrap gap-2 items-center">
@@ -121,102 +150,107 @@ export default function SdAssignmentsPage() {
 
       {period && (
         <section className={`${card} space-y-6`}>
-          {/* Step bar */}
+          {/* Stepper */}
           <ol className="flex flex-wrap items-center gap-2 text-sm font-bold">
-            {STEPS.map((label, i) => {
-              const reachable = i === 0 || !!teacher;
-              return (
-                <li key={label} className="flex items-center gap-2">
-                  <button disabled={!reachable} onClick={() => go(i)} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${step === i ? 'bg-[#008c99] text-white border-[#008c99]' : i < step ? 'bg-[#e6f4f5] text-[#008c99] border-[#008c99]' : 'bg-white text-gray-400 border-gray-200'} disabled:cursor-not-allowed`}>
-                    <span className="w-5 h-5 rounded-full bg-white/30 text-xs flex items-center justify-center">{i < step ? '✓' : i + 1}</span>{label}
-                  </button>
-                  {i < STEPS.length - 1 && <span className="text-gray-300">›</span>}
-                </li>
-              );
-            })}
+            {STEPS.map((label, i) => (
+              <li key={label} className="flex items-center gap-2">
+                <button
+                  disabled={i > 0 && !teacherId}
+                  onClick={() => go(i)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${i === step ? 'bg-[#008c99] border-[#008c99] text-white' : i < step ? 'bg-[#e6f4f5] border-[#008c99] text-[#008c99]' : 'border-gray-200 text-gray-400'}`}
+                >{i < step ? '✓' : i + 1}</button>
+                <span className={i === step ? 'text-[#053b50]' : 'text-gray-400'}>{label}</span>
+                {i < STEPS.length - 1 && <span className="w-6 h-0.5 bg-gray-200 hidden sm:block" />}
+              </li>
+            ))}
           </ol>
 
-          {notice && step === 0 && <p className="text-sm font-bold text-green-700 bg-green-50 border border-green-200 rounded-xl p-3">✓ {notice}</p>}
-
-          {/* Step 0: teacher */}
+          {/* Step 1: teacher */}
           {step === 0 && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div><h3 className="text-xl font-extrabold text-[#053b50]">1. Click a teacher</h3><p className="text-sm text-gray-500">A green tick means supervisor, peer and koordinator are all set.</p></div>
-                <input className={`${input} w-56`} placeholder="Search teacher…" value={search} onChange={e => setSearch(e.target.value)} />
-              </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {list.map(t => (
-                  <button key={t.id} onClick={() => chooseTeacher(t)} className="text-left rounded-2xl border border-gray-200 p-4 hover:border-[#008c99] hover:bg-[#e6f4f5] transition-all">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-extrabold text-[#053b50]">{t.name}</span>
-                      {done(t) && <span className="text-green-600 font-bold">✓</span>}
-                    </div>
-                    {t.className && <div className="text-xs text-gray-400">Class {t.className}</div>}
-                    <div className="text-xs text-gray-500 mt-2 flex flex-wrap gap-x-3">
-                      <span>Supervisor {t.SUPERVISOR.length}</span><span>Peer {t.PEER.length}</span><span>Koordinator {t.KOORDINATOR.length}</span>
-                    </div>
-                  </button>
-                ))}
-                {list.length === 0 && <p className="text-sm text-gray-400">No SD / TK teachers found.</p>}
-              </div>
-            </div>
-          )}
-
-          {/* Steps 1-3: pick people */}
-          {role && teacher && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-xl font-extrabold text-[#053b50]">{step + 1}. Who is the {role.label.toLowerCase()} of {teacher.name}?</h3>
-                  <p className="text-sm text-gray-500">{role.hint} Click names to select or unselect. {draft[role.key].length} selected.</p>
-                </div>
-                <input className={`${input} w-56`} placeholder={`Search…`} value={find} onChange={e => setFind(e.target.value)} />
-              </div>
-              {!canEdit && <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">{locked ? 'This period is closed.' : 'You can view but not change assignments.'}</p>}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {(role.key === 'PEER' ? cand.teachers : cand.leaders).filter(x => x.id !== teacher.id && x.name.toLowerCase().includes(find.toLowerCase())).map(x => {
-                  const on = draft[role.key].includes(x.id);
-                  const submitted = teacher[role.key].some((e: any) => e.evaluatorId === x.id && e.submitted);
+            <div className="space-y-3">
+              <div><h3 className="text-xl font-extrabold text-[#053b50]">Who will be evaluated?</h3><p className="text-sm text-gray-500">Click a teacher to continue.</p></div>
+              <input className={`${input} w-full sm:w-72`} placeholder="Search teacher…" value={search} onChange={e => setSearch(e.target.value)} />
+              <div className="grid sm:grid-cols-2 gap-2 max-h-[55vh] overflow-y-auto">
+                {teachers.filter(t => !q || t.name.toLowerCase().includes(q)).map(t => {
+                  const p = progress[t.id];
+                  const n = (k: Role) => t[k].length;
                   return (
-                    <button key={x.id} disabled={!canEdit} onClick={() => toggle(role.key, x.id)} className={`flex items-center justify-between gap-2 text-left rounded-xl border px-4 py-3 transition-all ${on ? 'bg-[#008c99] text-white border-[#008c99]' : 'bg-white border-gray-200 hover:border-[#008c99]'} disabled:opacity-60`}>
-                      <span className="font-bold">{x.name}</span>
-                      <span className="text-sm">{submitted ? 'submitted ' : ''}{on ? '✓' : ''}</span>
+                    <button key={t.id} onClick={() => pickTeacher(t)} className="text-left rounded-xl border border-gray-100 p-3 hover:border-[#008c99] hover:bg-[#e6f4f5] transition-all">
+                      <div className="font-bold text-[#053b50]">{t.name}{t.className ? <span className="text-gray-400 font-normal"> · {t.className}</span> : null}</div>
+                      <div className="text-xs mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                        <span className={n('SUPERVISOR') ? 'text-green-700' : 'text-gray-400'}>Supervisor {n('SUPERVISOR')}</span>
+                        <span className={n('PEER') ? 'text-green-700' : 'text-gray-400'}>Peer {n('PEER')}</span>
+                        <span className={n('KOORDINATOR') ? 'text-green-700' : 'text-gray-400'}>Koordinator {n('KOORDINATOR')}</span>
+                        {p && <span className="text-gray-500">· submitted {p.supervisor.submitted + p.peer.submitted + p.koordinator.submitted}</span>}
+                      </div>
                     </button>
                   );
                 })}
+                {teachers.length === 0 && <p className="text-sm text-gray-400">No TK / SD teachers yet. Add one from the database below.</p>}
               </div>
-              <div className="flex flex-wrap justify-between gap-2 pt-2">
-                <button className={ghost} onClick={() => go(step - 1)}>← Back</button>
-                <div className="flex gap-2">
-                  {draft[role.key].length === 0 && <button className={ghost} onClick={() => go(step + 1)}>Skip</button>}
-                  <button className={btn} onClick={() => go(step + 1)}>Next →</button>
-                </div>
-              </div>
+              {canAssign && <AddFromDb />}
             </div>
           )}
 
-          {/* Step 4: review */}
-          {step === 4 && teacher && (
-            <div className="space-y-4">
-              <div><h3 className="text-xl font-extrabold text-[#053b50]">5. Check and save</h3><p className="text-sm text-gray-500">Evaluators for <b>{teacher.name}</b> in {period.name}.</p></div>
-              <div className="grid md:grid-cols-3 gap-3">
-                {ROLES.map((r, i) => (
-                  <div key={r.key} className="rounded-2xl border border-gray-200 p-4">
-                    <div className="flex items-center justify-between"><b className="text-[#053b50]">{r.label}</b><button className="text-xs text-[#008c99] font-bold" onClick={() => go(i + 1)}>Change</button></div>
-                    <ul className="mt-2 text-sm space-y-1">
-                      {draft[r.key].map(id => <li key={id}>• {nameOf(id)}</li>)}
-                      {draft[r.key].length === 0 && <li className="text-gray-400">nobody</li>}
-                    </ul>
-                  </div>
-                ))}
+          {/* Steps 2-4: pick evaluators for one role */}
+          {roleInfo && teacher && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-xl font-extrabold text-[#053b50]">Who is the {roleInfo.label.toLowerCase()} of {teacher.name}?</h3>
+                <p className="text-sm text-gray-500">{roleInfo.hint} Click names to select or unselect. {draft[roleInfo.key].length} selected.</p>
               </div>
-              <div className="flex flex-wrap justify-between gap-2 pt-2">
-                <button className={ghost} onClick={() => go(3)}>← Back</button>
-                {canEdit ? <button className={btn} disabled={saving} onClick={saveAll}>{saving ? 'Saving…' : 'Save and finish'}</button> : <button className={ghost} onClick={() => { setTeacherId(null); setStep(0); }}>Close</button>}
+              {draft[roleInfo.key].length > 0 && (
+                <div className="flex flex-wrap gap-2">{draft[roleInfo.key].map(id => <span key={id} className="px-3 py-1 rounded-full bg-[#008c99] text-white text-sm font-semibold">{nameOf(id)}</span>)}</div>
+              )}
+              <input className={`${input} w-full sm:w-72`} placeholder="Search teacher…" value={search} onChange={e => setSearch(e.target.value)} />
+              <div className="flex flex-wrap gap-2 max-h-[45vh] overflow-y-auto">
+                {pool.map(x => {
+                  const on = draft[roleInfo.key].includes(x.id);
+                  const other = taken(x.id);
+                  return (
+                    <button key={x.id} type="button" disabled={!canAssign} onClick={() => toggle(roleInfo.key, x.id)}
+                      className={`px-4 py-2 rounded-full border text-sm font-semibold transition-all ${on ? 'bg-[#008c99] text-white border-[#008c99]' : 'bg-white text-[#053b50] border-gray-200 hover:border-[#008c99]'} ${!canAssign ? 'opacity-60' : ''}`}>
+                      {on ? '✓ ' : ''}{x.name}{other.length ? <span className={`ml-1 text-xs font-normal ${on ? 'text-white/80' : 'text-gray-400'}`}>({other.join(', ')})</span> : null}
+                    </button>
+                  );
+                })}
+                {pool.length === 0 && <p className="text-sm text-gray-400">No teacher found.</p>}
               </div>
+              {canAssign && <AddFromDb />}
             </div>
           )}
+
+          {/* Step 5: review */}
+          {step === 4 && teacher && !done && (
+            <div className="space-y-4">
+              <h3 className="text-xl font-extrabold text-[#053b50]">Check and save</h3>
+              <p className="text-sm text-gray-600">Evaluated teacher: <b>{teacher.name}</b></p>
+              {ROLES.map(r => (
+                <div key={r.key} className="rounded-xl border border-gray-100 p-3">
+                  <div className="flex justify-between"><b className="text-[#053b50]">{r.label}</b><button className="text-xs text-[#008c99] font-bold" onClick={() => go(r.key === 'SUPERVISOR' ? 1 : r.key === 'PEER' ? 2 : 3)}>Change</button></div>
+                  <div className="text-sm mt-1">{draft[r.key].length ? draft[r.key].map(nameOf).join(', ') : <span className="text-gray-400">nobody</span>}</div>
+                </div>
+              ))}
+              {changedRoles.length === 0 && <p className="text-sm text-gray-500">Nothing changed.</p>}
+            </div>
+          )}
+          {step === 4 && done && (
+            <div className="space-y-3 text-center py-6">
+              <div className="text-4xl">✅</div>
+              <h3 className="text-xl font-extrabold text-[#053b50]">Saved for {teacher?.name}</h3>
+              <button className={btn} onClick={restart}>Assign another teacher</button>
+            </div>
+          )}
+
+          {/* Navigation */}
+          {!(step === 4 && done) && (
+            <div className="flex justify-between border-t pt-4">
+              <button className={ghost} disabled={step === 0} onClick={() => go(step - 1)}>← Back</button>
+              {step >= 1 && step <= 3 && <button className={btn} onClick={() => go(step + 1)}>Next →</button>}
+              {step === 4 && canAssign && <button className={btn} disabled={saving || changedRoles.length === 0} onClick={saveAll}>{saving ? 'Saving…' : 'Save'}</button>}
+            </div>
+          )}
+          {locked && <p className="text-sm text-amber-700">This period is closed, so assignments are read-only.</p>}
         </section>
       )}
     </SdShell>

@@ -15,7 +15,8 @@ export async function GET() {
     orderBy: { name: 'asc' },
   });
   const scope = scopeOf(g.session);
-  const visible = users.filter(u => inScope(scope, u.level));
+  // SD / TK people only: other schools' staff and teachers never appear here, even for a central admin
+  const visible = users.filter(u => isSdUser(u) && inScope(scope, u.level));
   return NextResponse.json({
     teachers: visible.filter(u => u.role === 'TEACHER' && isSdUser(u)),
     leaders: visible.filter(u => u.role !== 'STUDENT'),

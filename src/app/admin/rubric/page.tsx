@@ -256,7 +256,15 @@ export default function RubricPage() {
 
               {editingSettings ? (
                 <div className="px-8 py-6 bg-white border-b border-gray-100">
-                  <h3 className="font-bold text-[#053b50] mb-4 text-sm uppercase tracking-wide">Assignment & Access Rules</h3>
+                  <h3 className="font-bold text-[#053b50] mb-1 text-sm uppercase tracking-wide">Assignment & Access Rules</h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    These rules apply only to <b>{levelFilter === "SD" ? "SD" : "SMP / SMA"}</b> rubrics, so the same role can have a different rubric in each school.
+                    {(() => {
+                      const clash = rubrics.filter((r: any) => r.id !== selectedRubricId && levelOf(r) === levelFilter && !r.isSelfReflection
+                        && (r.evaluators || []).some((e: string) => evaluators.includes(e)) && (r.evaluatees || []).some((t: string) => evaluatees.includes(t)));
+                      return clash.length ? <span className="block mt-1 text-[#e99a24] font-semibold">Also assigned to the same roles in this school: {clash.map((r: any) => r.title).join(", ")}</span> : null;
+                    })()}
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     
                     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">

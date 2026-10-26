@@ -8,16 +8,21 @@ export const dynamic = 'force-dynamic';
 const SCHOOL_LEVELS = ['SD', 'SMP_SMA'];
 
 // 1. READ ALL RUBRICS
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   try {
     // SD people only see SD rubrics; everyone else sees SMP / SMA rubrics. Admin and director see all.
     const seesAll = session.role === 'ADMIN' || session.role === 'DIRECTOR';
     const rubricLevel = isSdGroupLevel(session.level) ? 'SD' : 'SMP_SMA';
+    // Roles that see every school (admin, director) can ask for one school's rubrics: /api/rubric?school=SD
+    const wanted = new URL(req.url).searchParams.get('school');
+    const schoolFilter = seesAll
+      ? (wanted && SCHOOL_LEVELS.includes(wanted) ? { schoolLevel: wanted } : {})
+      : { schoolLevel: rubricLevel };
 
     const rubrics = await prisma.rubric.findMany({
-      where: seesAll ? {} : { schoolLevel: rubricLevel },
+      where: schoolFilter,
       include: {
         rubricsection: {
           orderBy: { createdAt: 'asc' }, 

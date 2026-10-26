@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import SdShell from '@/components/SdShell';
+import { eligibleRubrics } from '@/lib/sd/rubricRules';
 
 const SCALE = [[1, 'Kurang'], [2, 'Cukup'], [3, 'Baik'], [4, 'Sangat Baik']] as const;
 type Target = { teacherId: string; name: string; className?: string; subject?: string; category?: string; isPartner?: boolean };
@@ -23,7 +24,7 @@ export default function SdTasksPage() {
     load();
   })(); }, []);
 
-  const rubricFor = (type: string) => rubrics.find(r => (r.evaluators || []).map((e: string) => e.trim().toLowerCase()).includes('student') === (type === 'STUDENT'));
+  const rubricFor = (type: string) => eligibleRubrics(type as any, rubrics)[0];
   const rubric = open ? rubricFor(open.type) : null;
   const indicators = rubric ? rubric.sections.flatMap((s: any) => s.categories.flatMap((c: any) => c.indicators)) : [];
   const unanswered = indicators.filter((i: any) => !answers[i.id]).length;

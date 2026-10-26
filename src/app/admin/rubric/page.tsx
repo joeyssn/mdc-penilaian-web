@@ -11,6 +11,8 @@ import { Rubric } from "./types";
 // Added "Vice-Principal" to the available roles
 // Find your roles array in your rubric manager and add 'Karyawan' to it
 const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan", "Student"];
+// SD evaluators can also be tagged by assignment: a rubric tagged Supervisor / Koordinator / Peer is the one those evaluators score with
+const EVALUATOR_ROLES = [...AVAILABLE_ROLES, "Peer", "Supervisor", "Koordinator"];
 export default function RubricPage() {
   const [rubrics, setRubrics] = useState<Rubric[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,12 +263,12 @@ export default function RubricPage() {
                       <div className="flex justify-between items-end mb-4">
                         <label className="block text-sm font-bold text-[#053b50]">Who evaluates? (Evaluators)</label>
                         <div className="flex gap-2">
-                           <button onClick={() => setEvaluators([...AVAILABLE_ROLES])} className="text-[10px] bg-[#008397]/10 text-[#008397] px-2 py-1.5 rounded font-bold hover:bg-[#008397]/20 transition">Select All</button>
+                           <button onClick={() => setEvaluators([...EVALUATOR_ROLES])} className="text-[10px] bg-[#008397]/10 text-[#008397] px-2 py-1.5 rounded font-bold hover:bg-[#008397]/20 transition">Select All</button>
                            <button onClick={() => setEvaluators([])} className="text-[10px] bg-white border border-gray-300 text-gray-600 px-2 py-1.5 rounded font-bold hover:bg-gray-100 transition">Clear</button>
                         </div>
                       </div>
                       <div className="flex gap-4 flex-wrap">
-                        {AVAILABLE_ROLES.map((role) => (
+                        {EVALUATOR_ROLES.map((role) => (
                           <label key={`evaluator-${role}`} className="flex items-center gap-2 text-sm font-semibold text-gray-600 cursor-pointer hover:text-[#008397] transition-colors">
                             <input type="checkbox" checked={evaluators.includes(role)} onChange={() => toggleRole(role, "evaluator")} className="w-4 h-4 rounded border-gray-300 text-[#008397] focus:ring-[#008397]" /> {role}
                           </label>

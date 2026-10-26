@@ -1,5 +1,6 @@
 // Run: node --experimental-strip-types tests/sd-rules.test.ts
 import assert from 'node:assert/strict';
+import { eligibleRubrics, isRubricAllowed } from '../src/lib/sd/rubricRules.ts';
 import { canSubmit, diffAssignments, leaderScore, validateAssignment } from '../src/lib/sd/rules.ts';
 
 let n = 0;
@@ -40,5 +41,19 @@ test('Leaders = average of the leader inputs that exist', () => {
   assert.equal(leaderScore(4, NaN), 4);
   assert.equal(leaderScore(NaN, 3), 3);
   assert.ok(Number.isNaN(leaderScore(NaN, NaN)));
+});
+test('rubrics: dedicated Supervisor / Koordinator rubrics are used when they exist, the generic one otherwise', () => {
+  const generic = { id: 'g', evaluators: 'Teacher,Vice-Principal,Director/Principal' };
+  const student = { id: 's', evaluators: 'Student' };
+  const sup = { id: 'sup', evaluators: 'Supervisor' };
+  const koor = { id: 'koor', evaluators: ['Koordinator'] };
+  assert.deepEqual(eligibleRubrics('SUPERVISOR', [generic, student]).map(r => r.id), ['g'], 'fallback to generic');
+  assert.deepEqual(eligibleRubrics('SUPERVISOR', [generic, student, sup, koor]).map(r => r.id), ['sup']);
+  assert.deepEqual(eligibleRubrics('KOORDINATOR', [generic, sup, koor]).map(r => r.id), ['koor']);
+  assert.deepEqual(eligibleRubrics('PEER', [generic, sup, koor]).map(r => r.id), ['g'], 'peers never use another role\'s rubric');
+  assert.deepEqual(eligibleRubrics('STUDENT', [generic, student, sup]).map(r => r.id), ['s']);
+  assert.equal(isRubricAllowed('SUPERVISOR', 'g', [generic, sup]), false, 'generic rubric refused once a supervisor rubric exists');
+  assert.equal(isRubricAllowed('KOORDINATOR', 'sup', [generic, sup, koor]), false);
+  assert.equal(isRubricAllowed('STUDENT', 'g', [generic, student]), false);
 });
 console.log(`\n${n} tests passed`);

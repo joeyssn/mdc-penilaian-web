@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
 import { isScoresLockedFor } from '@/lib/settings';
 import { averageOf, canSubmit } from '@/lib/sd/rules';
+import { isRubricAllowed } from '@/lib/sd/rubricRules';
 import { inScope, scopeOf } from '@/lib/levelScope';
 import { isSdUser } from '@/lib/sd/access';
 import { fail, openPeriod, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES } from '@/lib/sd/access';
@@ -46,8 +47,8 @@ export async function POST(req: Request) {
     include: { rubricsection: { include: { rubriccategory: { include: { rubricindicator: { select: { id: true } } } } } } },
   });
   if (!rubric || rubric.schoolLevel !== 'SD' || rubric.isSelfReflection) return fail('That rubric cannot be used for this evaluation.');
-  const forStudents = (rubric.evaluators ?? '').split(',').map(s => s.trim().toLowerCase()).includes('student');
-  if (forStudents !== (type === 'STUDENT')) return fail(type === 'STUDENT' ? 'Students must use the student rubric.' : 'The student rubric is only for student evaluations.');
+  const sdRubrics = await prisma.rubric.findMany({ where: { schoolLevel: 'SD', isSelfReflection: false }, select: { id: true, evaluators: true } });
+  if (!isRubricAllowed(type, rubricId, sdRubrics)) return fail(`This rubric is not the one set for ${String(type).toLowerCase()} evaluations.`);
   const indicatorIds = new Set(rubric.rubricsection.flatMap(s => s.rubriccategory.flatMap(c => c.rubricindicator.map(i => i.id))));
   const answers = new Map<string, number>();
   for (const s of scores) {

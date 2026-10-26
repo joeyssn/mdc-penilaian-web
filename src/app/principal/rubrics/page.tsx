@@ -19,6 +19,7 @@ type Rubric = {
 };
 
 const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan', 'Student'];
+const EVALUATOR_ROLES = [...ROLES, 'Peer', 'Supervisor', 'Koordinator'];
 
 // Principal view: can assign who evaluates whom, but the rubric content itself is read-only.
 export default function PrincipalRubricAssignmentPage() {
@@ -117,7 +118,7 @@ export default function PrincipalRubricAssignmentPage() {
                     <div>
                       <h3 className="font-bold text-gray-800 mb-3">Who evaluates (Evaluators)</h3>
                       <div className="space-y-2">
-                        {ROLES.map(role => (
+                        {EVALUATOR_ROLES.map(role => (
                           <label key={role} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
                             <input type="checkbox" checked={evaluators.includes(role)} onChange={() => toggle(evaluators, setEvaluators, role)} className="w-4 h-4 accent-[#008c99]" />
                             <span className="font-medium text-gray-700">{role}</span>

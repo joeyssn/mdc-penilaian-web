@@ -7,7 +7,7 @@ type Role = 'SUPERVISOR' | 'PEER' | 'KOORDINATOR';
 const STEPS: { key: 'TEACHER' | Role | 'REVIEW'; title: string; hint: string }[] = [
   { key: 'TEACHER', title: 'Teacher', hint: 'Who is being evaluated?' },
   { key: 'SUPERVISOR', title: 'Supervisor', hint: 'Who supervises this teacher?' },
-  { key: 'PEER', title: 'Peers', hint: 'Which teachers evaluate this teacher as peers?' },
+  { key: 'PEER', title: 'Peers', hint: 'Who evaluates this teacher as a peer? Teachers, staff and others.' },
   { key: 'KOORDINATOR', title: 'Koordinator', hint: 'Who is the koordinator?' },
   { key: 'REVIEW', title: 'Review', hint: 'Check and save.' },
 ];
@@ -25,7 +25,7 @@ export default function SdAssignmentsPage() {
   const [periods, setPeriods] = useState<any[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [teachers, setTeachers] = useState<any[]>([]);
-  const [cand, setCand] = useState<{ teachers: any[]; leaders: any[] }>({ teachers: [], leaders: [] });
+  const [cand, setCand] = useState<{ teachers: any[]; leaders: any[]; peers: any[] }>({ teachers: [], leaders: [], peers: [] });
   const [perms, setPerms] = useState<any>(null);
   const [newPeriod, setNewPeriod] = useState('');
   const [step, setStep] = useState(0);
@@ -60,7 +60,7 @@ export default function SdAssignmentsPage() {
   useEffect(() => { loadTeachers(periodId); reset(); }, [periodId, loadTeachers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const teacher = teachers.find(t => t.id === teacherId);
-  const nameOf = (id: string) => [...cand.leaders, ...cand.teachers].find(x => x.id === id)?.name ?? '(unknown)';
+  const nameOf = (id: string) => [...cand.leaders, ...cand.teachers, ...(cand.peers ?? [])].find(x => x.id === id)?.name ?? '(unknown)';
 
   function reset() { setStep(0); setTeacherId(''); setDraft({ SUPERVISOR: [], PEER: [], KOORDINATOR: [] }); setQ(''); setDone(null); }
   function pick(t: any, goto = 1) {
@@ -94,7 +94,7 @@ export default function SdAssignmentsPage() {
 
   const pool = useMemo(() => {
     if (cur.key === 'TEACHER') return teachers;
-    const base = cur.key === 'PEER' ? cand.teachers : cand.leaders;
+    const base = cur.key === 'PEER' ? (cand.peers ?? cand.teachers) : cand.leaders;
     return base.filter((x: any) => x.id !== teacherId);
   }, [cur.key, teachers, cand, teacherId]);
   const shown = pool.filter((x: any) => x.name.toLowerCase().includes(q.toLowerCase()));
@@ -199,6 +199,7 @@ export default function SdAssignmentsPage() {
                           <button key={x.id} disabled={!editable} onClick={() => toggle(cur.key as Role, x.id)}
                             className={`text-left rounded-xl border p-3 transition-all ${on ? 'border-[#008c99] bg-[#e6f4f5]' : 'border-gray-100 hover:bg-gray-50'} disabled:opacity-60`}>
                             <span className="font-semibold text-[#053b50]">{on ? '✓ ' : ''}{x.name}</span>
+                            {x.role && x.role !== 'TEACHER' && <span className="text-xs text-gray-400"> · {String(x.role).replace('VICE_PRINCIPAL_', 'wakasek ').toLowerCase()}</span>}
                             {x.role && x.role !== 'TEACHER' && <span className="text-xs text-gray-400"> · {String(x.role).replace('VICE_PRINCIPAL_', 'Wakasek ').toLowerCase()}</span>}
                             {submitted && <span className="text-xs text-green-600"> · already evaluated</span>}
                           </button>

@@ -3,25 +3,28 @@ import { prisma } from '@/lib/prisma';
 import { inScope, scopeOf } from '@/lib/levelScope';
 import { writeAudit } from '@/lib/audit';
 import { normLevel } from '@/lib/levelScope';
+import { PEER_ACCOUNT_ROLES } from '@/lib/sd/rules';
 import { fail, requirePermission, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES, isSdUser } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
 
-// Who can be picked: SD / TK teachers (for every role) and students by class. Teachers only, no staff.
+// Who can be picked: SD / TK teachers (for every role) and students by class. Supervisors and koordinators are teachers; peers can also be staff, karyawan or vice principals.
 // `others` = teacher accounts that have no school yet, which the principal can add from the database.
 export async function GET() {
   const g = await requireRole([...new Set([...SD_VIEW_ROLES, ...GROUP_MANAGE_ROLES])]); if (g.error) return g.error;
   const users = await prisma.user.findMany({
-    where: { role: { in: ['TEACHER', 'STUDENT'] } },
+    where: { role: { in: ['TEACHER', 'STUDENT', 'STAFF', 'KARYAWAN', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'] } },
     select: { id: true, name: true, role: true, level: true, className: true },
     orderBy: { name: 'asc' },
   });
   const scope = scopeOf(g.session);
   const sd = users.filter(u => isSdUser(u) && inScope(scope, u.level));
   const teachers = sd.filter(u => u.role === 'TEACHER');
+  const peers = sd.filter(u => PEER_ACCOUNT_ROLES.includes(u.role)); // peers may also be staff, karyawan or vice principals
   return NextResponse.json({
     teachers,
     leaders: teachers,
+    peers,
     students: sd.filter(u => u.role === 'STUDENT'),
     others: users.filter(u => u.role === 'TEACHER' && !normLevel(u.level)),
   });

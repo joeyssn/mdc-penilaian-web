@@ -13,8 +13,10 @@ test('nobody evaluates themselves, in any role', () => {
 test('everyone picked must be a teacher account, for every role', () => {
   for (const r of ['SUPERVISOR', 'PEER', 'KOORDINATOR'] as const) {
     assert.equal(validateAssignment('t1', { id: 't2', role: 'TEACHER' }, r).length, 0);
-    assert.ok(validateAssignment('t1', { id: 's1', role: 'STAFF' }, r).length > 0, 'staff is not allowed');
-    assert.ok(validateAssignment('t1', { id: 'v1', role: 'VICE_PRINCIPAL_KURIKULUM' }, r).length > 0);
+    const open = r === 'PEER'; // peers may also be staff, karyawan or a vice principal; supervisors and koordinators are teachers
+    assert.equal(validateAssignment('t1', { id: 's1', role: 'STAFF' }, r).length === 0, open, `staff as ${r}`);
+    assert.equal(validateAssignment('t1', { id: 'k1', role: 'KARYAWAN' }, r).length === 0, open, `karyawan as ${r}`);
+    assert.equal(validateAssignment('t1', { id: 'v1', role: 'VICE_PRINCIPAL_KURIKULUM' }, r).length === 0, open, `vice principal as ${r}`);
     assert.ok(validateAssignment('t1', { id: 'st', role: 'STUDENT' }, r).length > 0);
   }
   assert.ok(validateAssignment('t1', { id: 'x', role: 'TEACHER' }, 'BOSS' as any).length > 0);

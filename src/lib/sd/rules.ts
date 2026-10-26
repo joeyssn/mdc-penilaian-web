@@ -10,7 +10,8 @@ export const EVALUATOR_ROLES: EvaluatorRole[] = ['SUPERVISOR', 'PEER', 'KOORDINA
 export const ROLE_LABEL: Record<EvaluatorRole, string> = { SUPERVISOR: 'Supervisor', PEER: 'Peer', KOORDINATOR: 'Koordinator' };
 
 // Account roles that may be picked for each assignment role.
-export const PEER_ACCOUNT_ROLES = ['TEACHER'];
+// A peer can be any school employee: teachers, staff, karyawan or a vice principal. Supervisors and koordinators are teachers.
+export const PEER_ACCOUNT_ROLES = ['TEACHER', 'STAFF', 'KARYAWAN', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'];
 export const LEADER_ACCOUNT_ROLES = ['TEACHER']; // supervisors and koordinators are teachers too
 export const accountRolesFor = (role: EvaluatorRole) => (role === 'PEER' ? PEER_ACCOUNT_ROLES : LEADER_ACCOUNT_ROLES);
 

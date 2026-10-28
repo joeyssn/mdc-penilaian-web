@@ -1,5 +1,6 @@
 'use client';
 
+import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -285,17 +286,7 @@ export default function UnifiedDirectorDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans print:bg-white">
-      <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 print:hidden gap-4">
-        <div className="flex items-center">
-           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
-        </div>
-        <div className="flex gap-8 text-[15px] font-bold overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <button onClick={() => setActiveTab('personal')} className={`pb-1 transition-all border-b-2 ${activeTab === 'personal' ? 'text-[#053b50] border-[#008c99]' : 'text-gray-500 border-transparent hover:text-[#008c99]'}`}>My Evaluation</button>
-          <button onClick={() => setActiveTab('overview')} className={`pb-1 transition-all border-b-2 ${activeTab === 'overview' ? 'text-[#053b50] border-[#008c99]' : 'text-gray-500 border-transparent hover:text-[#008c99]'}`}>School Overview</button>
-          <button onClick={() => setActiveTab('observasi')} className={`pb-1 transition-all border-b-2 ${activeTab === 'observasi' ? 'text-[#053b50] border-[#008c99]' : 'text-gray-500 border-transparent hover:text-[#008c99]'}`}>Observation Track Record</button>
-        </div>
-        <Link href="/login" className="text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">Logout</Link>
-      </nav>
+      <RoleNav />
 
       {activeTab === 'personal' && (
         <div className="max-w-7xl mx-auto px-6 pt-12 pb-20 space-y-12 animate-in fade-in duration-300">

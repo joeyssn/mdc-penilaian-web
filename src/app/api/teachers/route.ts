@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { inScope, normLevel, scopeOf } from "@/lib/levelScope";
+import { normDivision } from "@/lib/assign/rules";
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function GET() {
     const scope = scopeOf(session);
     const teachers = await prisma.user.findMany({
       // We now fetch DIRECTOR and PRINCIPAL separately
-      where: { role: { in: ['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN','VICE_PRINCIPAL_KESISWAAN','VICE_PRINCIPAL_KURIKULUM','KARYAWAN'] } }, 
+      where: { role: { in: ['TEACHER', 'STAFF', 'DIRECTOR', 'PRINCIPAL', 'ADMIN','VICE_PRINCIPAL_KESISWAAN','VICE_PRINCIPAL_KURIKULUM','KARYAWAN','HEAD_MANAGEMENT'] } }, 
       select: { 
         id: true, 
         name: true, 
@@ -21,7 +22,8 @@ export async function GET() {
         email: true,
         nis_niy: true,
         department: true,
-        level: true
+        level: true,
+        division: true
       }
     });
 
@@ -34,7 +36,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, email, gender, role, department, nis_niy, level } = await req.json();
+    const { name, email, gender, role, department, nis_niy, level, division } = await req.json();
 
     const newUser = await prisma.user.create({
       data: {
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
         role, // We can just pass the role directly now!
         nis_niy, 
         level: normLevel(level),
+        division: normDivision(division),
         password: nis_niy, 
       }
     });
@@ -62,7 +65,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { id, name, email, gender, role, department, nis_niy, level } = await req.json();
+    const { id, name, email, gender, role, department, nis_niy, level, division } = await req.json();
 
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -74,6 +77,7 @@ export async function PUT(req: Request) {
         role, // We can just pass the role directly now!
         nis_niy,
         level: normLevel(level),
+        division: normDivision(division),
       }
     });
     

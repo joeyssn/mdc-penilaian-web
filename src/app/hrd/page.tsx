@@ -1,5 +1,6 @@
 'use client';
 
+import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -140,14 +141,7 @@ export default function HRDDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
-      <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 border-b border-gray-200 gap-4">
-        <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={200} height={50} className="h-10 w-auto" priority />
-        <div className="flex gap-8 text-[15px] font-bold">
-          <button onClick={() => setActiveTab('absences')} className={`pb-1 border-b-2 ${activeTab === 'absences' ? 'text-[#053b50] border-[#008c99]' : 'text-gray-500 border-transparent hover:text-[#008c99]'}`}>Penilaian Kehadiran</button>
-          <button onClick={() => setActiveTab('evaluations')} className={`pb-1 border-b-2 ${activeTab === 'evaluations' ? 'text-[#053b50] border-[#008c99]' : 'text-gray-500 border-transparent hover:text-[#008c99]'}`}>Peer Evaluations</button>
-        </div>
-        <Link href="/login" className="text-red-500 font-bold hover:text-red-700">Logout</Link>
-      </nav>
+      <RoleNav />
 
       <div className="max-w-5xl mx-auto px-6 pt-12 space-y-8">
         <h1 className="text-3xl font-extrabold text-[#053b50]">Welcome, HRD {loggedInUser?.name}</h1>

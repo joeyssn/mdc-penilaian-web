@@ -17,6 +17,13 @@ t('principal evaluates vice principal of the same school only', () => {
   assert.ok(evaluatorErrors('PRINCIPAL_VP', 'SUPERVISOR', vp, { id: 'p', role: 'PRINCIPAL', level: 'SMA' }).length);
   assert.ok(evaluatorErrors('PRINCIPAL_VP', 'SUPERVISOR', vp, { id: 'x', role: 'TEACHER', level: 'SMP' }).length);
 });
+t('vice principals get vice principal peers', () => {
+  const vp = { id: 'v1', role: 'VICE_PRINCIPAL_KURIKULUM', level: 'SMP' };
+  assert.equal(evaluatorErrors('PRINCIPAL_VP', 'PEER', vp, { id: 'v2', role: 'VICE_PRINCIPAL_KESISWAAN', level: 'SMP' }).length, 0);
+  assert.equal(evaluatorErrors('PRINCIPAL_VP', 'PEER', vp, { id: 'v3', role: 'VICE_PRINCIPAL_KURIKULUM', level: 'SMA' }).length, 0);
+  assert.ok(evaluatorErrors('PRINCIPAL_VP', 'PEER', vp, { id: 'p', role: 'PRINCIPAL', level: 'SMP' }).length);
+  assert.ok(evaluatorErrors('PRINCIPAL_VP', 'PEER', vp, { id: 'v1', role: 'VICE_PRINCIPAL_KURIKULUM', level: 'SMP' }).length); // self
+});
 t('head evaluates workers of the same division', () => {
   const w = { id: 'w', role: 'STAFF', level: 'SMP', division: 'IT' };
   assert.ok(isTarget('HEAD_WORKERS', { role: 'DIRECTOR' }, w));

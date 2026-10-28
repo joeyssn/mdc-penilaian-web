@@ -23,7 +23,7 @@ export const MODE_LABEL: Record<Mode, string> = {
 
 // Which assignment roles each mode can set.
 export const MODE_ROLES: Record<Mode, EvaluatorRole[]> = {
-  PRINCIPAL_VP: ['SUPERVISOR'],
+  PRINCIPAL_VP: ['SUPERVISOR', 'PEER'],
   HEAD_WORKERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
   SCHOOL_TEACHERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
   KARYAWAN: ['PEER'],
@@ -61,6 +61,8 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
   if (evaluator.id === target.id) return ['Nobody can evaluate themselves.'];
   switch (mode) {
     case 'PRINCIPAL_VP':
+      // Peers of a vice principal are other vice principals (any school); the principal evaluator is of the same school.
+      if (role === 'PEER') { if (!VPS.includes(evaluator.role)) errs.push('A peer of a vice principal must be a vice principal.'); break; }
       if (evaluator.role !== 'PRINCIPAL') errs.push('Only a principal can evaluate a vice principal.');
       else if (normLevel(evaluator.level) !== normLevel(target.level)) errs.push('The principal must be from the same school as the vice principal.');
       break;

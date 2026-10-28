@@ -12,13 +12,13 @@ const pretty = (r: string) => r.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g
 // What each role is called on screen, per assignment mode.
 const ROLE_TITLE: Record<string, Record<string, string>> = {
   HEAD_WORKERS: { SUPERVISOR: 'Head', PEER: 'Peers', KOORDINATOR: 'Koordinator' },
-  PRINCIPAL_VP: { SUPERVISOR: 'Principal' },
+  PRINCIPAL_VP: { SUPERVISOR: 'Principal', PEER: 'Peers' },
   KARYAWAN: { PEER: 'Evaluators' },
   SCHOOL_TEACHERS: { SUPERVISOR: 'Supervisor', PEER: 'Peers', KOORDINATOR: 'Koordinator' },
 };
 const ROLE_HINT: Record<string, string> = {
   SUPERVISOR: 'Who leads / supervises this person?',
-  PEER: 'Who evaluates this person as a peer? Colleagues of the same team.',
+  PEER: 'Who evaluates this person as a peer? Colleagues of the same team (for a vice principal: other vice principals).',
   KOORDINATOR: 'Who is the koordinator?',
 };
 const PERSON_NOUN: Record<string, string> = { HEAD_WORKERS: 'worker', PRINCIPAL_VP: 'vice principal', KARYAWAN: 'karyawan', SCHOOL_TEACHERS: 'teacher' };

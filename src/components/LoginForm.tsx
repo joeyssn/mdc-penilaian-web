@@ -56,7 +56,7 @@ export default function LoginForm() {
         else if (data.role === 'VICE_PRINCIPAL_KURIKULUM') {
           router.push('/vice-principal');
         }
-        else if (data.role === 'HEAD_MANAGEMENT') {
+        else if (['HEAD_MANAGEMENT', 'IT', 'PR', 'ACC'].includes(data.role)) {
           router.push('/assign');
         }
         else if (data.role === 'HRD') {

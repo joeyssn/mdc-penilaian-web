@@ -163,9 +163,9 @@ export default function AssignPage() {
             {mode === 'HEAD_WORKERS' && info.headCandidates && (
               <section className={`${card} space-y-3`}>
                 <h2 className="font-extrabold text-[#053b50]">Head of each division</h2>
-                <p className="text-sm text-gray-700">Choose who leads each division (a Head Management account, or one of the team). The head becomes the head evaluator of that division's workers who have none yet.</p>
+                <p className="text-sm text-gray-700">Choose who leads each division (one of that team: IT, PR, ACC, admin, HRD or staff). The head becomes the head evaluator of that division's workers who have none yet.</p>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {['IT', 'HRD', 'ADMIN', 'PR'].map(d => (
+                  {['IT', 'HRD', 'ADMIN', 'PR', 'ACC'].map(d => (
                     <label key={d} className="text-sm font-bold text-gray-800 space-y-1 block">{d}
                       <select value={info.heads?.[d] || ''} onChange={e => setHead(d, e.target.value)} disabled={!editable} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold">
                         <option value="">— not chosen —</option>

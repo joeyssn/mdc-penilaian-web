@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { getSession } from '@/lib/session';
 import { diffAssignments, EVALUATOR_ROLES, type EvaluatorRole } from '@/lib/sd/rules';
-import { candidatesFor, DIVISIONS, evaluatorErrors, headCandidates, isTarget, MODE_LABEL, MODE_ROLES, MODES, modesFor, normDivision, type Heads, type Mode } from '@/lib/assign/rules';
+import { candidatesFor, DIVISIONS, evaluatorErrors, headCandidates, isTarget, MODE_LABEL, MODE_ROLES, MODES, modesFor, normDivision, divisionOf, WORKER_ROLES, HEAD_ACCOUNT_ROLES, type Heads, type Mode } from '@/lib/assign/rules';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 const fail500 = (e: any) => {
   console.error('ASSIGN API ERROR:', e);
   const m = String(e?.message || e);
-  const hint = /division|HEAD_MANAGEMENT|Unknown (argument|field)|does not exist|Invalid value for argument/i.test(m) ? ' The database is not up to date: run `npx prisma db push` and `npx prisma generate`, then restart the server.' : '';
+  const hint = /division|HEAD_MANAGEMENT|ACC|Unknown (argument|field)|does not exist|Invalid value for argument/i.test(m) ? ' The database is not up to date: run `npx prisma db push` and `npx prisma generate`, then restart the server.' : '';
   return NextResponse.json({ error: `Could not load assignments.${hint}` }, { status: 500 });
 };
 const HEAD_KEY = (d: string) => `divisionHead:${d}`;
@@ -21,7 +21,7 @@ const loadHeads = async (): Promise<Heads> => {
 };
 const err = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const USER_SELECT = { id: true, name: true, role: true, level: true, division: true } as const;
-const ROLES = ['DIRECTOR', 'PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'HEAD_MANAGEMENT', 'ADMIN', 'STAFF', 'TEACHER', 'KARYAWAN'] as const;
+const ROLES = ['DIRECTOR', 'PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'HEAD_MANAGEMENT', 'IT', 'PR', 'ACC', 'ADMIN', 'HRD', 'STAFF', 'TEACHER', 'KARYAWAN'] as const;
 
 // GET (no mode)        -> the modes this user may use, open periods, and their own evaluator tasks
 // GET ?mode&periodId   -> the targets of that mode with who evaluates each
@@ -41,7 +41,7 @@ async function handleGet(req: Request) {
 
   if (!mode) {
     const heads = allowed.includes('HEAD_WORKERS') ? await loadHeads() : {};
-    const everyone = allowed.includes('HEAD_WORKERS') ? await prisma.user.findMany({ where: { role: { in: ['HEAD_MANAGEMENT', 'ADMIN', 'STAFF'] } }, select: USER_SELECT, orderBy: { name: 'asc' } }) : [];
+    const everyone = allowed.includes('HEAD_WORKERS') ? await prisma.user.findMany({ where: { role: { in: HEAD_ACCOUNT_ROLES as any } }, select: USER_SELECT, orderBy: { name: 'asc' } }) : [];
     const open = periods.find(p => p.status === 'OPEN') ?? periods[0];
     const mine = open ? await prisma.teacherAssignment.findMany({
       where: { periodId: open.id, active: true, OR: [{ evaluatorId: session.id }, { teacherId: session.id }] },
@@ -141,14 +141,14 @@ async function setHead(session: { id: string; name: string; role: string; level?
     return NextResponse.json({ ok: true, added: 0 });
   }
   const head = await prisma.user.findUnique({ where: { id: body.headId }, select: USER_SELECT });
-  if (!head || !headCandidates(division, [head]).length) return err('That account cannot be the head of this division (it must be Head Management, admin or staff of the same division).');
+  if (!head || !headCandidates(division, [head]).length) return err('That account cannot be the head of this division (it must be an IT, PR, ACC, admin, HRD or staff account of the same division).');
   await prisma.appSetting.upsert({ where: { key }, update: { value: head.id }, create: { key, value: head.id } });
 
   let added = 0;
   const period = body.periodId ? await prisma.evalPeriod.findUnique({ where: { id: body.periodId } }) : null;
   if (period && period.status !== 'CLOSED') {
-    const workers = await prisma.user.findMany({ where: { role: { in: ['ADMIN', 'STAFF'] } }, select: USER_SELECT });
-    const mine = workers.filter(w => normDivision(w.division) === division && w.id !== head.id);
+    const workers = await prisma.user.findMany({ where: { role: { in: WORKER_ROLES as any } }, select: USER_SELECT });
+    const mine = workers.filter(w => divisionOf(w) === division && w.id !== head.id);
     const have = await prisma.teacherAssignment.findMany({ where: { periodId: period.id, role: 'SUPERVISOR', active: true, teacherId: { in: mine.map(w => w.id) } }, select: { teacherId: true } });
     const done = new Set(have.map(h => h.teacherId));
     const todo = mine.filter(w => !done.has(w.id));

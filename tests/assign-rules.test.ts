@@ -24,6 +24,14 @@ t('vice principals get vice principal peers', () => {
   assert.ok(evaluatorErrors('PRINCIPAL_VP', 'PEER', vp, { id: 'p', role: 'PRINCIPAL', level: 'SMP' }).length);
   assert.ok(evaluatorErrors('PRINCIPAL_VP', 'PEER', vp, { id: 'v1', role: 'VICE_PRINCIPAL_KURIKULUM', level: 'SMP' }).length); // self
 });
+t('IT, PR and ACC are roles and divisions at once', () => {
+  const it1 = { id: 'i1', role: 'IT' }, it2 = { id: 'i2', role: 'IT' }, pr = { id: 'p1', role: 'PR' }, acc = { id: 'a1', role: 'ACC' };
+  assert.ok(isTarget('HEAD_WORKERS', { role: 'DIRECTOR' }, it1));
+  assert.ok(isTarget('HEAD_WORKERS', { role: 'DIRECTOR' }, acc));
+  assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', it1, it2).length, 0);
+  assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', it1, pr).length); // other division
+  assert.deepEqual(headCandidates('ACC', [it1, pr, acc, { id: 's', role: 'STAFF', division: 'ACC' }]).map(x => x.id), ['a1', 's']);
+});
 t('head evaluates workers of the same division', () => {
   const w = { id: 'w', role: 'STAFF', level: 'SMP', division: 'IT' };
   assert.ok(isTarget('HEAD_WORKERS', { role: 'DIRECTOR' }, w));
@@ -32,12 +40,14 @@ t('head evaluates workers of the same division', () => {
   assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h', role: 'HEAD_MANAGEMENT', division: 'PR' }).length);
   // the head can also be one of the team itself (admin / staff of the same division)
   assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h2', role: 'STAFF', division: 'IT' }).length, 0);
-  assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h3', role: 'ADMIN', division: 'IT' }).length, 0);
+  // an ADMIN account belongs to the ADMIN division (its role is its division), so it cannot lead the IT team
+  assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h3', role: 'ADMIN', division: 'IT' }).length);
+  assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', { id: 'ad1', role: 'ADMIN' }, { id: 'ad2', role: 'ADMIN' }).length, 0);
   assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h4', role: 'TEACHER', division: 'IT' }).length);
 });
 t('director chooses the head; peers are the same team', () => {
   const w = { id: 'w', role: 'STAFF', division: 'IT' };
-  const a = { id: 'a', role: 'STAFF', division: 'IT' }, b = { id: 'b', role: 'ADMIN', division: 'IT' };
+  const a = { id: 'a', role: 'STAFF', division: 'IT' }, b = { id: 'b', role: 'IT' };
   assert.deepEqual(headCandidates('IT', [a, b, { id: 'c', role: 'STAFF', division: 'PR' }, { id: 'd', role: 'TEACHER', division: 'IT' }]).map(x => x.id), ['a', 'b']);
   assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, a, { IT: 'a' }).length, 0);
   assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, b, { IT: 'a' }).length); // only the chosen head

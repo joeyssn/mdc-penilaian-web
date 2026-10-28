@@ -10,9 +10,13 @@ import { PEER_ACCOUNT_ROLES, LEADER_ACCOUNT_ROLES, type EvaluatorRole } from '..
 export type Mode = 'PRINCIPAL_VP' | 'HEAD_WORKERS' | 'SCHOOL_TEACHERS' | 'KARYAWAN';
 export const MODES: Mode[] = ['PRINCIPAL_VP', 'HEAD_WORKERS', 'SCHOOL_TEACHERS', 'KARYAWAN'];
 // A division head can be a dedicated Head Management account or one of the team itself (admin / staff).
-export const HEAD_ACCOUNT_ROLES = ['HEAD_MANAGEMENT', 'ADMIN', 'STAFF'];
-export const DIVISIONS = ['IT', 'HRD', 'ADMIN', 'PR'] as const;
+// IT, PR and ACC (accounting) are roles of their own; ADMIN and HRD are also divisions. STAFF takes its division from the Users form.
+export const DIVISIONS = ['IT', 'HRD', 'ADMIN', 'PR', 'ACC'] as const;
+export const WORKER_ROLES = ['IT', 'PR', 'ACC', 'ADMIN', 'HRD', 'STAFF'];
+export const HEAD_ACCOUNT_ROLES = [...WORKER_ROLES, 'HEAD_MANAGEMENT'];
 export const normDivision = (d?: string | null) => { const v = (d ?? '').trim().toUpperCase(); return (DIVISIONS as readonly string[]).includes(v) ? v : null; };
+// The division a person belongs to: their role when it is a division role, otherwise the Division field.
+export const divisionOf = (u: { role: string; division?: string | null }) => normDivision(['IT', 'PR', 'ACC', 'ADMIN', 'HRD'].includes(u.role) ? u.role : u.division);
 
 export const MODE_LABEL: Record<Mode, string> = {
   PRINCIPAL_VP: 'Principal → Vice Principals',
@@ -46,7 +50,7 @@ export function modesFor(viewer: U): Mode[] {
 export function isTarget(mode: Mode, viewer: U, target: U): boolean {
   switch (mode) {
     case 'PRINCIPAL_VP': return VPS.includes(target.role) && !!normLevel(target.level);
-    case 'HEAD_WORKERS': return ['ADMIN', 'STAFF'].includes(target.role) && !!normDivision(target.division);
+    case 'HEAD_WORKERS': return WORKER_ROLES.includes(target.role) && !!divisionOf(target);
     case 'SCHOOL_TEACHERS': return target.role === 'TEACHER' && !!normLevel(target.level) && normLevel(target.level) === normLevel(viewer.level);
     case 'KARYAWAN': return target.role === 'KARYAWAN';
   }
@@ -67,9 +71,9 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
       else if (normLevel(evaluator.level) !== normLevel(target.level)) errs.push('The principal must be from the same school as the vice principal.');
       break;
     case 'HEAD_WORKERS':
-      if (!HEAD_ACCOUNT_ROLES.includes(evaluator.role)) errs.push('Must be a Head Management, admin or staff account.');
-      else if (!normDivision(evaluator.division) || normDivision(evaluator.division) !== normDivision(target.division)) errs.push('Must be in the same division as the worker.');
-      else if (role === 'SUPERVISOR' && heads[normDivision(target.division)!] && heads[normDivision(target.division)!] !== evaluator.id) errs.push('The head of this division was chosen by the Director; only the head can be the head evaluator.');
+      if (!HEAD_ACCOUNT_ROLES.includes(evaluator.role)) errs.push('Must be an IT, PR, ACC, admin, HRD or staff account.');
+      else if (!divisionOf(evaluator) || divisionOf(evaluator) !== divisionOf(target)) errs.push('Must be in the same division as the worker.');
+      else if (role === 'SUPERVISOR' && heads[divisionOf(target)!] && heads[divisionOf(target)!] !== evaluator.id) errs.push('The head of this division was chosen by the Director; only the head can be the head evaluator.');
       break;
     case 'SCHOOL_TEACHERS': {
       const allowed = role === 'PEER' ? PEER_ACCOUNT_ROLES : LEADER_ACCOUNT_ROLES;
@@ -90,4 +94,4 @@ export const candidatesFor = <T extends U & { id: string }>(mode: Mode, role: Ev
 
 // Who may be chosen as the head of a division.
 export const headCandidates = <T extends U & { id: string }>(division: string, people: T[]) =>
-  people.filter(p => HEAD_ACCOUNT_ROLES.includes(p.role) && normDivision(p.division) === division);
+  people.filter(p => HEAD_ACCOUNT_ROLES.includes(p.role) && divisionOf(p) === division);

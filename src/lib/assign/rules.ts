@@ -24,7 +24,7 @@ export const MODE_LABEL: Record<Mode, string> = {
 // Which assignment roles each mode can set.
 export const MODE_ROLES: Record<Mode, EvaluatorRole[]> = {
   PRINCIPAL_VP: ['SUPERVISOR'],
-  HEAD_WORKERS: ['SUPERVISOR', 'PEER'],
+  HEAD_WORKERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
   SCHOOL_TEACHERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
   KARYAWAN: ['PEER'],
 };

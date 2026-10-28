@@ -7,6 +7,13 @@ import { candidatesFor, evaluatorErrors, isTarget, MODE_LABEL, MODE_ROLES, MODES
 
 export const dynamic = 'force-dynamic';
 
+// Always answer with JSON, even when the database is out of date (schema not pushed yet), so the page can show the reason.
+const fail500 = (e: any) => {
+  console.error('ASSIGN API ERROR:', e);
+  const m = String(e?.message || e);
+  const hint = /division|HEAD_MANAGEMENT|Unknown (argument|field)|does not exist|Invalid value for argument/i.test(m) ? ' The database is not up to date: run `npx prisma db push` and `npx prisma generate`, then restart the server.' : '';
+  return NextResponse.json({ error: `Could not load assignments.${hint}` }, { status: 500 });
+};
 const err = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const USER_SELECT = { id: true, name: true, role: true, level: true, division: true } as const;
 const ROLES = ['DIRECTOR', 'PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'HEAD_MANAGEMENT', 'ADMIN', 'STAFF', 'TEACHER', 'KARYAWAN'] as const;
@@ -15,6 +22,10 @@ const ROLES = ['DIRECTOR', 'PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCI
 // GET ?mode&periodId   -> the targets of that mode with who evaluates each
 // GET ?mode&targetId   -> who may be picked for that target, per role
 export async function GET(req: Request) {
+  try { return await handleGet(req); } catch (e: any) { return fail500(e); }
+}
+
+async function handleGet(req: Request) {
   const session = await getSession();
   if (!session) return err('Not authenticated', 401);
   const url = new URL(req.url);
@@ -67,6 +78,10 @@ export async function GET(req: Request) {
 
 // Replace the evaluators of one role for one target: { mode, periodId, targetId, role, evaluatorIds }
 export async function PUT(req: Request) {
+  try { return await handlePut(req); } catch (e: any) { return fail500(e); }
+}
+
+async function handlePut(req: Request) {
   const session = await getSession();
   if (!session) return err('Not authenticated', 401);
   const { mode, periodId, targetId, role, evaluatorIds } = await req.json();

@@ -21,17 +21,21 @@ export default function AssignPage() {
   const [picked, setPicked] = useState<Record<string, string[]>>({});
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState('');
+  const [loadErr, setLoadErr] = useState('');
+  const json = async (r: Response) => { try { return await r.json(); } catch { return {}; } };
 
   useEffect(() => { (async () => {
-    const r = await fetch('/api/assign'); if (!r.ok) return;
-    const d = await r.json(); setInfo(d);
+    const r = await fetch('/api/assign'); const d = await json(r);
+    if (!r.ok) { setLoadErr(d.error || 'Could not load this page.'); return; }
+    setInfo(d);
     if (d.modes[0]) setMode(d.modes[0].mode);
     if (d.periods[0]) setPeriodId(d.periods[0].id);
   })(); }, []);
 
   const loadTargets = async (m = mode, p = periodId) => {
     if (!m || !p) { setTargets([]); return; }
-    const r = await fetch(`/api/assign?mode=${m}&periodId=${p}`); const d = await r.json();
+    const r = await fetch(`/api/assign?mode=${m}&periodId=${p}`); const d = await json(r);
+    setLoadErr(r.ok ? '' : d.error || 'Could not load the list.');
     setTargets(r.ok ? d.targets : []);
   };
   useEffect(() => { setSel(null); loadTargets(); }, [mode, periodId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -39,14 +43,15 @@ export default function AssignPage() {
   const choose = async (t: Target) => {
     setSel(t); setMsg('');
     setPicked(Object.fromEntries(Object.entries(t.assigned).map(([r, v]) => [r, v.map(x => x.evaluatorId)])));
-    const r = await fetch(`/api/assign?mode=${mode}&targetId=${t.id}`); const d = await r.json();
+    const r = await fetch(`/api/assign?mode=${mode}&targetId=${t.id}`); const d = await json(r);
+    if (!r.ok) setMsg(d.error || 'Could not load the choices.');
     setCands(r.ok ? d.candidates : {});
   };
 
   const save = async (role: string) => {
     if (!sel) return; setSaving(role); setMsg('');
     const r = await fetch('/api/assign', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, periodId, targetId: sel.id, role, evaluatorIds: picked[role] || [] }) });
-    const d = await r.json(); setSaving('');
+    const d = await json(r); setSaving('');
     setMsg(r.ok ? `Saved for ${sel.name}.` : d.error || 'Could not save.');
     if (r.ok) { await loadTargets(); }
   };
@@ -63,6 +68,8 @@ export default function AssignPage() {
           <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Evaluators</h1>
           <p className="text-gray-700 mt-1">Pick a person, then choose who evaluates them.</p>
         </div>
+
+        {loadErr && <p className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm font-semibold">{loadErr}</p>}
 
         {info && info.modes.length === 0 && (
           <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">

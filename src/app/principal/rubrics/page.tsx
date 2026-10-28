@@ -38,7 +38,7 @@ export default function PrincipalRubricAssignmentPage() {
     const me = await meRes.json();
     if (me.role !== 'PRINCIPAL' && me.role !== 'DIRECTOR' && me.role !== 'ADMIN') return router.push('/login');
 
-    setLevelName(String(me.level || '').toUpperCase() === 'SD' ? 'SD' : 'SMP / SMA');
+    setLevelName(String(me.level || '').toUpperCase() || 'All schools');
     const res = await fetch('/api/rubric', { cache: 'no-store' });
     const data = await res.json();
     if (Array.isArray(data)) {
@@ -100,7 +100,7 @@ export default function PrincipalRubricAssignmentPage() {
       <div className="max-w-5xl mx-auto px-6 pt-10 space-y-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Rubrics{levelName && <span className="text-[#e99a24]"> · {levelName}</span>}</h1>
-          <p className="text-gray-500 mt-2 font-medium">Choose which roles evaluate which roles. Rubric content can only be edited by the admin.</p>
+          <p className="text-gray-500 mt-2 font-medium">Choose which roles evaluate which roles for your school only. Other schools keep their own assignments. Rubric content can only be edited by the admin.</p>
         </div>
 
         {rubrics.length === 0 ? (

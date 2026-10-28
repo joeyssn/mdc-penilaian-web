@@ -35,6 +35,21 @@ model rubric {
   updatedAt        DateTime        @updatedAt
   evaluationlog    evaluationlog[]
   rubricsection    rubricsection[]
+  levelAssignments rubricLevelAssignment[]
+}
+
+// Each school (TK / SD / SMP / SMA) can assign the same rubric to different roles.
+// No row for a level = that level uses the rubric's default evaluators / evaluatees.
+model rubricLevelAssignment {
+  id         String   @id @default(uuid())
+  rubricId   String
+  level      String   // TK | SD | SMP | SMA
+  evaluators String?
+  evaluatees String?
+  updatedAt  DateTime @updatedAt
+  rubric     rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+
+  @@unique([rubricId, level])
 }
 
 model rubriccategory {

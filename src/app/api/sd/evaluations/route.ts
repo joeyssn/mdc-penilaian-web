@@ -47,7 +47,14 @@ export async function POST(req: Request) {
     include: { rubricsection: { include: { rubriccategory: { include: { rubricindicator: { select: { id: true } } } } } } },
   });
   if (!rubric || rubric.schoolLevel !== 'SD' || rubric.isSelfReflection) return fail('That rubric cannot be used for this evaluation.');
-  const sdRubrics = await prisma.rubric.findMany({ where: { schoolLevel: 'SD', isSelfReflection: false }, select: { id: true, evaluators: true } });
+  const baseRubrics = await prisma.rubric.findMany({ where: { schoolLevel: 'SD', isSelfReflection: false }, select: { id: true, evaluators: true } });
+  // Use the evaluator's own school assignment (TK or SD) when one was saved, same as the page shows.
+  const lvl = String(session.level || '').toUpperCase();
+  const overrides = lvl === 'TK' || lvl === 'SD'
+    ? await prisma.rubricLevelAssignment.findMany({ where: { level: lvl, rubricId: { in: baseRubrics.map(r => r.id) } }, select: { rubricId: true, evaluators: true } })
+    : [];
+  const ov = new Map(overrides.map(o => [o.rubricId, o.evaluators]));
+  const sdRubrics = baseRubrics.map(r => (ov.has(r.id) ? { ...r, evaluators: ov.get(r.id) ?? null } : r));
   if (!isRubricAllowed(type, rubricId, sdRubrics)) return fail(`This rubric is not the one set for ${String(type).toLowerCase()} evaluations.`);
   const indicatorIds = new Set(rubric.rubricsection.flatMap(s => s.rubriccategory.flatMap(c => c.rubricindicator.map(i => i.id))));
   const answers = new Map<string, number>();

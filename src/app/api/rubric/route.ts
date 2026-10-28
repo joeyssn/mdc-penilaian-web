@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSdGroupLevel } from "@/lib/weights";
+import { normLevel } from "@/lib/levelScopeCore";
 import { denyUnlessRole, getSession, RUBRIC_ASSIGNER_ROLES, RUBRIC_EDITOR_ROLES } from "@/lib/session";
 
 export const dynamic = 'force-dynamic'; 
@@ -40,7 +41,17 @@ export async function GET(req: Request) {
       }
     });
 
-    const formattedRubrics = rubrics.map((rubric) => ({
+    // A TK / SD / SMP / SMA viewer sees their own school's assignment when one was saved.
+    const myLevel = normLevel(session.level);
+    const overrides = myLevel
+      ? await prisma.rubricLevelAssignment.findMany({ where: { level: myLevel, rubricId: { in: rubrics.map(r => r.id) } } })
+      : [];
+    const overrideOf = new Map(overrides.map(o => [o.rubricId, o]));
+
+    const formattedRubrics = rubrics.map((base) => {
+      const o = overrideOf.get(base.id);
+      const rubric = o ? { ...base, evaluators: o.evaluators, evaluatees: o.evaluatees } : base;
+      return {
       ...rubric,
       // 🚀 The spread operator automatically includes isSelfReflection
       evaluators: rubric.evaluators ? rubric.evaluators.split(',') : [],
@@ -51,8 +62,10 @@ export async function GET(req: Request) {
           ...category,
           indicators: category.rubricindicator
         }))
-      }))
-    }));
+      })),
+      levelSpecific: !!o,
+      };
+    });
 
     return NextResponse.json(formattedRubrics);
   } catch (error) {
@@ -117,6 +130,25 @@ export async function PUT(req: Request) {
         if (!target || target.schoolLevel !== myLevel) {
           return NextResponse.json({ error: "You can only assign rubrics for your own school level." }, { status: 403 });
         }
+      }
+    }
+
+    // A principal's assignment is saved for their own school only (TK / SD / SMP / SMA are independent).
+    if (!editsContent) {
+      const session = (await getSession())!;
+      const lvl = normLevel(session.level);
+      if (session.role === 'PRINCIPAL') {
+        if (!lvl) return NextResponse.json({ error: "Your account has no school level (TK/SD/SMP/SMA)." }, { status: 403 });
+        const data = {
+          ...(evaluators !== undefined ? { evaluators: evaluators.join(',') } : {}),
+          ...(evaluatees !== undefined ? { evaluatees: evaluatees.join(',') } : {}),
+        };
+        const row = await prisma.rubricLevelAssignment.upsert({
+          where: { rubricId_level: { rubricId: id, level: lvl } },
+          update: data,
+          create: { rubricId: id, level: lvl, evaluators: evaluators !== undefined ? evaluators.join(',') : null, evaluatees: evaluatees !== undefined ? evaluatees.join(',') : null },
+        });
+        return NextResponse.json(row);
       }
     }
 

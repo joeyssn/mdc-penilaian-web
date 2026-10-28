@@ -6,7 +6,7 @@ import RoleNav from '@/components/RoleNav';
 type Mode = { mode: string; label: string; roles: string[] };
 type Person = { id: string; name: string; role: string; level?: string | null; division?: string | null };
 type Target = Person & { assigned: Record<string, { evaluatorId: string; name: string; submitted: boolean }[]> };
-const ROLE_LABEL: Record<string, string> = { SUPERVISOR: 'Evaluator', PEER: 'Peer', KOORDINATOR: 'Koordinator' };
+const ROLE_LABEL: Record<string, string> = { SUPERVISOR: 'Head / supervisor', PEER: 'Peers', KOORDINATOR: 'Koordinator' };
 const pretty = (r: string) => r.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 
 // One screen for the Director (principal -> vice principal, head -> worker), SMP / SMA principals and vice principals (teachers) and HRD (karyawan).
@@ -22,6 +22,7 @@ export default function AssignPage() {
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState('');
   const [loadErr, setLoadErr] = useState('');
+  const [headMsg, setHeadMsg] = useState('');
   const json = async (r: Response) => { try { return await r.json(); } catch { return {}; } };
 
   useEffect(() => { (async () => {
@@ -54,6 +55,16 @@ export default function AssignPage() {
     const d = await json(r); setSaving('');
     setMsg(r.ok ? `Saved for ${sel.name}.` : d.error || 'Could not save.');
     if (r.ok) { await loadTargets(); }
+  };
+
+  const setHead = async (division: string, headId: string) => {
+    setHeadMsg('');
+    const r = await fetch('/api/assign', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'setHead', division, headId: headId || null, periodId }) });
+    const d = await json(r);
+    if (!r.ok) return setHeadMsg(d.error || 'Could not save the head.');
+    setInfo((i: any) => ({ ...i, heads: { ...i.heads, [division]: headId || undefined } }));
+    setHeadMsg(headId ? `Head of ${division} saved${d.added ? `; added to ${d.added} worker(s) without a head` : ''}.` : `Head of ${division} cleared.`);
+    loadTargets();
   };
 
   const shown = useMemo(() => targets.filter(t => t.name.toLowerCase().includes(q.toLowerCase())), [targets, q]);
@@ -97,6 +108,24 @@ export default function AssignPage() {
               </select>
             </div>
             {info.periods.length === 0 && <p className="text-sm text-[#b45309] font-semibold">There is no open or draft evaluation period. Ask the principal or admin to create one first.</p>}
+
+            {mode === 'HEAD_WORKERS' && info.headCandidates && (
+              <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-3">
+                <h2 className="font-extrabold text-[#053b50]">Head of each division</h2>
+                <p className="text-sm text-gray-700">Choose who leads each division (a Head Management account, or one of the team). The head becomes the head evaluator of that division's workers who have none yet.</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {['IT', 'HRD', 'ADMIN', 'PR'].map(d => (
+                    <label key={d} className="text-sm font-bold text-gray-800 space-y-1 block">{d}
+                      <select value={info.heads?.[d] || ''} onChange={e => setHead(d, e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold">
+                        <option value="">— not chosen —</option>
+                        {(info.headCandidates[d] || []).map((p: Person) => <option key={p.id} value={p.id}>{p.name} ({pretty(p.role)})</option>)}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+                {headMsg && <p className={`text-sm font-semibold ${headMsg.startsWith('Head') ? 'text-green-700' : 'text-red-700'}`}>{headMsg}</p>}
+              </section>
+            )}
 
             <div className="grid md:grid-cols-2 gap-6">
               <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-3">

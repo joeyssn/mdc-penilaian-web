@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { candidatesFor, evaluatorErrors, isTarget, modesFor } from '../src/lib/assign/rules.ts';
+import { headCandidates, candidatesFor, evaluatorErrors, isTarget, modesFor } from '../src/lib/assign/rules.ts';
 
 const t = (name: string, fn: () => void) => { fn(); console.log('ok', name); };
 
@@ -27,6 +27,15 @@ t('head evaluates workers of the same division', () => {
   assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h2', role: 'STAFF', division: 'IT' }).length, 0);
   assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h3', role: 'ADMIN', division: 'IT' }).length, 0);
   assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h4', role: 'TEACHER', division: 'IT' }).length);
+});
+t('director chooses the head; peers are the same team', () => {
+  const w = { id: 'w', role: 'STAFF', division: 'IT' };
+  const a = { id: 'a', role: 'STAFF', division: 'IT' }, b = { id: 'b', role: 'ADMIN', division: 'IT' };
+  assert.deepEqual(headCandidates('IT', [a, b, { id: 'c', role: 'STAFF', division: 'PR' }, { id: 'd', role: 'TEACHER', division: 'IT' }]).map(x => x.id), ['a', 'b']);
+  assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, a, { IT: 'a' }).length, 0);
+  assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, b, { IT: 'a' }).length); // only the chosen head
+  assert.equal(evaluatorErrors('HEAD_WORKERS', 'PEER', w, b, { IT: 'a' }).length, 0);   // peers are not limited to the head
+  assert.ok(evaluatorErrors('HEAD_WORKERS', 'PEER', w, { id: 'x', role: 'STAFF', division: 'PR' }).length);
 });
 t('school teachers: same school, right account types', () => {
   const viewer = { role: 'PRINCIPAL', level: 'SMP' };

@@ -24,7 +24,7 @@ export const MODE_LABEL: Record<Mode, string> = {
 // Which assignment roles each mode can set.
 export const MODE_ROLES: Record<Mode, EvaluatorRole[]> = {
   PRINCIPAL_VP: ['SUPERVISOR'],
-  HEAD_WORKERS: ['SUPERVISOR'],
+  HEAD_WORKERS: ['SUPERVISOR', 'PEER'],
   SCHOOL_TEACHERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
   KARYAWAN: ['PEER'],
 };
@@ -53,7 +53,9 @@ export function isTarget(mode: Mode, viewer: U, target: U): boolean {
 }
 
 // Reasons why `evaluator` cannot evaluate `target` with this role in this mode (empty = fine).
-export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { id: string }, evaluator: U & { id: string }): string[] {
+// `heads` maps a division to the account the Director chose as its head. When a head is chosen, only that person can be the head evaluator.
+export type Heads = Partial<Record<string, string>>;
+export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { id: string }, evaluator: U & { id: string }, heads: Heads = {}): string[] {
   const errs: string[] = [];
   if (!MODE_ROLES[mode].includes(role)) return ['This role cannot be set here.'];
   if (evaluator.id === target.id) return ['Nobody can evaluate themselves.'];
@@ -63,8 +65,9 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
       else if (normLevel(evaluator.level) !== normLevel(target.level)) errs.push('The principal must be from the same school as the vice principal.');
       break;
     case 'HEAD_WORKERS':
-      if (!HEAD_ACCOUNT_ROLES.includes(evaluator.role)) errs.push('The head must be a Head Management, admin or staff account.');
-      else if (!normDivision(evaluator.division) || normDivision(evaluator.division) !== normDivision(target.division)) errs.push('The head must lead the same division as the worker.');
+      if (!HEAD_ACCOUNT_ROLES.includes(evaluator.role)) errs.push('Must be a Head Management, admin or staff account.');
+      else if (!normDivision(evaluator.division) || normDivision(evaluator.division) !== normDivision(target.division)) errs.push('Must be in the same division as the worker.');
+      else if (role === 'SUPERVISOR' && heads[normDivision(target.division)!] && heads[normDivision(target.division)!] !== evaluator.id) errs.push('The head of this division was chosen by the Director; only the head can be the head evaluator.');
       break;
     case 'SCHOOL_TEACHERS': {
       const allowed = role === 'PEER' ? PEER_ACCOUNT_ROLES : LEADER_ACCOUNT_ROLES;
@@ -80,5 +83,9 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
 }
 
 // Who can be offered in the picker for a target (same checks as evaluatorErrors, per role).
-export const candidatesFor = <T extends U & { id: string }>(mode: Mode, role: EvaluatorRole, target: U & { id: string }, people: T[]) =>
-  people.filter(p => evaluatorErrors(mode, role, target, p).length === 0);
+export const candidatesFor = <T extends U & { id: string }>(mode: Mode, role: EvaluatorRole, target: U & { id: string }, people: T[], heads: Heads = {}) =>
+  people.filter(p => evaluatorErrors(mode, role, target, p, heads).length === 0);
+
+// Who may be chosen as the head of a division.
+export const headCandidates = <T extends U & { id: string }>(division: string, people: T[]) =>
+  people.filter(p => HEAD_ACCOUNT_ROLES.includes(p.role) && normDivision(p.division) === division);

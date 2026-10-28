@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { getSession } from '@/lib/session';
 import { diffAssignments, EVALUATOR_ROLES, type EvaluatorRole } from '@/lib/sd/rules';
-import { candidatesFor, evaluatorErrors, isTarget, MODE_LABEL, MODE_ROLES, MODES, modesFor, type Mode } from '@/lib/assign/rules';
+import { candidatesFor, DIVISIONS, evaluatorErrors, headCandidates, isTarget, MODE_LABEL, MODE_ROLES, MODES, modesFor, normDivision, type Heads, type Mode } from '@/lib/assign/rules';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +13,11 @@ const fail500 = (e: any) => {
   const m = String(e?.message || e);
   const hint = /division|HEAD_MANAGEMENT|Unknown (argument|field)|does not exist|Invalid value for argument/i.test(m) ? ' The database is not up to date: run `npx prisma db push` and `npx prisma generate`, then restart the server.' : '';
   return NextResponse.json({ error: `Could not load assignments.${hint}` }, { status: 500 });
+};
+const HEAD_KEY = (d: string) => `divisionHead:${d}`;
+const loadHeads = async (): Promise<Heads> => {
+  const rows = await prisma.appSetting.findMany({ where: { key: { in: DIVISIONS.map(HEAD_KEY) } } });
+  return Object.fromEntries(rows.filter(r => r.value).map(r => [r.key.split(':')[1], r.value as string]));
 };
 const err = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const USER_SELECT = { id: true, name: true, role: true, level: true, division: true } as const;
@@ -35,12 +40,16 @@ async function handleGet(req: Request) {
   const periods = await prisma.evalPeriod.findMany({ where: { status: { in: ['OPEN', 'DRAFT'] } }, orderBy: { createdAt: 'desc' }, select: { id: true, name: true, status: true } });
 
   if (!mode) {
+    const heads = allowed.includes('HEAD_WORKERS') ? await loadHeads() : {};
+    const everyone = allowed.includes('HEAD_WORKERS') ? await prisma.user.findMany({ where: { role: { in: ['HEAD_MANAGEMENT', 'ADMIN', 'STAFF'] } }, select: USER_SELECT, orderBy: { name: 'asc' } }) : [];
     const open = periods.find(p => p.status === 'OPEN') ?? periods[0];
     const mine = open ? await prisma.teacherAssignment.findMany({
       where: { periodId: open.id, active: true, OR: [{ evaluatorId: session.id }, { teacherId: session.id }] },
       include: { teacher: { select: { id: true, name: true } }, evaluator: { select: { id: true, name: true } } },
     }) : [];
     return NextResponse.json({
+      heads,
+      headCandidates: Object.fromEntries(DIVISIONS.map(d => [d, headCandidates(d, everyone)])),
       modes: allowed.map(m => ({ mode: m, label: MODE_LABEL[m], roles: MODE_ROLES[m] })),
       periods,
       toEvaluate: mine.filter(a => a.evaluatorId === session.id).map(a => ({ id: a.teacher.id, name: a.teacher.name, role: a.role })),
@@ -57,7 +66,8 @@ async function handleGet(req: Request) {
     const target = targets.find(t => t.id === targetId);
     if (!target) return err('That person is not one of your targets.', 403);
     const candidates: Record<string, typeof people> = {};
-    for (const r of MODE_ROLES[mode]) candidates[r] = candidatesFor(mode, r, target, people);
+    const heads = await loadHeads();
+    for (const r of MODE_ROLES[mode]) candidates[r] = candidatesFor(mode, r, target, people, heads);
     return NextResponse.json({ candidates });
   }
 
@@ -84,7 +94,9 @@ export async function PUT(req: Request) {
 async function handlePut(req: Request) {
   const session = await getSession();
   if (!session) return err('Not authenticated', 401);
-  const { mode, periodId, targetId, role, evaluatorIds } = await req.json();
+  const body = await req.json();
+  if (body.action === 'setHead') return setHead(session, body);
+  const { mode, periodId, targetId, role, evaluatorIds } = body;
   if (!MODES.includes(mode) || !modesFor(session).includes(mode)) return err('You cannot use this assignment screen.', 403);
   if (!EVALUATOR_ROLES.includes(role) || !MODE_ROLES[mode as Mode].includes(role) || !Array.isArray(evaluatorIds)) return err('mode, periodId, targetId, role and evaluatorIds are required.');
 
@@ -99,7 +111,7 @@ async function handlePut(req: Request) {
   const people = await prisma.user.findMany({ where: { id: { in: ids } }, select: USER_SELECT });
   if (people.length !== ids.length) return err('One of the selected people does not exist.');
   for (const p of people) {
-    const errs = evaluatorErrors(mode, role as EvaluatorRole, target, p);
+    const errs = evaluatorErrors(mode, role as EvaluatorRole, target, p, mode === 'HEAD_WORKERS' ? await loadHeads() : {});
     if (errs.length) return err(`${p.name}: ${errs.join(' ')}`);
   }
 
@@ -113,4 +125,38 @@ async function handlePut(req: Request) {
   ]);
   await writeAudit(session, 'ASSIGN_EVALUATORS_SET', 'TeacherAssignment', targetId, { mode, periodId, role, evaluators: ids });
   return NextResponse.json({ ok: true });
+}
+
+
+// The Director chooses the head of a division: { action: 'setHead', division, headId (or null to clear), periodId? }.
+// Workers of that division who have no head evaluator yet in the chosen period get this head added; nobody's existing assignment is removed.
+async function setHead(session: { id: string; name: string; role: string; level?: string | null }, body: any) {
+  if (!modesFor(session).includes('HEAD_WORKERS')) return err('Only the Director can choose division heads.', 403);
+  const division = normDivision(body.division);
+  if (!division) return err('Choose a division: IT, HRD, ADMIN or PR.');
+  const key = HEAD_KEY(division);
+  if (!body.headId) {
+    await prisma.appSetting.deleteMany({ where: { key } });
+    await writeAudit(session as any, 'DIVISION_HEAD_CLEARED', 'AppSetting', key, { division });
+    return NextResponse.json({ ok: true, added: 0 });
+  }
+  const head = await prisma.user.findUnique({ where: { id: body.headId }, select: USER_SELECT });
+  if (!head || !headCandidates(division, [head]).length) return err('That account cannot be the head of this division (it must be Head Management, admin or staff of the same division).');
+  await prisma.appSetting.upsert({ where: { key }, update: { value: head.id }, create: { key, value: head.id } });
+
+  let added = 0;
+  const period = body.periodId ? await prisma.evalPeriod.findUnique({ where: { id: body.periodId } }) : null;
+  if (period && period.status !== 'CLOSED') {
+    const workers = await prisma.user.findMany({ where: { role: { in: ['ADMIN', 'STAFF'] } }, select: USER_SELECT });
+    const mine = workers.filter(w => normDivision(w.division) === division && w.id !== head.id);
+    const have = await prisma.teacherAssignment.findMany({ where: { periodId: period.id, role: 'SUPERVISOR', active: true, teacherId: { in: mine.map(w => w.id) } }, select: { teacherId: true } });
+    const done = new Set(have.map(h => h.teacherId));
+    const todo = mine.filter(w => !done.has(w.id));
+    if (todo.length) {
+      const r = await prisma.teacherAssignment.createMany({ data: todo.map(w => ({ periodId: period.id, teacherId: w.id, evaluatorId: head.id, role: 'SUPERVISOR' as const, assignedById: session.id })), skipDuplicates: true });
+      added = r.count;
+    }
+  }
+  await writeAudit(session as any, 'DIVISION_HEAD_SET', 'AppSetting', key, { division, headId: head.id, added });
+  return NextResponse.json({ ok: true, added });
 }

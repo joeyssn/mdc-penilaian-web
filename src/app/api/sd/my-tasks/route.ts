@@ -43,21 +43,22 @@ export async function GET() {
 
   // Students: their class teachers (added automatically) plus any the Vice Principal assigned
   if (session.role === 'STUDENT') {
-    // A student with no assignments yet gets the teachers of their own class (same school, same class name).
-    // The Vice Principal can still change the list afterwards from Student Assignments.
-    const existing = await prisma.studentAssignment.count({ where: { periodId: period.id, studentId: session.id } });
-    if (existing === 0) {
-      const me = await prisma.user.findUnique({ where: { id: session.id }, select: { className: true, level: true } });
-      const cls = (me?.className ?? '').trim().toUpperCase(), lvl = normLevel(me?.level);
-      if (cls && lvl) {
-        const teachers = await prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true, className: true, level: true } });
-        const mates = teachers.filter(t => (t.className ?? '').trim().toUpperCase() === cls && normLevel(t.level) === lvl);
-        if (mates.length) await prisma.studentAssignment.createMany({
-          data: mates.map(t => ({ periodId: period.id, studentId: session.id, teacherId: t.id, assignedById: 'AUTO-CLASS' })),
-          skipDuplicates: true,
-        });
-      }
-    }
+    // Class teachers follow the student's CURRENT class (same school, same class name), so changing a class updates the list.
+    // Only rows created here (assignedById = 'AUTO-CLASS') are added or removed; ones the Vice Principal set by hand are never touched,
+    // and a teacher whose evaluation was already submitted is never removed.
+    const me = await prisma.user.findUnique({ where: { id: session.id }, select: { className: true, level: true } });
+    const cls = (me?.className ?? '').trim().toUpperCase(), lvl = normLevel(me?.level);
+    const teachers = await prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true, className: true, level: true } });
+    const wanted = new Set(cls && lvl ? teachers.filter(t => (t.className ?? '').trim().toUpperCase() === cls && normLevel(t.level) === lvl).map(t => t.id) : []);
+    const current = await prisma.studentAssignment.findMany({ where: { periodId: period.id, studentId: session.id }, include: { evaluations: { select: { id: true } } } });
+    const stale = current.filter(a => a.assignedById === 'AUTO-CLASS' && !wanted.has(a.teacherId) && a.evaluations.length === 0).map(a => a.id);
+    if (stale.length) await prisma.studentAssignment.deleteMany({ where: { id: { in: stale } } });
+    const have = new Set(current.map(a => a.teacherId));
+    const toAdd = [...wanted].filter(id => !have.has(id));
+    if (toAdd.length) await prisma.studentAssignment.createMany({
+      data: toAdd.map(teacherId => ({ periodId: period.id, studentId: session.id, teacherId, assignedById: 'AUTO-CLASS' })),
+      skipDuplicates: true,
+    });
     const st = await prisma.studentAssignment.findMany({ where: { periodId: period.id, studentId: session.id }, include: { teacher: { select: { id: true, name: true } } } });
     for (const a of st) (isDone('STUDENT', a.teacherId) ? out.STUDENT.submitted : out.STUDENT.pending).push({ teacherId: a.teacher.id, name: a.teacher.name });
   }

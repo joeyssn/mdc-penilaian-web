@@ -73,9 +73,9 @@ export default function StudentAssignmentsPage() {
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
               <p className="font-semibold text-sm">1. Pick teachers  2. Pick students  3. Apply</p>
               <div className="flex flex-wrap gap-2">
-                {data.eligible.map(t => (
+                {[...data.eligible].sort((x: any, y: any) => Number(y.sameClass) - Number(x.sameClass)).map((t: any) => (
                   <label key={t.teacherId} className={`px-3 py-1.5 rounded-full border text-sm cursor-pointer ${selTeachers.includes(t.teacherId) ? 'bg-[#008c99] text-white border-[#008c99]' : ''}`}>
-                    <input type="checkbox" className="sr-only" checked={selTeachers.includes(t.teacherId)} onChange={() => toggle(selTeachers, setSelTeachers, t.teacherId)} />{t.name} · {t.subject}
+                    <input type="checkbox" className="sr-only" checked={selTeachers.includes(t.teacherId)} onChange={() => toggle(selTeachers, setSelTeachers, t.teacherId)} />{t.name}{t.sameClass ? ' · same class' : ''}
                   </label>
                 ))}
               </div>

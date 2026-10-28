@@ -37,18 +37,24 @@ export async function GET(req: Request) {
       prisma.rubric.findMany({ select: { id: true, title: true } }),
     ]);
     const userById = new Map(users.map(u => [u.id, u]));
-    const indicatorText = new Map(indicators.map(i => [i.id, i.text]));
-    const rubricTitle = new Map(rubrics.map(r => [r.id, r.title]));
-    const nameOf = (id: string) => userById.get(id)?.name ?? '(deleted user)';
+    const liveIndicatorText = new Map(indicators.map(i => [i.id, i.text]));
+    const indicatorText = { get: (id: string) => L?.indicators?.[id] ?? liveIndicatorText.get(id) };
+    const liveRubricTitle = new Map(rubrics.map(r => [r.id, r.title]));
+    const rubricTitle = { get: (id: string) => L?.rubrics?.[id] ?? liveRubricTitle.get(id) };
+    // Prefer the names stored in the archive itself; fall back to today's data for older archives
+    let L: any = null;
+    const nameOf = (id: string) => L?.users?.[id] ?? userById.get(id)?.name ?? '(deleted user)';
 
     const summary: Record<string, any>[] = [];
     const scores: Record<string, any>[] = [];
     const logs: Record<string, any>[] = [];
     const observations: Record<string, any>[] = [];
     const attendance: Record<string, any>[] = [];
+    const sdRows: Record<string, any>[] = [];
     const seenLogs = new Set<string>(); // an evaluation log is stored under both the grader and the target
 
     for (const a of archives) {
+      L = (a as any).labelsData ?? null;
       const s = asArray(a.scoresData), l = asArray(a.evalLogsData), o = asArray(a.observationsData);
       const att: any = a.absenceData && typeof a.absenceData === 'object' ? a.absenceData : null;
 
@@ -83,6 +89,11 @@ export async function GET(req: Request) {
         'Item Scores (JSON)': r.scores,
       }));
 
+      asArray((a as any).sdData).forEach((e: any) => asArray(e.answers).forEach((ans: any) => sdRows.push({
+        Semester: a.semester, 'Evaluated Teacher': a.targetName, Source: e.type, Evaluator: nameOf(e.evaluatorId),
+        Question: indicatorText.get(ans.indicatorId) ?? '(deleted question)', 'Score (1-4)': ans.value, 'Average of evaluation': Number(e.average).toFixed(2), Date: date(e.submittedAt),
+      })));
+
       if (att) attendance.push({
         Semester: a.semester, Name: a.targetName, Role: att.role ?? a.targetRole,
         'Attendance Score': att.attendanceScore, 'Updated': date(att.updatedAt),
@@ -100,6 +111,7 @@ export async function GET(req: Request) {
     add('Scores', scores);
     add('Evaluation Logs', logs);
     add('Observations', observations);
+    add('SD Evaluations', sdRows);
     add('Attendance', attendance);
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });

@@ -119,6 +119,36 @@ const STUDENT_RUBRIC: Section[] = [
   ]},
 ];
 
+const SUPERVISOR_RUBRIC: Section[] = [
+  { title: 'A. Penilaian Supervisor', categories: [
+    { title: 'A.1 Pembelajaran di Kelas', indicators: [
+      'Guru menyusun perangkat pembelajaran dengan lengkap dan tepat waktu.',
+      'Guru melaksanakan pembelajaran sesuai rencana dan tujuan yang jelas.',
+      'Guru menggunakan metode dan media yang sesuai dengan kebutuhan siswa.',
+      'Guru memberi umpan balik yang membangun kepada siswa.',
+    ]},
+    { title: 'A.2 Pengembangan Profesional', indicators: [
+      'Guru menerima masukan dan menindaklanjutinya.',
+      'Guru berupaya meningkatkan kompetensi secara berkelanjutan.',
+    ]},
+  ]},
+];
+
+const KOORDINATOR_RUBRIC: Section[] = [
+  { title: 'A. Penilaian Koordinator', categories: [
+    { title: 'A.1 Kerja Sama dan Tanggung Jawab', indicators: [
+      'Guru menjalankan tugas koordinasi tepat waktu.',
+      'Guru berkomunikasi dan bekerja sama dengan baik bersama tim.',
+      'Guru hadir dan aktif dalam rapat serta kegiatan sekolah.',
+      'Guru menjaga disiplin dan keteladanan di lingkungan sekolah.',
+    ]},
+    { title: 'A.2 Kontribusi', indicators: [
+      'Guru berkontribusi pada program dan kegiatan sekolah.',
+      'Guru membantu rekan kerja bila diperlukan.',
+    ]},
+  ]},
+];
+
 const RUBRICS = [
   {
     title: 'SD - Evaluasi Kinerja Guru',
@@ -127,6 +157,22 @@ const RUBRICS = [
     evaluatees: 'Teacher',
     isSelfReflection: false,
     sections: MAIN_RUBRIC,
+  },
+  {
+    title: 'SD - Penilaian oleh Supervisor',
+    description: 'Rubrik yang dipakai supervisor untuk menilai guru yang ditugaskan kepadanya. Skala 1-4.',
+    evaluators: 'Supervisor',
+    evaluatees: 'Teacher',
+    isSelfReflection: false,
+    sections: SUPERVISOR_RUBRIC,
+  },
+  {
+    title: 'SD - Penilaian oleh Koordinator',
+    description: 'Rubrik yang dipakai koordinator untuk menilai guru yang ditugaskan kepadanya. Skala 1-4.',
+    evaluators: 'Koordinator',
+    evaluatees: 'Teacher',
+    isSelfReflection: false,
+    sections: KOORDINATOR_RUBRIC,
   },
   {
     title: 'SD - Refleksi Diri Guru',

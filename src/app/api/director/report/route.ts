@@ -74,6 +74,7 @@ export async function GET() {
       const studentStats = sd ? sdStat(user.id, 'STUDENT') : calculateStats(studentScores);
       const peerStats = sd ? sdStat(user.id, 'PEER') : calculateStats(peerScores);
       const supervisorStats = sd ? sdStat(user.id, 'SUPERVISOR') : { avg: '-', count: 0 };
+      const koordinatorStats = sd ? sdStat(user.id, 'KOORDINATOR') : { avg: '-', count: 0 };
       const selfStats = calculateStats(selfScores);
 
       let overallAvg = '-';
@@ -90,7 +91,7 @@ export async function GET() {
       if (hideScores) {
         return {
           id: user.id, name: user.name, role: displayRole, roleKey: user.role, level: user.level ?? null, department: '-',
-          studentCount: 0, studentAvg: '-', peerCount: 0, peerAvg: '-', supervisorAvg: '-', selfCount: 0, selfAvg: '-', overallAvg: '-',
+          studentCount: 0, studentAvg: '-', peerCount: 0, peerAvg: '-', supervisorAvg: '-', koordinatorAvg: '-', selfCount: 0, selfAvg: '-', overallAvg: '-',
         };
       }
 
@@ -106,6 +107,7 @@ export async function GET() {
         peerCount: peerStats.count,
         peerAvg: peerStats.avg,
         supervisorAvg: supervisorStats.avg,
+        koordinatorAvg: koordinatorStats.avg,
         selfCount: selfStats.count,
         selfAvg: selfStats.avg,
         overallAvg: overallAvg,

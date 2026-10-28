@@ -1,6 +1,6 @@
-// End-to-end checks against a RUNNING dev server and the demo data (seed-sd.ts + seed-sd-groups.ts).
+// End-to-end checks against a RUNNING dev server and the demo data (seed-sd.ts + seed-sd-assignments.ts).
 //   npx tsx tests/sd-api.test.ts            (server on http://localhost:3000)
-// Covers tests D, E, F, H of the spec through real HTTP calls, so the backend rules are exercised, not the UI.
+// Exercises the backend rules through real HTTP calls (not the UI). Needs a fresh demo period (re-run the seed after an archive reset).
 import assert from 'node:assert/strict';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
@@ -11,12 +11,13 @@ async function login(user: string) {
   const cookie = (res.headers.getSetCookie?.() ?? []).map(c => c.split(';')[0]).join('; ');
   return async (path: string, method = 'GET', body?: unknown) => {
     const r = await fetch(`${BASE}${path}`, { method, headers: { 'Content-Type': 'application/json', cookie }, body: body ? JSON.stringify(body) : undefined });
-    return { status: r.status, data: await r.json().catch(() => ({})) as any };
+    return { status: r.status, data: (await r.json().catch(() => ({}))) as any };
   };
 }
+type Api = Awaited<ReturnType<typeof login>>;
 let n = 0; const ok = (m: string) => console.log('ok -', ++n, m);
 
-async function answersFor(api: Awaited<ReturnType<typeof login>>, student: boolean) {
+async function answers(api: Api, student: boolean) {
   const r = (await api('/api/rubric')).data as any[];
   const rubric = r.find(x => x.schoolLevel === 'SD' && !x.isSelfReflection && (x.evaluators || []).map((e: string) => e.trim().toLowerCase()).includes('student') === student);
   assert.ok(rubric, 'SD rubric available');
@@ -25,46 +26,38 @@ async function answersFor(api: Awaited<ReturnType<typeof login>>, student: boole
 }
 
 (async () => {
-  const kepsek = await login('sd.kepsek'), wakasis = await login('sd.wakasis'), pengawas = await login('sd.pengawas');
-  const g1 = await login('sd.guru1'), g3 = await login('sd.guru3'), g5 = await login('sd.guru5');
-  const s1 = await login('sd.siswa1'), s3 = await login('sd.siswa3');
-  const users = (await kepsek('/api/sd/teachers')).data;
-  const id = (name: string) => users.teachers.find((t: any) => t.name === name)?.id;
+  const kepsek = await login('sd.kepsek'), wakasis = await login('sd.wakasis'), staff = await login('sd.pengawas');
+  const g1 = await login('sd.guru1'), g2 = await login('sd.guru2'), g3 = await login('sd.guru3'), s1 = await login('sd.siswa1');
   const period = (await kepsek('/api/sd/periods')).data.find((p: any) => p.status === 'OPEN');
-  const guru = (await g1('/api/me')).data.id, _unused = 0;
+  const id1 = (await g1('/api/me')).data.id, id2 = (await g2('/api/me')).data.id, id3 = (await g3('/api/me')).data.id;
+  const rub = await answers(g1, false);
 
-  // H: role guards
-  assert.equal((await g1('/api/sd/groups', 'POST', { name: 'X', periodId: period.id, classOne: '1A', classTwo: '1B' })).status, 403); ok('H: a teacher cannot create groups');
-  assert.equal((await s1('/api/sd/student-assignments', 'PUT', { periodId: period.id, studentIds: [], teacherIds: [] })).status, 403); ok('H: a student cannot assign teachers');
-  assert.equal((await kepsek('/api/sd/groups', 'POST', { name: 'Bad', periodId: period.id, classOne: '9A', classTwo: '9a' })).status, 400); ok('1: a group with the same class twice is rejected');
+  // Authorization
+  assert.equal((await g1('/api/sd/assignments', 'PUT', { periodId: period.id, teacherId: id2, role: 'PEER', evaluatorIds: [id1] })).status, 403); ok('a teacher cannot assign evaluators');
+  assert.equal((await s1('/api/sd/student-assignments', 'PUT', { periodId: period.id, studentIds: [], teacherIds: [] })).status, 403); ok('a student cannot assign teachers');
+  assert.equal((await kepsek('/api/sd/assignments', 'PUT', { periodId: period.id, teacherId: id1, role: 'PEER', evaluatorIds: [id1] })).status, 400); ok('a teacher cannot be their own peer');
 
-  // A/B: peer — guru1 (Math 4A, EXACT) -> guru3 (BI 4A, NON-EXACT) must be refused; -> guru2 (IPA 4A partner) allowed
-  const rub = await answersFor(g1, false);
-  const guru3Id = (await g3('/api/me')).data.id;
-  assert.equal((await g1('/api/sd/evaluations', 'POST', { type: 'PEER', targetId: guru3Id, ...rub })).status, 403); ok('B: EXACT teacher cannot score a NON-EXACT teacher');
-  assert.equal((await g1('/api/sd/evaluations', 'POST', { type: 'PEER', targetId: guru, ...rub })).status, 403); ok('A: nobody scores themselves');
-  const t1 = (await g1('/api/sd/my-tasks')).data;
-  assert.ok(t1.peer.targets.every((t: any) => t.category === 'EXACT') && t1.peer.targets.length === 3); ok('A: guru1 sees exactly the 3 other EXACT teachers across 4A and 4B');
-  const crossClass = t1.peer.targets.find((t: any) => t.className === '4B');
-  assert.equal((await g1('/api/sd/evaluations', 'POST', { type: 'PEER', targetId: crossClass.teacherId, ...rub })).status, 200); ok('A: cross-class peer evaluation accepted');
-  assert.equal((await g1('/api/sd/evaluations', 'POST', { type: 'PEER', targetId: crossClass.teacherId, ...rub })).status, 409); ok('duplicate peer submission rejected');
+  // Assigned evaluators only
+  assert.equal((await g3('/api/sd/evaluations', 'POST', { type: 'PEER', targetId: id2, ...rub })).status, 403); ok('unassigned peer is refused');
+  assert.equal((await kepsek('/api/sd/assignments', 'PUT', { periodId: period.id, teacherId: id2, role: 'PEER', evaluatorIds: [id3] })).status, 200);
+  assert.equal((await g3('/api/sd/evaluations', 'POST', { type: 'PEER', targetId: id2, ...rub })).status, 200); ok('assigned peer can submit');
+  assert.equal((await g3('/api/sd/evaluations', 'POST', { type: 'PEER', targetId: id2, ...rub })).status, 409); ok('duplicate submission rejected');
+  assert.equal((await g3('/api/sd/evaluations', 'POST', { type: 'KOORDINATOR', targetId: id2, ...rub })).status, 403); ok('a peer assignment does not allow a koordinator evaluation');
 
-  // E: supervisor — only assigned teachers
-  assert.equal((await pengawas('/api/sd/evaluations', 'POST', { type: 'SUPERVISOR', targetId: crossClass.teacherId, ...rub })).status, 403); ok('E: unassigned supervisor refused');
-  assert.equal((await kepsek('/api/sd/supervisors', 'POST', { periodId: period.id, supervisorId: (await pengawas('/api/me')).data.id, teacherId: crossClass.teacherId })).status, 200);
-  assert.equal((await pengawas('/api/sd/evaluations', 'POST', { type: 'SUPERVISOR', targetId: crossClass.teacherId, ...rub })).status, 200); ok('E: assigned supervisor can score, outside any group');
+  // Supervisor + koordinator are separate records
+  assert.equal((await kepsek('/api/sd/assignments', 'PUT', { periodId: period.id, teacherId: id2, role: 'SUPERVISOR', evaluatorIds: [(await staff('/api/me')).data.id] })).status, 200);
+  assert.equal((await staff('/api/sd/evaluations', 'POST', { type: 'SUPERVISOR', targetId: id2, ...rub })).status, 200); ok('assigned supervisor can submit');
+  const row = (await kepsek(`/api/sd/evaluations?periodId=${period.id}`)).data.find((r: any) => r.teacherId === id2);
+  assert.equal(row.peer.submitted, 1); assert.equal(row.supervisor.submitted, 1); assert.equal(row.koordinator.submitted, 0); ok('peer and supervisor are stored and reported separately');
 
-  // D: students — only what the VP assigned
-  const student1 = (await s1('/api/me')).data.id;
-  assert.equal((await s1('/api/sd/evaluations', 'POST', { type: 'STUDENT', targetId: guru, ...(await answersFor(s1, true)) })).status, 403); ok('D: unassigned teacher refused for a student');
-  assert.equal((await wakasis('/api/sd/student-assignments', 'PUT', { periodId: period.id, studentIds: [student1], teacherIds: [guru], mode: 'replace' })).status, 200);
-  assert.deepEqual((await s1('/api/sd/my-tasks')).data.student.pending.map((p: any) => p.teacherId), [guru]); ok('D: student sees only the assigned teacher');
-  assert.equal((await wakasis('/api/sd/student-assignments', 'PUT', { periodId: period.id, studentIds: [student1], teacherIds: [crossClass.teacherId], mode: 'add' })).status, 400); ok('D: teacher of another class cannot be assigned');
-  assert.equal((await s1('/api/sd/evaluations', 'POST', { type: 'STUDENT', targetId: guru, ...(await answersFor(s1, true)) })).status, 200);
+  // Removing an evaluator who already submitted keeps the evaluation
+  assert.equal((await kepsek('/api/sd/assignments', 'PUT', { periodId: period.id, teacherId: id2, role: 'PEER', evaluatorIds: [] })).status, 200);
+  assert.equal((await kepsek(`/api/sd/evaluations?periodId=${period.id}`)).data.find((r: any) => r.teacherId === id2).peer.submitted, 1); ok('removing a peer keeps the submitted evaluation');
 
-  // F: three separate sources
-  const rows = (await kepsek('/api/sd/evaluations')).data;
-  const row = rows.find((r: any) => r.teacherId === crossClass.teacherId);
-  assert.equal(row.peer.submitted, 1); assert.equal(row.supervisor.submitted, 1); assert.equal(row.student.submitted, 0); ok('F: peer and supervisor stored as separate sources');
+  // Students only get what the VP assigned
+  const sid = (await s1('/api/me')).data.id;
+  assert.equal((await s1('/api/sd/evaluations', 'POST', { type: 'STUDENT', targetId: id1, ...(await answers(s1, true)) })).status, 403); ok('unassigned teacher refused for a student');
+  assert.equal((await wakasis('/api/sd/student-assignments', 'PUT', { periodId: period.id, studentIds: [sid], teacherIds: [id1], mode: 'replace' })).status, 200);
+  assert.deepEqual((await s1('/api/sd/my-tasks')).data.STUDENT.pending.map((p: any) => p.teacherId), [id1]); ok('student sees only the assigned teacher');
   console.log(`\n${n} checks passed`);
 })().catch(e => { console.error('FAILED:', e); process.exit(1); });

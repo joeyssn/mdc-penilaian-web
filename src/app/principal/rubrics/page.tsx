@@ -19,6 +19,7 @@ type Rubric = {
 };
 
 const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan', 'Student'];
+const EVALUATOR_ROLES = [...ROLES, 'Peer', 'Supervisor', 'Koordinator'];
 
 // Principal view: can assign who evaluates whom, but the rubric content itself is read-only.
 export default function PrincipalRubricAssignmentPage() {
@@ -30,14 +31,16 @@ export default function PrincipalRubricAssignmentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [levelName, setLevelName] = useState('');
+  const [home, setHome] = useState('/principal');
 
   const load = async (keepSelection = false) => {
     const meRes = await fetch('/api/me');
     if (!meRes.ok) return router.push('/login');
     const me = await meRes.json();
-    if (me.role !== 'PRINCIPAL' && me.role !== 'DIRECTOR' && me.role !== 'ADMIN') return router.push('/login');
+    if (!['PRINCIPAL', 'DIRECTOR', 'ADMIN'].includes(me.role)) return router.push('/login');
 
-    setLevelName(String(me.level || '').toUpperCase() === 'SD' ? 'SD' : 'SMP / SMA');
+    setHome(String(me.role).startsWith('VICE') ? '/vice-principal' : me.role === 'ADMIN' ? '/admin' : '/principal');
+    setLevelName(String(me.level || '').toUpperCase() || 'All schools');
     const res = await fetch('/api/rubric', { cache: 'no-store' });
     const data = await res.json();
     if (Array.isArray(data)) {
@@ -93,13 +96,13 @@ export default function PrincipalRubricAssignmentPage() {
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center border-b border-gray-200">
         <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
-        <Link href="/principal" className="text-gray-500 hover:text-[#008c99] font-bold transition-colors">← Back to Dashboard</Link>
+        <Link href={home} className="text-gray-500 hover:text-[#008c99] font-bold transition-colors">← Back to Dashboard</Link>
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 pt-10 space-y-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Rubrics{levelName && <span className="text-[#e99a24]"> · {levelName}</span>}</h1>
-          <p className="text-gray-500 mt-2 font-medium">Choose which roles evaluate which roles. Rubric content can only be edited by the admin.</p>
+          <p className="text-gray-500 mt-2 font-medium">Choose which roles evaluate which roles for your school only. Other schools keep their own assignments. Rubric content can only be edited by the admin.</p>
         </div>
 
         {rubrics.length === 0 ? (
@@ -117,7 +120,7 @@ export default function PrincipalRubricAssignmentPage() {
                     <div>
                       <h3 className="font-bold text-gray-800 mb-3">Who evaluates (Evaluators)</h3>
                       <div className="space-y-2">
-                        {ROLES.map(role => (
+                        {EVALUATOR_ROLES.map(role => (
                           <label key={role} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
                             <input type="checkbox" checked={evaluators.includes(role)} onChange={() => toggle(evaluators, setEvaluators, role)} className="w-4 h-4 accent-[#008c99]" />
                             <span className="font-medium text-gray-700">{role}</span>

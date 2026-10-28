@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/session';
+import { denyUnlessRole, getSession } from '@/lib/session';
 import { filterRowsByUserScope, scopeOf } from '@/lib/levelScope';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -18,6 +18,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // Only HRD (and the admin) may record attendance scores.
+  const denied = await denyUnlessRole(['HRD', 'ADMIN']);
+  if (denied) return denied;
   try {
     const { userId, userName, role, attendanceScore } = await req.json();
     const existingRecord = await prisma.absence.findFirst({ where: { userId: userId } });

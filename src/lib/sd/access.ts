@@ -7,7 +7,6 @@ import { scopeOf, type Level } from '@/lib/levelScope';
 // Who may do what in the SD teacher evaluation system. "Admin SD" is the existing ADMIN role.
 export const GROUP_MANAGE_ROLES = ['PRINCIPAL', 'ADMIN'];
 export const SD_VIEW_ROLES = ['PRINCIPAL', 'ADMIN', 'DIRECTOR', 'VICE_PRINCIPAL_KESISWAAN'];
-export const SUPERVISOR_ELIGIBLE_ROLES = ['TEACHER', 'STAFF', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'];
 
 // Sensitive actions belong to the Principal. The Principal can delegate them to Admin SD with these switches.
 export type SdPermission = 'publish' | 'supervisors' | 'periods';
@@ -15,7 +14,8 @@ const KEY = (p: SdPermission) => `sdAdmin_${p}`;
 
 export async function adminPermissions(): Promise<Record<SdPermission, boolean>> {
   const rows = await prisma.appSetting.findMany({ where: { key: { in: (['publish', 'supervisors', 'periods'] as SdPermission[]).map(KEY) } } });
-  const on = (p: SdPermission) => rows.find(r => r.key === KEY(p))?.value === 'true';
+  // Admin SD may assign evaluators by default (the Principal can switch it off); other sensitive actions stay off until switched on.
+  const on = (p: SdPermission) => { const v = rows.find(r => r.key === KEY(p))?.value; return p === 'supervisors' ? v !== 'false' : v === 'true'; };
   return { publish: on('publish'), supervisors: on('supervisors'), periods: on('periods') };
 }
 
@@ -27,7 +27,8 @@ export async function setAdminPermission(p: SdPermission, value: boolean) {
 
 export async function can(session: SessionUser, p: SdPermission): Promise<boolean> {
   if (session.role === 'PRINCIPAL') return true;
-  if (session.role === 'ADMIN') return (await adminPermissions())[p];
+  // Admin SD can always edit who evaluates whom; opening / closing periods stays with the Principal unless delegated
+  if (session.role === 'ADMIN') return p === 'supervisors' ? true : (await adminPermissions())[p];
   return false;
 }
 
@@ -61,14 +62,4 @@ export const fail = (error: string | string[], status = 400) =>
 export const openPeriod = () => prisma.evalPeriod.findFirst({ where: { status: 'OPEN' } });
 
 // Members of every PUBLISHED group of a period, keyed by group.
-// `scope` limits the result to one school's groups (groups without a school label stay visible).
-export const groupScopeWhere = (scope: Level | null) => (scope ? { OR: [{ level: scope }, { level: null }] } : {});
-
-export async function publishedMembers(periodId: string, scope: Level | null = null) {
-  return prisma.groupMember.findMany({
-    where: { group: { periodId, status: 'PUBLISHED', ...groupScopeWhere(scope) } },
-    include: { group: { select: { id: true, classOne: true, classTwo: true, name: true } }, teacher: { select: { id: true, name: true, role: true, level: true } } },
-  });
-}
-
 export const isSdUser = (u: { level?: string | null }) => isSdGroupLevel(u.level);

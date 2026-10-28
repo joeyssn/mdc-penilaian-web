@@ -1,0 +1,11 @@
+Delete these old files from your project (the grouping system was removed):
+  src/app/api/sd/groups            (whole folder)
+  src/app/api/sd/supervisors       (whole folder)
+  src/app/sd/groups                (whole folder)
+  prisma/seed-sd-groups.ts
+
+Then run:
+  npx prisma db push --accept-data-loss    (drops the old group tables; they only held demo data)
+  npx prisma generate
+  npx tsx prisma/seed-sd-assignments.ts    (optional demo data)
+  restart npm run dev

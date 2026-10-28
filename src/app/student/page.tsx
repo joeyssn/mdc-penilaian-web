@@ -1,6 +1,7 @@
 'use client';
 
 import RoleNav from '@/components/RoleNav';
+import SdTasks from '@/components/SdTasks';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -100,6 +101,9 @@ export default function StudentDashboard() {
     return false;
   });
 
+  // SD / TK students evaluate their teachers right here on Home.
+  const isSdStudent = ['SD', 'TK'].includes(String(loggedInUser?.level || '').toUpperCase());
+
   const activeRubric = rubrics.find((rubric) => {
     if (!rubric.evaluators) return false;
     const validEvaluators = String(rubric.evaluators).toLowerCase();
@@ -135,6 +139,7 @@ export default function StudentDashboard() {
                     </div>
                 </div>
 
+                {isSdStudent ? <SdTasks embedded /> : (
                 <div className="pt-4">
                     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 mt-6">
                         <div className="flex items-center px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 bg-gray-50">
@@ -238,6 +243,7 @@ export default function StudentDashboard() {
                         </div>
                     )}
                 </div>
+                )}
             </div>
         </div>
     );

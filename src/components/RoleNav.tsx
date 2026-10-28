@@ -10,13 +10,14 @@ const EVAL: Tab = { href: '/sd/tasks', label: 'My Evaluations' };
 
 // One top bar for every role, used by the dashboards AND the SD screens, so the header never changes between pages.
 const TABS: Record<string, Tab[]> = {
-  ADMIN: [{ href: '/admin', label: 'Live Overview & Weights' }, { href: '/sd/groups', label: 'SD Groups & Supervisors' }],
-  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/groups', label: 'SD Groups & Supervisors' }, EVAL],
+  ADMIN: [{ href: '/admin', label: 'Live Overview & Weights' }, { href: '/sd/assignments', label: 'Assign Evaluators' }],
+  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, EVAL],
   VICE_PRINCIPAL_KESISWAAN: [{ href: '/vice-principal', label: 'My Dashboard' }, { href: '/sd/student-assignments', label: 'Student Assignments' }, EVAL],
   VICE_PRINCIPAL_KURIKULUM: [{ href: '/vice-principal', label: 'My Dashboard' }, EVAL],
   TEACHER: [{ href: '/teachers', label: 'My Dashboard' }, EVAL],
   STAFF: [{ href: '/staff', label: 'My Dashboard' }, EVAL],
-  STUDENT: [{ href: '/student', label: 'Home' }, EVAL],
+  STUDENT: [{ href: '/student', label: 'Home' }],
+  HRD: [{ href: '/hrd', label: 'HRD Dashboard' }],
 };
 
 export default function RoleNav() {

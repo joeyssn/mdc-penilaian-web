@@ -49,10 +49,16 @@ export async function GET(req: Request) {
       orderBy: { targetName: 'asc' },
     });
 
+    // Archives made before names were stored fall back to today's names
+    const needLive = records.some(r => !r.labelsData);
+    const [liveUsers, liveIndicators] = needLive
+      ? await Promise.all([prisma.user.findMany({ select: { id: true, name: true } }), prisma.rubricindicator.findMany({ select: { id: true, text: true } })])
+      : [[], []];
     return NextResponse.json({
       semesters: semesterList,
       activeSemester,
       records,
+      live: { users: Object.fromEntries(liveUsers.map(u => [u.id, u.name])), indicators: Object.fromEntries(liveIndicators.map(i => [i.id, i.text])) },
     });
   } catch (error: any) {
     console.error("❌ ARCHIVE FETCH ERROR:", error);

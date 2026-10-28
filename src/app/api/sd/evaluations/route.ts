@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession, SCORE_VIEWER_ROLES } from '@/lib/session';
 import { isScoresLockedFor } from '@/lib/settings';
-import { averageOf, categoryOf, canPeerEvaluate, SUBJECT_LABEL, type MemberLite } from '@/lib/sd/rules';
-import { scopeOf } from '@/lib/levelScope';
-import { fail, groupScopeWhere, openPeriod, publishedMembers, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES } from '@/lib/sd/access';
+import { averageOf, canSubmit } from '@/lib/sd/rules';
+import { isRubricAllowed } from '@/lib/sd/rubricRules';
+import { inScope, scopeOf } from '@/lib/levelScope';
+import { isSdUser } from '@/lib/sd/access';
+import { fail, openPeriod, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
 
-const TYPES = ['PEER', 'SUPERVISOR', 'STUDENT'] as const;
+const TYPES = ['PEER', 'SUPERVISOR', 'KOORDINATOR', 'STUDENT'] as const;
 type EvalType = (typeof TYPES)[number];
 
 // Submit one evaluation. The evaluator always comes from the session; the server re-checks eligibility
@@ -24,40 +26,19 @@ export async function POST(req: Request) {
   if (!period) return fail('There is no open evaluation period.', 409);
 
   // 1. Is this evaluator allowed to score this target, in this workflow?
-  let groupId: string | null = null, supervisorAssignmentId: string | null = null, studentAssignmentId: string | null = null;
+  let assignmentId: string | null = null, studentAssignmentId: string | null = null;
   let context: Record<string, unknown> = {};
-  if ((type as EvalType) === 'PEER') {
-    if (session.role !== 'TEACHER') return fail('Only teachers can submit peer evaluations.', 403);
-    const all = await publishedMembers(period.id);
-    const myGroupIds = [...new Set(all.filter(m => m.teacherId === session.id).map(m => m.groupId))];
-    if (myGroupIds.length === 0) return fail('You are not in a published group for this period.', 403);
-    const submitted = new Set((await prisma.sdEvaluation.findMany({ where: { type: 'PEER', periodId: period.id, evaluatorId: session.id }, select: { targetId: true } })).map(e => e.targetId));
-    // A teacher may be in several groups: the evaluation is allowed if ANY of them makes the target eligible.
-    let res: ReturnType<typeof canPeerEvaluate> = { ok: false, reason: 'That teacher is not in any of your groups.' };
-    let members: typeof all = [];
-    for (const gid of myGroupIds) {
-      const gm = all.filter(m => m.groupId === gid);
-      const r = canPeerEvaluate(session.id, targetId, gm as unknown as MemberLite[], submitted);
-      if (r.ok) { res = r; members = gm; break; }
-      if (r.reason.startsWith('You already')) { res = r; break; }
-    }
-    if (!res.ok) return fail(res.reason, res.reason.startsWith('You already') ? 409 : 403);
-    const mine = members[0];
-    groupId = mine.groupId;
-    const me = members.filter(m => m.teacherId === session.id);
-    context = {
-      group: mine.group.name, targetClass: res.target.className, targetSubject: SUBJECT_LABEL[res.target.subject], category: res.target.category, isPartner: res.target.isPartner,
-      evaluatorSubjects: me.map(m => `${SUBJECT_LABEL[m.subject]} ${m.className}`),
-    };
-  } else if (type === 'SUPERVISOR') {
-    const a = await prisma.supervisorAssignment.findUnique({ where: { periodId_supervisorId_teacherId: { periodId: period.id, supervisorId: session.id, teacherId: targetId } } });
-    if (!a || !a.active) return fail('You are not assigned as supervisor of this teacher.', 403);
-    supervisorAssignmentId = a.id;
-  } else {
+  if (session.id === targetId) return fail('You cannot evaluate yourself.', 403);
+  if (type === 'STUDENT') {
     if (session.role !== 'STUDENT') return fail('Only students can submit student evaluations.', 403);
     const a = await prisma.studentAssignment.findUnique({ where: { periodId_studentId_teacherId: { periodId: period.id, studentId: session.id, teacherId: targetId } } });
     if (!a) return fail('This teacher was not assigned to you.', 403);
     studentAssignmentId = a.id;
+  } else {
+    const a = await prisma.teacherAssignment.findUnique({ where: { periodId_teacherId_evaluatorId_role: { periodId: period.id, teacherId: targetId, evaluatorId: session.id, role: type } } });
+    if (!canSubmit(type, a)) return fail(`You are not assigned as ${String(type).toLowerCase()} of this teacher.`, 403);
+    assignmentId = a!.id;
+    context = { role: type, evaluatorRole: session.role };
   }
 
   // 2. Rubric + answers
@@ -66,8 +47,15 @@ export async function POST(req: Request) {
     include: { rubricsection: { include: { rubriccategory: { include: { rubricindicator: { select: { id: true } } } } } } },
   });
   if (!rubric || rubric.schoolLevel !== 'SD' || rubric.isSelfReflection) return fail('That rubric cannot be used for this evaluation.');
-  const forStudents = (rubric.evaluators ?? '').split(',').map(s => s.trim().toLowerCase()).includes('student');
-  if (forStudents !== (type === 'STUDENT')) return fail(type === 'STUDENT' ? 'Students must use the student rubric.' : 'The student rubric is only for student evaluations.');
+  const baseRubrics = await prisma.rubric.findMany({ where: { schoolLevel: 'SD', isSelfReflection: false }, select: { id: true, evaluators: true } });
+  // Use the evaluator's own school assignment (TK or SD) when one was saved, same as the page shows.
+  const lvl = String(session.level || '').toUpperCase();
+  const overrides = lvl === 'TK' || lvl === 'SD'
+    ? await prisma.rubricLevelAssignment.findMany({ where: { level: lvl, rubricId: { in: baseRubrics.map(r => r.id) } }, select: { rubricId: true, evaluators: true } }).catch(() => [])
+    : [];
+  const ov = new Map(overrides.map(o => [o.rubricId, o.evaluators]));
+  const sdRubrics = baseRubrics.map(r => (ov.has(r.id) ? { ...r, evaluators: ov.get(r.id) ?? null } : r));
+  if (!isRubricAllowed(type, rubricId, sdRubrics)) return fail(`This rubric is not the one set for ${String(type).toLowerCase()} evaluations.`);
   const indicatorIds = new Set(rubric.rubricsection.flatMap(s => s.rubriccategory.flatMap(c => c.rubricindicator.map(i => i.id))));
   const answers = new Map<string, number>();
   for (const s of scores) {
@@ -81,7 +69,7 @@ export async function POST(req: Request) {
   try {
     const ev = await prisma.sdEvaluation.create({
       data: {
-        type, periodId: period.id, evaluatorId: session.id, targetId, groupId, supervisorAssignmentId, studentAssignmentId, rubricId,
+        type, periodId: period.id, evaluatorId: session.id, targetId, assignmentId, studentAssignmentId, rubricId,
         answers: [...answers].map(([indicatorId, value]) => ({ indicatorId, value })), average: averageOf([...answers.values()]), context: context as any,
       },
     });
@@ -93,32 +81,27 @@ export async function POST(req: Request) {
   }
 }
 
-// Progress and (when allowed) results per teacher, with the three sources kept apart.
+// Progress and (when allowed) results per teacher, with the four sources kept apart.
 export async function GET(req: Request) {
   const g = await requireRole([...new Set([...SD_VIEW_ROLES, ...GROUP_MANAGE_ROLES])]); if (g.error) return g.error;
   const periodId = new URL(req.url).searchParams.get('periodId') || (await openPeriod())?.id;
   if (!periodId) return NextResponse.json([]);
   const hide = !SCORE_VIEWER_ROLES.includes(g.session.role) && (await isScoresLockedFor(g.session));
+  const scope = scopeOf(g.session);
 
-  const [evals, sups, studs, members] = await Promise.all([
+  const [teachers, evals, assigns, studs] = await Promise.all([
+    prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true, name: true, level: true } }),
     prisma.sdEvaluation.findMany({ where: { periodId }, select: { type: true, targetId: true, average: true } }),
-    prisma.supervisorAssignment.findMany({ where: { periodId, active: true }, select: { teacherId: true } }),
+    prisma.teacherAssignment.findMany({ where: { periodId, active: true }, select: { teacherId: true, role: true } }),
     prisma.studentAssignment.findMany({ where: { periodId }, select: { teacherId: true } }),
-    prisma.groupMember.findMany({ where: { group: { periodId, status: 'PUBLISHED', ...groupScopeWhere(scopeOf(g.session)) } }, include: { teacher: { select: { id: true, name: true } }, group: { select: { name: true } } } }),
   ]);
-  const ids = [...new Set([...members.map(m => m.teacherId)])];
-  const rows = ids.map(id => {
-    const ms = members.filter(m => m.teacherId === id);
-    const part = (t: string, assigned?: number) => {
-      const list = evals.filter(e => e.type === t && e.targetId === id);
+  const rows = teachers.filter(t => isSdUser(t) && inScope(scope, t.level)).map(t => {
+    const part = (type: string, assigned: number) => {
+      const list = evals.filter(e => e.type === type && e.targetId === t.id);
       return { submitted: list.length, assigned, average: hide || !list.length ? null : Number(averageOf(list.map(e => e.average)).toFixed(2)) };
     };
-    // Expected peer evaluations = other teachers of the same category in the group (a standing figure, not an assignment table).
-    return {
-      teacherId: id, name: ms[0].teacher.name, group: [...new Set(ms.map(m => m.group.name))].join(', '),
-      subjects: ms.map(m => `${SUBJECT_LABEL[m.subject]} ${m.className}`), category: [...new Set(ms.map(m => categoryOf(m.subject)))].join(' + '),
-      peer: part('PEER'), supervisor: part('SUPERVISOR', sups.filter(s => s.teacherId === id).length), student: part('STUDENT', studs.filter(s => s.teacherId === id).length),
-    };
+    const n = (role: string) => assigns.filter(a => a.teacherId === t.id && a.role === role).length;
+    return { teacherId: t.id, name: t.name, supervisor: part('SUPERVISOR', n('SUPERVISOR')), peer: part('PEER', n('PEER')), koordinator: part('KOORDINATOR', n('KOORDINATOR')), student: part('STUDENT', studs.filter(s => s.teacherId === t.id).length) };
   });
   return NextResponse.json(rows.sort((a, b) => a.name.localeCompare(b.name)));
 }

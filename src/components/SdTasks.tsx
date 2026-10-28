@@ -45,11 +45,11 @@ export default function SdTasks({ embedded = false }: { embedded?: boolean }) {
 
   const Card = ({ title, hint, pending, done, type }: { title: string; hint: string; pending: Target[]; done: Target[]; type: EvalKind }) => (
     <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
-      <div><h2 className="text-lg font-extrabold text-[#053b50]">{title}</h2><p className="text-sm text-gray-500">{hint}</p></div>
-      {pending.length === 0 && done.length === 0 && <p className="text-sm text-gray-400">Nothing assigned to you.</p>}
+      <div><h2 className="text-lg font-extrabold text-[#053b50]">{title}</h2><p className="text-sm text-gray-700">{hint}</p></div>
+      {pending.length === 0 && done.length === 0 && <p className="text-sm text-gray-600">Nothing assigned to you.</p>}
       {pending.map(p => (
         <div key={p.teacherId} className="flex items-center justify-between gap-3 border rounded-xl p-3">
-          <div className="text-sm"><b>{p.name}</b>{p.subject && <span className="text-gray-500"> · {p.subject} {p.className}</span>}</div>
+          <div className="text-sm"><b>{p.name}</b>{p.subject && <span className="text-gray-700"> · {p.subject} {p.className}</span>}</div>
           <button className="px-3 py-1.5 rounded-xl text-sm font-bold bg-[#008c99] text-white" onClick={() => { setAnswers({}); setOpen({ type, target: p }); }}>Evaluate</button>
         </div>
       ))}
@@ -73,29 +73,29 @@ export default function SdTasks({ embedded = false }: { embedded?: boolean }) {
       {t && (t.KOORDINATOR.pending.length + t.KOORDINATOR.submitted.length > 0) && <Card type="KOORDINATOR" title="Koordinator evaluations" hint="Teachers assigned to you as koordinator." pending={t.KOORDINATOR.pending} done={t.KOORDINATOR.submitted} />}
       {me?.role === 'STUDENT' && t && <Card type="STUDENT" title="Teachers to evaluate" hint="Your class teachers (and any the Vice Principal added). Tap a face to score each question." pending={t.STUDENT.pending} done={t.STUDENT.submitted} />}
       {t?.period && ['PEER', 'SUPERVISOR', 'KOORDINATOR', 'STUDENT'].every(k => t[k].pending.length + t[k].submitted.length === 0) && (
-        <p className="text-sm text-gray-500">Nothing has been assigned to you in this period.</p>
+        <p className="text-sm text-gray-700">Nothing has been assigned to you in this period.</p>
       )}
 
       {open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl my-8 p-6 space-y-5">
-            <div className="flex justify-between items-start"><h3 className="text-lg font-bold">Evaluate {open.target.name}</h3><button onClick={() => setOpen(null)} className="text-gray-400">✕</button></div>
+          <div className="bg-white text-gray-900 [color-scheme:light] rounded-2xl w-full max-w-2xl my-8 p-6 space-y-5">
+            <div className="flex justify-between items-start"><h3 className="text-lg font-bold">Evaluate {open.target.name}</h3><button onClick={() => setOpen(null)} className="text-gray-600">✕</button></div>
             {!rubric ? <p className="text-red-600 text-sm">No SD rubric is available for this evaluation. Ask the admin to add one.</p> : (
               <>
-                <p className="text-sm text-gray-500">{rubric.title} · {indicators.length - unanswered}/{indicators.length} answered</p>
+                <p className="text-sm text-gray-700">{rubric.title} · {indicators.length - unanswered}/{indicators.length} answered</p>
                 {rubric.sections.map((s: any) => s.categories.map((c: any) => (
                   <div key={c.id} className="space-y-3">
-                    <h4 className="font-semibold text-[#008c99]">{c.title}</h4>
+                    <h4 className="font-semibold text-[#006e7a] text-base">{c.title}</h4>
                     {c.indicators.map((i: any) => (
                       <div key={i.id} className={`rounded-xl border p-3 ${!answers[i.id] ? '' : 'bg-gray-50'}`}>
-                        <p className="text-sm mb-2">{i.text}</p>
+                        <p className="text-base font-medium text-gray-900 mb-3">{i.text}</p>
                         <div className="flex gap-2">
                           {open?.type === 'STUDENT' ? EMOJI_SCALE.map(([v, e, l]) => (
                             // Students pick a face. The saved value is still 1-4, so the scoring formula does not change.
                             <label key={v} className={`flex-1 text-center rounded-xl border-2 py-3 cursor-pointer transition ${answers[i.id] === v ? 'bg-[#008c99]/10 border-[#008c99] scale-105' : 'border-gray-200 hover:bg-gray-100'}`}>
                               <input type="radio" className="sr-only" name={i.id} checked={answers[i.id] === v} onChange={() => setAnswers({ ...answers, [i.id]: v })} aria-label={l} />
                               <span className="block text-4xl leading-none" aria-hidden>{e}</span>
-                              <span className="block text-[11px] font-semibold text-gray-600 mt-1">{l}</span>
+                              <span className="block text-xs font-bold text-gray-800 mt-1">{l}</span>
                             </label>
                           )) : SCALE.map(([v, l]) => (
                             <label key={v} className={`flex-1 text-center rounded-lg border py-2 text-xs font-semibold cursor-pointer ${answers[i.id] === v ? 'bg-[#008c99] text-white border-[#008c99]' : 'hover:bg-gray-100'}`}>
@@ -115,5 +115,5 @@ export default function SdTasks({ embedded = false }: { embedded?: boolean }) {
       )}
     </>
   );
-  return embedded ? <div className="space-y-6">{body}</div> : <SdShell title="My Evaluations" subtitle={t?.period ? `Period: ${t.period.name}` : 'No evaluation period is open right now.'}>{body}</SdShell>;
+  return embedded ? <div className="space-y-6 text-gray-900 [color-scheme:light]">{body}</div> : <SdShell title="My Evaluations" subtitle={t?.period ? `Period: ${t.period.name}` : 'No evaluation period is open right now.'}>{body}</SdShell>;
 }

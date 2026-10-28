@@ -9,6 +9,9 @@ type Target = { teacherId: string; name: string; className?: string; subject?: s
 type EvalKind = 'PEER' | 'SUPERVISOR' | 'KOORDINATOR' | 'STUDENT';
 type Open = { type: EvalKind; target: Target } | null;
 
+// Student faces for the 1-4 scale (1 = lowest, 4 = highest).
+const EMOJI_SCALE: [number, string, string][] = [[1, '😞', 'Kurang'], [2, '😐', 'Cukup'], [3, '🙂', 'Baik'], [4, '😄', 'Sangat baik']];
+
 export default function SdTasksPage() {
   const [me, setMe] = useState<any>(null);
   const [t, setT] = useState<any>(null);
@@ -87,7 +90,14 @@ export default function SdTasksPage() {
                       <div key={i.id} className={`rounded-xl border p-3 ${!answers[i.id] ? '' : 'bg-gray-50'}`}>
                         <p className="text-sm mb-2">{i.text}</p>
                         <div className="flex gap-2">
-                          {SCALE.map(([v, l]) => (
+                          {open?.type === 'STUDENT' ? EMOJI_SCALE.map(([v, e, l]) => (
+                            // Students pick a face. The saved value is still 1-4, so the scoring formula does not change.
+                            <label key={v} className={`flex-1 text-center rounded-xl border-2 py-3 cursor-pointer transition ${answers[i.id] === v ? 'bg-[#008c99]/10 border-[#008c99] scale-105' : 'border-gray-200 hover:bg-gray-100'}`}>
+                              <input type="radio" className="sr-only" name={i.id} checked={answers[i.id] === v} onChange={() => setAnswers({ ...answers, [i.id]: v })} aria-label={l} />
+                              <span className="block text-4xl leading-none" aria-hidden>{e}</span>
+                              <span className="block text-[11px] font-semibold text-gray-600 mt-1">{l}</span>
+                            </label>
+                          )) : SCALE.map(([v, l]) => (
                             <label key={v} className={`flex-1 text-center rounded-lg border py-2 text-xs font-semibold cursor-pointer ${answers[i.id] === v ? 'bg-[#008c99] text-white border-[#008c99]' : 'hover:bg-gray-100'}`}>
                               <input type="radio" className="sr-only" name={i.id} checked={answers[i.id] === v} onChange={() => setAnswers({ ...answers, [i.id]: v })} />{v}<br /><span className="font-normal">{l}</span>
                             </label>

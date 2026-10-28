@@ -13,6 +13,7 @@ type User = {
   gender?: string | null;
   department?: string | null; 
   level?: string | null;
+  division?: string | null;
 };
 
 export default function TeacherManagementPage() {
@@ -37,6 +38,7 @@ export default function TeacherManagementPage() {
     role: 'TEACHER',
     department: 'UMUM', 
     level: '',
+    division: '',
     nis_niy: ''
   });
 
@@ -169,13 +171,14 @@ export default function TeacherManagementPage() {
       role: teacher.role || 'TEACHER',
       department: teacher.department || 'UMUM', 
       level: teacher.level || '',
+      division: teacher.division || '',
       nis_niy: teacher.nis_niy || ''
     });
     setIsEditModalOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', gender: 'Laki-Laki', role: 'TEACHER', department: 'UMUM', level: '', nis_niy: '' });
+    setFormData({ name: '', email: '', gender: 'Laki-Laki', role: 'TEACHER', department: 'UMUM', level: '', division: '', nis_niy: '' });
     setSelectedTeacher(null);
   };
 
@@ -387,8 +390,9 @@ function TeacherForm({ formData, setFormData, onSubmit, submitLabel, submitColor
         <InputGroup label="Nama Lengkap" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
         <InputGroup label="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
         <SelectGroup label="Jenis Kelamin" value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} options={['Laki-Laki', 'Perempuan']} />
-        <SelectGroup label="Jabatan/Bagian" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'KARYAWAN', 'HRD', 'DIRECTOR', 'PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'ADMIN']} />
-        <SelectGroup label="Jenjang (TK / SD / SMP / SMA — kosongkan untuk HRD, Direktur, Admin pusat)" value={formData.level} onChange={(e) => setFormData({...formData, level: e.target.value})} options={['', 'TK', 'SD', 'SMP', 'SMA']} />                
+        <SelectGroup label="Jabatan/Bagian" value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} options={['TEACHER', 'STAFF', 'KARYAWAN', 'HRD', 'DIRECTOR', 'PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'ADMIN', 'HEAD_MANAGEMENT']} />
+        <SelectGroup label="Jenjang (TK / SD / SMP / SMA — kosongkan untuk HRD, Direktur, Admin pusat)" value={formData.level} onChange={(e) => setFormData({...formData, level: e.target.value})} options={['', 'TK', 'SD', 'SMP', 'SMA']} />
+        <SelectGroup label="Divisi (IT / HRD / ADMIN / PR — untuk Head Management dan pekerja admin/staff)" value={formData.division} onChange={(e) => setFormData({...formData, division: e.target.value})} options={['', 'IT', 'HRD', 'ADMIN', 'PR']} />
         <SelectGroup label="Departemen/Jurusan" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} options={['UMUM', 'IPA', 'IPS']} />
         <InputGroup label="NIY / NIS" value={formData.nis_niy} onChange={(e) => setFormData({...formData, nis_niy: e.target.value})} required />
       </div>

@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   // Use the evaluator's own school assignment (TK or SD) when one was saved, same as the page shows.
   const lvl = String(session.level || '').toUpperCase();
   const overrides = lvl === 'TK' || lvl === 'SD'
-    ? await prisma.rubricLevelAssignment.findMany({ where: { level: lvl, rubricId: { in: baseRubrics.map(r => r.id) } }, select: { rubricId: true, evaluators: true } })
+    ? await prisma.rubricLevelAssignment.findMany({ where: { level: lvl, rubricId: { in: baseRubrics.map(r => r.id) } }, select: { rubricId: true, evaluators: true } }).catch(() => [])
     : [];
   const ov = new Map(overrides.map(o => [o.rubricId, o.evaluators]));
   const sdRubrics = baseRubrics.map(r => (ov.has(r.id) ? { ...r, evaluators: ov.get(r.id) ?? null } : r));

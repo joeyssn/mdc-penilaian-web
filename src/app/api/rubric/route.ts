@@ -43,8 +43,9 @@ export async function GET(req: Request) {
 
     // A TK / SD / SMP / SMA viewer sees their own school's assignment when one was saved.
     const myLevel = normLevel(session.level);
+    // If the RubricLevelAssignment table is not created yet (prisma db push not run), fall back to the shared assignment.
     const overrides = myLevel
-      ? await prisma.rubricLevelAssignment.findMany({ where: { level: myLevel, rubricId: { in: rubrics.map(r => r.id) } } })
+      ? await prisma.rubricLevelAssignment.findMany({ where: { level: myLevel, rubricId: { in: rubrics.map(r => r.id) } } }).catch(() => [])
       : [];
     const overrideOf = new Map(overrides.map(o => [o.rubricId, o]));
 

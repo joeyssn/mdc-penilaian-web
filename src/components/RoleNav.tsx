@@ -16,7 +16,7 @@ const TABS: Record<string, Tab[]> = {
   VICE_PRINCIPAL_KURIKULUM: [{ href: '/vice-principal', label: 'My Dashboard' }, EVAL],
   TEACHER: [{ href: '/teachers', label: 'My Dashboard' }, EVAL],
   STAFF: [{ href: '/staff', label: 'My Dashboard' }, EVAL],
-  STUDENT: [{ href: '/student', label: 'Home' }, EVAL],
+  STUDENT: [{ href: '/student', label: 'Home' }],
 };
 
 export default function RoleNav() {

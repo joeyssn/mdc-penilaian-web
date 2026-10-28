@@ -1,7 +1,7 @@
 // Pure rules for the extra "who evaluates whom" assignments outside the SD module. No database access, so it can be unit-tested.
 //
 //  PRINCIPAL_VP     the Director picks which principal evaluates each vice principal (same school)
-//  HEAD_WORKERS     the Director picks which Head Management evaluates each worker (admin / staff) of the same division
+//  HEAD_WORKERS     the Director picks the head of a division (a Head Management account, or any admin / staff of that team) to evaluate each worker of the same division
 //  SCHOOL_TEACHERS  an SMP / SMA principal or vice principal picks supervisor / peer / koordinator for the teachers of their own school
 //  KARYAWAN         HRD picks which karyawan evaluate each karyawan
 import { normLevel } from '../levelScopeCore.ts';
@@ -9,6 +9,8 @@ import { PEER_ACCOUNT_ROLES, LEADER_ACCOUNT_ROLES, type EvaluatorRole } from '..
 
 export type Mode = 'PRINCIPAL_VP' | 'HEAD_WORKERS' | 'SCHOOL_TEACHERS' | 'KARYAWAN';
 export const MODES: Mode[] = ['PRINCIPAL_VP', 'HEAD_WORKERS', 'SCHOOL_TEACHERS', 'KARYAWAN'];
+// A division head can be a dedicated Head Management account or one of the team itself (admin / staff).
+export const HEAD_ACCOUNT_ROLES = ['HEAD_MANAGEMENT', 'ADMIN', 'STAFF'];
 export const DIVISIONS = ['IT', 'HRD', 'ADMIN', 'PR'] as const;
 export const normDivision = (d?: string | null) => { const v = (d ?? '').trim().toUpperCase(); return (DIVISIONS as readonly string[]).includes(v) ? v : null; };
 
@@ -61,7 +63,7 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
       else if (normLevel(evaluator.level) !== normLevel(target.level)) errs.push('The principal must be from the same school as the vice principal.');
       break;
     case 'HEAD_WORKERS':
-      if (evaluator.role !== 'HEAD_MANAGEMENT') errs.push('Only a Head Management account can evaluate workers.');
+      if (!HEAD_ACCOUNT_ROLES.includes(evaluator.role)) errs.push('The head must be a Head Management, admin or staff account.');
       else if (!normDivision(evaluator.division) || normDivision(evaluator.division) !== normDivision(target.division)) errs.push('The head must lead the same division as the worker.');
       break;
     case 'SCHOOL_TEACHERS': {

@@ -23,6 +23,10 @@ t('head evaluates workers of the same division', () => {
   assert.ok(!isTarget('HEAD_WORKERS', { role: 'DIRECTOR' }, { id: 'a', role: 'STAFF' })); // no division
   assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h', role: 'HEAD_MANAGEMENT', division: 'IT' }).length, 0);
   assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h', role: 'HEAD_MANAGEMENT', division: 'PR' }).length);
+  // the head can also be one of the team itself (admin / staff of the same division)
+  assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h2', role: 'STAFF', division: 'IT' }).length, 0);
+  assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h3', role: 'ADMIN', division: 'IT' }).length, 0);
+  assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h4', role: 'TEACHER', division: 'IT' }).length);
 });
 t('school teachers: same school, right account types', () => {
   const viewer = { role: 'PRINCIPAL', level: 'SMP' };

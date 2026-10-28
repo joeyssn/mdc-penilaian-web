@@ -31,13 +31,15 @@ export default function PrincipalRubricAssignmentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [levelName, setLevelName] = useState('');
+  const [home, setHome] = useState('/principal');
 
   const load = async (keepSelection = false) => {
     const meRes = await fetch('/api/me');
     if (!meRes.ok) return router.push('/login');
     const me = await meRes.json();
-    if (me.role !== 'PRINCIPAL' && me.role !== 'DIRECTOR' && me.role !== 'ADMIN') return router.push('/login');
+    if (!['PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'DIRECTOR', 'ADMIN'].includes(me.role)) return router.push('/login');
 
+    setHome(String(me.role).startsWith('VICE') ? '/vice-principal' : me.role === 'ADMIN' ? '/admin' : '/principal');
     setLevelName(String(me.level || '').toUpperCase() || 'All schools');
     const res = await fetch('/api/rubric', { cache: 'no-store' });
     const data = await res.json();
@@ -94,7 +96,7 @@ export default function PrincipalRubricAssignmentPage() {
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center border-b border-gray-200">
         <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
-        <Link href="/principal" className="text-gray-500 hover:text-[#008c99] font-bold transition-colors">← Back to Dashboard</Link>
+        <Link href={home} className="text-gray-500 hover:text-[#008c99] font-bold transition-colors">← Back to Dashboard</Link>
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 pt-10 space-y-8">

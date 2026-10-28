@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSdGroupLevel } from "@/lib/weights";
 import { normLevel } from "@/lib/levelScopeCore";
-import { denyUnlessRole, getSession, RUBRIC_ASSIGNER_ROLES, RUBRIC_EDITOR_ROLES } from "@/lib/session";
+import { denyUnlessRole, getSession, RUBRIC_ASSIGNER_ROLES, RUBRIC_EDITOR_ROLES, SCHOOL_ASSIGNER_ROLES } from "@/lib/session";
 
 export const dynamic = 'force-dynamic'; 
 
@@ -124,7 +124,7 @@ export async function PUT(req: Request) {
     // A principal can only assign rubrics that belong to their own school level
     if (!editsContent) {
       const session = (await getSession())!;
-      if (session.role === 'PRINCIPAL') {
+      if (SCHOOL_ASSIGNER_ROLES.includes(session.role)) {
         const target = await prisma.rubric.findUnique({ where: { id }, select: { schoolLevel: true } });
         const myLevel = isSdGroupLevel(session.level) ? 'SD' : 'SMP_SMA';
         if (!target || target.schoolLevel !== myLevel) {
@@ -137,7 +137,7 @@ export async function PUT(req: Request) {
     if (!editsContent) {
       const session = (await getSession())!;
       const lvl = normLevel(session.level);
-      if (session.role === 'PRINCIPAL') {
+      if (SCHOOL_ASSIGNER_ROLES.includes(session.role)) {
         if (!lvl) return NextResponse.json({ error: "Your account has no school level (TK/SD/SMP/SMA)." }, { status: 403 });
         const data = {
           ...(evaluators !== undefined ? { evaluators: evaluators.join(',') } : {}),

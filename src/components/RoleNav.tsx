@@ -19,8 +19,9 @@ const TABS: Record<string, Tab[]> = {
   ACC: [{ href: '/assign', label: 'My Evaluations' }],
   VICE_PRINCIPAL_KESISWAAN: [{ href: '/vice-principal', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, { href: '/sd/student-assignments', label: 'Student Assignments' }, EVAL],
   VICE_PRINCIPAL_KURIKULUM: [{ href: '/vice-principal', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, EVAL],
-  TEACHER: [{ href: '/teachers', label: 'My Dashboard' }, EVAL],
-  STAFF: [{ href: '/staff', label: 'My Dashboard' }, EVAL],
+  TEACHER: [{ href: '/teachers', label: 'My Dashboard' }, EVAL, { href: '/assign', label: 'Team Evaluations' }],
+  STAFF: [{ href: '/staff', label: 'My Dashboard' }, EVAL, { href: '/assign', label: 'Team Evaluations' }],
+  KARYAWAN: [{ href: '/karyawan', label: 'My Dashboard' }, { href: '/assign', label: 'Team Evaluations' }],
   STUDENT: [{ href: '/student', label: 'Home' }],
   HRD: [{ href: '/hrd', label: 'HRD Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }],
 };
@@ -43,8 +44,9 @@ export default function RoleNav() {
   // The SD teacher evaluation screens exist only for TK and SD; SMP / SMA people never see them.
   const noSd = level === 'SMP' || level === 'SMA';
   // TK / SD principals and vice principals use the SD screens for teachers, so the generic screen is only for SMP / SMA (and Director, HRD, heads).
-  const schoolRole = role === 'PRINCIPAL' || role.startsWith('VICE_PRINCIPAL');
-  const tabs = (TABS[role] ?? []).filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && schoolRole && !noSd));
+  // TK / SD principals have nothing to assign here; SD / TK teachers use My Evaluations instead of Team Evaluations.
+  const sdGroup = level === 'SD' || level === 'TK';
+  const tabs = (TABS[role] ?? []).filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && ((role === 'PRINCIPAL' && sdGroup) || (role === 'TEACHER' && sdGroup))));
   return (
     <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 print:hidden">
       <div className="flex items-center">

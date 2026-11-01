@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RoleNav from '@/components/RoleNav';
+import SdTasks from '@/components/SdTasks';
 
 type Mode = { mode: string; label: string; roles: string[] };
 type Person = { id: string; name: string; role: string; level?: string | null; division?: string | null };
@@ -40,6 +41,8 @@ export default function AssignPage() {
   const [loadErr, setLoadErr] = useState('');
   const [headMsg, setHeadMsg] = useState('');
 
+  const [results, setResults] = useState<any>(null);
+  useEffect(() => { (async () => { const r = await fetch('/api/assign/results'); if (r.ok) setResults(await r.json()); })(); }, []);
   const json = async (r: Response) => { try { return await r.json(); } catch { return {}; } };
 
   useEffect(() => { (async () => {
@@ -127,6 +130,32 @@ export default function AssignPage() {
           <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Evaluators</h1>
           <p className="text-gray-700 mt-1">Follow the steps: pick a {noun}, then choose who evaluates them.</p>
         </div>
+
+        {/* Everyone: the people they evaluate, and their own results (supervisor, peers, koordinator). */}
+        {info && (
+          <>
+            <SdTasks embedded general />
+            {results?.period && (
+              <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
+                <div className="flex flex-wrap justify-between items-center gap-2">
+                  <h2 className="text-lg font-extrabold text-[#053b50]">My scores <span className="text-sm font-semibold text-gray-700">· {results.period.name}</span></h2>
+                  <a href="/self-reflection" className="text-sm font-bold text-[#006e7a] hover:underline">Fill in my self-reflection →</a>
+                </div>
+                {results.locked && <p className="text-sm text-[#b45309] font-semibold">Scores are hidden until they are published.</p>}
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {results.sources.map((s: any) => (
+                    <div key={s.type} className="rounded-xl border border-gray-100 p-4 text-center">
+                      <div className="text-sm font-bold text-gray-700">{s.type === 'SUPERVISOR' ? 'Leader / supervisor' : s.type === 'PEER' ? 'Peers' : 'Koordinator'}</div>
+                      <div className="text-3xl font-extrabold text-[#053b50] mt-1">{s.average ?? '—'}</div>
+                      <div className="text-xs text-gray-700 mt-1">{s.assigned ? `${s.submitted} of ${s.assigned} submitted` : 'nobody assigned'}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-700">Scores are on a 1–4 scale; peers are shown as one average.</p>
+              </section>
+            )}
+          </>
+        )}
 
         {loadErr && <p className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm font-semibold">{loadErr}</p>}
 

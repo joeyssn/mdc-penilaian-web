@@ -12,7 +12,8 @@ type Open = { type: EvalKind; target: Target } | null;
 // Student faces for the 1-4 scale (1 = lowest, 4 = highest).
 const EMOJI_SCALE: [number, string, string][] = [[1, '😞', 'Kurang'], [2, '😐', 'Cukup'], [3, '🙂', 'Baik'], [4, '😄', 'Sangat baik']];
 
-export default function SdTasks({ embedded = false }: { embedded?: boolean }) {
+// general = the evaluations of vice principals, division workers, karyawan and SMP / SMA teachers (non-SD rubrics, /api/assign/evaluations).
+export default function SdTasks({ embedded = false, general = false }: { embedded?: boolean; general?: boolean }) {
   const [me, setMe] = useState<any>(null);
   const [t, setT] = useState<any>(null);
   const [rubrics, setRubrics] = useState<any[]>([]);
@@ -23,7 +24,7 @@ export default function SdTasks({ embedded = false }: { embedded?: boolean }) {
   const load = async () => { const r = await fetch('/api/sd/my-tasks'); if (r.ok) setT(await r.json()); };
   useEffect(() => { (async () => {
     setMe(await (await fetch('/api/me')).json());
-    const r = await fetch('/api/rubric'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => x.schoolLevel === 'SD' && !x.isSelfReflection));
+    const r = await fetch('/api/rubric'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => (general ? x.schoolLevel !== 'SD' : x.schoolLevel === 'SD') && !x.isSelfReflection));
     load();
   })(); }, []);
 
@@ -36,7 +37,7 @@ export default function SdTasks({ embedded = false }: { embedded?: boolean }) {
     if (!open || !rubric) return;
     if (unanswered) return alert(`Please answer all questions (${unanswered} left).`);
     setSaving(true);
-    const res = await fetch('/api/sd/evaluations', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const res = await fetch(general ? '/api/assign/evaluations' : '/api/sd/evaluations', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: open.type, targetId: open.target.teacherId, rubricId: rubric.id, scores: indicators.map((i: any) => ({ indicatorId: i.id, value: answers[i.id] })) }) });
     const d = await res.json(); setSaving(false);
     if (!res.ok) return alert(d.error || 'Could not submit');

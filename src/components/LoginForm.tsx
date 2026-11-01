@@ -57,7 +57,7 @@ export default function LoginForm() {
           router.push('/vice-principal');
         }
         else if (['HEAD_MANAGEMENT', 'IT', 'PR', 'ACC'].includes(data.role)) {
-          router.push('/assign');
+          router.push(data.role === 'HEAD_MANAGEMENT' ? '/assign' : '/team');
         }
         else if (data.role === 'HRD') {
           router.push('/hrd');

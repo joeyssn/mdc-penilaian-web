@@ -10,7 +10,7 @@ import { Rubric } from "./types";
 
 // Added "Vice-Principal" to the available roles
 // Find your roles array in your rubric manager and add 'Karyawan' to it
-const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan", "Student"];
+const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan", "HRD", "IT", "PR", "ACC", "Admin", "Student"];
 // SD evaluators can also be tagged by assignment: a rubric tagged Supervisor / Koordinator / Peer is the one those evaluators score with
 const EVALUATOR_ROLES = [...AVAILABLE_ROLES, "Peer", "Supervisor", "Koordinator"];
 export default function RubricPage() {

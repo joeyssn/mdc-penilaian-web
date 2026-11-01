@@ -81,7 +81,7 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-4">
           <div className="bg-white text-gray-900 [color-scheme:light] rounded-2xl w-full max-w-2xl my-8 p-6 space-y-5">
             <div className="flex justify-between items-start"><h3 className="text-lg font-bold">Evaluate {open.target.name}</h3><button onClick={() => setOpen(null)} className="text-gray-600">✕</button></div>
-            {!rubric ? <p className="text-red-600 text-sm">No SD rubric is available for this evaluation. Ask the admin to add one.</p> : (
+            {!rubric ? <p className="text-red-600 text-sm">No {general ? 'SMP / SMA' : 'SD'} rubric is available for this evaluation. Ask the admin to add one.</p> : (
               <>
                 <p className="text-sm text-gray-700">{rubric.title} · {indicators.length - unanswered}/{indicators.length} answered</p>
                 {rubric.sections.map((s: any) => s.categories.map((c: any) => (

@@ -204,7 +204,7 @@ export default function KaryawanDashboard() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-20 space-y-8 md:space-y-12">
-        <MyTeamScores />
+        <MyTeamScores selfReflection={false} />
         
         {/* 🚀 PERSONAL SCORES SECTION */}
         <div>

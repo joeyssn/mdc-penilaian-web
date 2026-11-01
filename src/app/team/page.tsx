@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import RoleNav from '@/components/RoleNav';
 import MyTeamScores from '@/components/MyTeamScores';
 import SdTasks from '@/components/SdTasks';
@@ -63,7 +62,6 @@ export default function TeamDashboard() {
 
         <SdTasks embedded general />
 
-        <p className="text-sm text-gray-700">Your own reflection: <Link href="/self-reflection" className="font-bold text-[#006e7a] hover:underline">fill in my self-reflection →</Link></p>
       </div>
     </div>
   );

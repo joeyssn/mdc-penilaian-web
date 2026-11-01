@@ -155,7 +155,7 @@ export default function HRDDashboard() {
               <form onSubmit={submitAbsence} className="space-y-6">
                 <div>
                   <label className="text-sm font-bold text-gray-700">Pilih Karyawan</label>
-                  <select value={absTargetId} onChange={(e) => setAbsTargetId(e.target.value)} required className="w-full mt-2 border border-gray-300 rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#008c99]/50">
+                  <select suppressHydrationWarning value={absTargetId} onChange={(e) => setAbsTargetId(e.target.value)} required className="w-full mt-2 border border-gray-300 rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#008c99]/50">
                     <option value="">-- Pilih Target --</option>
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.role.replace('_', ' ')})</option>)}
                   </select>
@@ -164,6 +164,7 @@ export default function HRDDashboard() {
                 <div>
                   <label className="text-sm font-bold text-gray-700 block mb-2">Input Skor (1.0 - 4.0)</label>
                   <input 
+                    suppressHydrationWarning
                     type="number" 
                     step="0.1" 
                     min="1.0" 
@@ -176,7 +177,7 @@ export default function HRDDashboard() {
                   />
                 </div>
                 
-                <button type="submit" className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-95">
+                <button suppressHydrationWarning type="submit" className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-95">
                   Simpan Skor
                 </button>
               </form>

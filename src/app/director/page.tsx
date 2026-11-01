@@ -1,5 +1,6 @@
 'use client';
 
+import SdTasks from '@/components/SdTasks';
 import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
@@ -365,37 +366,8 @@ export default function UnifiedDirectorDashboard() {
           </div>
 
           <div className="pt-10 border-t border-gray-200">
-            <div><h2 className="text-3xl font-extrabold text-[#053b50]">Peer Evaluation Portal</h2><p className="text-gray-500 mt-2 text-lg">Select a Principal below to begin scoring.</p></div>
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 mt-6">
-              <div className="flex items-center px-8 py-5 border-b border-gray-100 bg-gray-50">
-                <svg className="w-6 h-6 text-gray-400 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full outline-none text-gray-800 text-xl font-bold bg-transparent" autoComplete="off" suppressHydrationWarning />
-              </div>
-
-              {searchQuery && (
-                <div className="max-h-[300px] overflow-y-auto">
-                  {filteredTeachers.map(teacher => {
-                    const hasEvaluated = completedEvals.has(teacher.id);
-                    return (
-                      <div key={teacher.id} onClick={() => !hasEvaluated && setSelectedTarget(teacher)} className={`p-4 px-8 flex items-center justify-between border-b border-gray-100 ${hasEvaluated ? 'opacity-60 bg-gray-50' : 'hover:bg-[#008c99]/5 cursor-pointer'}`}>
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${hasEvaluated ? 'bg-gray-200 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{teacher.name.charAt(0)}</div>
-                          <div>
-                            <h3 className="font-bold text-lg">{getTitle(teacher.gender)}{teacher.name}</h3>
-                            <p className="text-xs text-gray-500 uppercase tracking-wide">{teacher.role}</p>
-                          </div>
-                        </div>
-                        {hasEvaluated ? (
-                          <button disabled className="bg-gray-100 text-gray-400 border-2 border-gray-200 px-4 py-2 rounded-lg font-bold text-sm">Completed</button>
-                        ) : (
-                          <button className="bg-white border-2 border-[#e99a24] text-[#e99a24] px-4 py-2 rounded-lg font-bold text-sm">Evaluate</button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <div><h2 className="text-3xl font-extrabold text-[#053b50]">Peer Evaluation Portal</h2><p className="text-gray-500 mt-2 text-lg">Your assigned peers, supervisors and koordinators appear here.</p></div>
+            <SdTasks embedded general />
 
             {selectedTarget && activeRubric && (
               <div className="mt-8 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">

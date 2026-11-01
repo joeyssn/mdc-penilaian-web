@@ -1,5 +1,6 @@
 'use client';
 
+import MyTeamScores from '@/components/MyTeamScores';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -196,12 +197,14 @@ export default function KaryawanDashboard() {
         <div className="flex items-center gap-6 md:gap-10 w-full md:w-auto overflow-x-auto whitespace-nowrap pb-2 md:pb-0 scrollbar-hide">
           <div className="flex gap-6 md:gap-10 text-[14px] md:text-[15px] font-medium text-gray-800">
             <span className="text-[#053b50] font-bold border-b-2 border-[#008c99] pb-1">My Dashboard</span>
+            <Link href="/assign" className="text-gray-500 hover:text-[#053b50] font-bold pb-1">Team Evaluations</Link>
           </div>
           <Link href="/login" className="hidden md:block text-red-500 hover:text-red-700 text-[15px] font-bold transition-colors">Logout</Link>
         </div>
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-20 space-y-8 md:space-y-12">
+        <MyTeamScores selfReflection={false} />
         
         {/* 🚀 PERSONAL SCORES SECTION */}
         <div>

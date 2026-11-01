@@ -1,5 +1,7 @@
 'use client';
 
+import MyOverview from '@/components/MyOverview';
+import MyTeamScores from '@/components/MyTeamScores';
 import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
@@ -140,28 +142,35 @@ export default function HRDDashboard() {
   let activeRubric = loggedInUser && selectedTarget ? rubrics.find(r => r.evaluators?.includes('Staff') && r.evaluatees?.includes(getNormalizedRole(selectedTarget.role)) && !isSelfReflectionRule(r)) || null : null;
 
   return (
-    <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
+    <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20 text-gray-900 [color-scheme:light] [&_input]:text-gray-900 [&_input]:placeholder:text-gray-500 [&_select]:text-gray-900 [&_select]:bg-white [&_option]:text-gray-900 [&_table]:text-gray-900 [&_label]:text-gray-800 [&_th]:text-gray-800">
       <RoleNav />
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-8 md:space-y-10">
+        {loggedInUser && <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50] text-center md:text-left">Hi, Welcome {loggedInUser.name}</h1>}
 
-      <div className="max-w-5xl mx-auto px-6 pt-12 space-y-8">
-        <h1 className="text-3xl font-extrabold text-[#053b50]">Welcome, HRD {loggedInUser?.name}</h1>
+        {/* Same dashboard as the teachers and staff: Final Evaluation Rating with Student, Scores from Others, Observation and Attendance cards. */}
+        <MyOverview />
 
+        <h2 className="text-2xl font-extrabold text-[#053b50]">Team Evaluation (leader, peers, koordinator)</h2>
+        <MyTeamScores always selfReflection={false} />
+
+        <h2 className="text-2xl font-extrabold text-[#053b50] pt-2">HRD Tools</h2>
         {activeTab === 'absences' && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
               <h2 className="text-xl font-bold mb-4">Input Skor Kehadiran</h2>
               <form onSubmit={submitAbsence} className="space-y-6">
                 <div>
-                  <label className="text-sm font-bold text-gray-700">Pilih Karyawan</label>
-                  <select value={absTargetId} onChange={(e) => setAbsTargetId(e.target.value)} required className="w-full mt-2 border border-gray-300 rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#008c99]/50">
+                  <label className="text-base font-bold text-gray-900">Pilih Karyawan</label>
+                  <select suppressHydrationWarning value={absTargetId} onChange={(e) => setAbsTargetId(e.target.value)} required className="w-full mt-2 border border-gray-300 rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#008c99]/50">
                     <option value="">-- Pilih Target --</option>
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.role.replace('_', ' ')})</option>)}
                   </select>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-bold text-gray-700 block mb-2">Input Skor (1.0 - 4.0)</label>
+                  <label className="text-base font-bold text-gray-900 block mb-2">Input Skor (1.0 - 4.0)</label>
                   <input 
+                    suppressHydrationWarning
                     type="number" 
                     step="0.1" 
                     min="1.0" 
@@ -174,7 +183,7 @@ export default function HRDDashboard() {
                   />
                 </div>
                 
-                <button type="submit" className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-95">
+                <button suppressHydrationWarning type="submit" className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-95">
                   Simpan Skor
                 </button>
               </form>

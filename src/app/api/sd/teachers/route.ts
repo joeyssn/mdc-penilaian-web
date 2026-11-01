@@ -1,25 +1,46 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { inScope, scopeOf } from '@/lib/levelScope';
-import { LEADER_ACCOUNT_ROLES } from '@/lib/sd/rules';
-import { fail, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES, isSdUser } from '@/lib/sd/access';
+import { writeAudit } from '@/lib/audit';
+import { normLevel } from '@/lib/levelScope';
+import { PEER_ACCOUNT_ROLES } from '@/lib/sd/rules';
+import { fail, requirePermission, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES, isSdUser } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
 
-// Who can be picked: SD / TK teachers (peers), possible supervisors / koordinators, and students by class.
+// Who can be picked: SD / TK teachers (for every role) and students by class. Supervisors and koordinators are teachers; peers can also be staff, karyawan or vice principals.
+// `others` = teacher accounts that have no school yet, which the principal can add from the database.
 export async function GET() {
   const g = await requireRole([...new Set([...SD_VIEW_ROLES, ...GROUP_MANAGE_ROLES])]); if (g.error) return g.error;
   const users = await prisma.user.findMany({
-    where: { role: { in: [...LEADER_ACCOUNT_ROLES, 'STUDENT'] as any } },
+    where: { role: { in: ['TEACHER', 'STUDENT', 'STAFF', 'KARYAWAN', 'HRD', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'] } },
     select: { id: true, name: true, role: true, level: true, className: true },
     orderBy: { name: 'asc' },
   });
   const scope = scopeOf(g.session);
-  // SD / TK people only: other schools' staff and teachers never appear here, even for a central admin
-  const visible = users.filter(u => isSdUser(u) && inScope(scope, u.level));
+  const sd = users.filter(u => isSdUser(u) && inScope(scope, u.level));
+  const teachers = sd.filter(u => u.role === 'TEACHER');
+  // peers may also be staff, karyawan or vice principals; HRD is shared by every school, so HRD accounts can always be peers
+  const peers = [...sd.filter(u => PEER_ACCOUNT_ROLES.includes(u.role)), ...users.filter(u => u.role === 'HRD')];
   return NextResponse.json({
-    teachers: visible.filter(u => u.role === 'TEACHER' && isSdUser(u)),
-    leaders: visible.filter(u => u.role !== 'STUDENT'),
-    students: visible.filter(u => u.role === 'STUDENT' && isSdUser(u)),
+    teachers,
+    leaders: teachers,
+    peers,
+    students: sd.filter(u => u.role === 'STUDENT'),
+    others: users.filter(u => u.role === 'TEACHER' && !normLevel(u.level)),
   });
+}
+
+// Add a teacher that exists in the database but has no school yet: they become a TK / SD teacher.
+// Teachers of SMP / SMA are never touched.
+export async function POST(req: Request) {
+  const g = await requirePermission('supervisors'); if (g.error) return g.error;
+  const { userId } = await req.json();
+  const u = await prisma.user.findUnique({ where: { id: userId } });
+  if (!u || u.role !== 'TEACHER') return fail('Only teacher accounts can be added.');
+  if (normLevel(u.level)) return fail(`${u.name} already belongs to ${u.level}.`, 409);
+  const level = scopeOf(g.session) ?? 'SD';
+  await prisma.user.update({ where: { id: u.id }, data: { level } });
+  await writeAudit(g.session, 'SD_TEACHER_ADDED', 'user', u.id, { name: u.name, level });
+  return NextResponse.json({ ok: true, level });
 }

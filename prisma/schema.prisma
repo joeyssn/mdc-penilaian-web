@@ -181,7 +181,10 @@ enum user_role {
   PRINCIPAL
   VICE_PRINCIPAL_KURIKULUM
   VICE_PRINCIPAL_KESISWAAN
-  HEAD_MANAGEMENT
+  HEAD_MANAGEMENT // legacy, no longer offered: heads are chosen from the division's own team
+  IT
+  PR
+  ACC
   TEACHER
   STAFF
   HRD      

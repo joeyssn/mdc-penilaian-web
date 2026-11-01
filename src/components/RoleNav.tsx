@@ -10,16 +10,20 @@ const EVAL: Tab = { href: '/sd/tasks', label: 'My Evaluations' };
 
 // One top bar for every role, used by the dashboards AND the SD screens, so the header never changes between pages.
 const TABS: Record<string, Tab[]> = {
-  ADMIN: [{ href: '/admin', label: 'Live Overview & Weights' }, { href: '/sd/assignments', label: 'Assign Evaluators' }],
-  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Assign Evaluators' }, EVAL],
+  ADMIN: [{ href: '/admin', label: 'Live Overview & Weights' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, { href: '/team', label: 'My Dashboard' }],
+  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, EVAL],
   DIRECTOR: [{ href: '/director', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }],
   HEAD_MANAGEMENT: [{ href: '/assign', label: 'Assign Evaluators' }],
+  IT: [{ href: '/team', label: 'My Dashboard' }],
+  PR: [{ href: '/team', label: 'My Dashboard' }],
+  ACC: [{ href: '/team', label: 'My Dashboard' }],
   VICE_PRINCIPAL_KESISWAAN: [{ href: '/vice-principal', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, { href: '/sd/student-assignments', label: 'Student Assignments' }, EVAL],
   VICE_PRINCIPAL_KURIKULUM: [{ href: '/vice-principal', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, EVAL],
-  TEACHER: [{ href: '/teachers', label: 'My Dashboard' }, EVAL],
-  STAFF: [{ href: '/staff', label: 'My Dashboard' }, EVAL],
+  TEACHER: [{ href: '/teachers', label: 'My Dashboard' }, EVAL, { href: '/assign', label: 'Team Evaluations' }],
+  STAFF: [{ href: '/staff', label: 'My Dashboard' }, EVAL, { href: '/assign', label: 'Team Evaluations' }],
+  KARYAWAN: [{ href: '/karyawan', label: 'My Dashboard' }, { href: '/assign', label: 'Team Evaluations' }],
   STUDENT: [{ href: '/student', label: 'Home' }],
-  HRD: [{ href: '/hrd', label: 'HRD Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }],
+  HRD: [{ href: '/hrd', label: 'HRD Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, EVAL],
 };
 
 export default function RoleNav() {
@@ -40,8 +44,9 @@ export default function RoleNav() {
   // The SD teacher evaluation screens exist only for TK and SD; SMP / SMA people never see them.
   const noSd = level === 'SMP' || level === 'SMA';
   // TK / SD principals and vice principals use the SD screens for teachers, so the generic screen is only for SMP / SMA (and Director, HRD, heads).
-  const schoolRole = role === 'PRINCIPAL' || role.startsWith('VICE_PRINCIPAL');
-  const tabs = (TABS[role] ?? []).filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && schoolRole && !noSd));
+  // SD / TK teachers use My Evaluations instead of Team Evaluations. Principals keep it at every school: a principal can be assigned to evaluate vice principals.
+  const sdGroup = level === 'SD' || level === 'TK';
+  const tabs = (TABS[role] ?? []).filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
   return (
     <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 print:hidden">
       <div className="flex items-center">

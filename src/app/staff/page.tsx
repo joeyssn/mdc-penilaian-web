@@ -1,5 +1,6 @@
 'use client';
 
+import MyTeamScores from '@/components/MyTeamScores';
 import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
@@ -168,6 +169,7 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
       <RoleNav />
+      <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6"><MyTeamScores /></div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-20 space-y-8 md:space-y-12">
         <div>

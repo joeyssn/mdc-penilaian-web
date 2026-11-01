@@ -47,7 +47,7 @@ export async function PUT(req: Request) {
   for (const p of people) {
     const errs = validateAssignment(teacherId, p, role);
     if (errs.length) return fail(`${p.name}: ${errs.join(' ')}`);
-    if (!isSdUser(p) || !inScope(scope, p.level)) return fail(`${p.name} is not an SD / TK account.`, 403);
+    if (p.role !== 'HRD' && (!isSdUser(p) || !inScope(scope, p.level))) return fail(`${p.name} is not an SD / TK account.`, 403); // HRD is shared by every school
   }
 
   const existing = await prisma.teacherAssignment.findMany({ where: { periodId, teacherId, role }, include: { evaluations: { select: { id: true } } } });

@@ -23,7 +23,7 @@ const TABS: Record<string, Tab[]> = {
   STAFF: [{ href: '/staff', label: 'My Dashboard' }, EVAL, { href: '/assign', label: 'Team Evaluations' }],
   KARYAWAN: [{ href: '/karyawan', label: 'My Dashboard' }, { href: '/assign', label: 'Team Evaluations' }],
   STUDENT: [{ href: '/student', label: 'Home' }],
-  HRD: [{ href: '/hrd', label: 'HRD Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }],
+  HRD: [{ href: '/hrd', label: 'HRD Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, EVAL],
 };
 
 export default function RoleNav() {

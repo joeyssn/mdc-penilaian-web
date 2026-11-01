@@ -45,6 +45,14 @@ t('head evaluates workers of the same division', () => {
   assert.equal(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', { id: 'ad1', role: 'ADMIN' }, { id: 'ad2', role: 'ADMIN' }).length, 0);
   assert.ok(evaluatorErrors('HEAD_WORKERS', 'SUPERVISOR', w, { id: 'h4', role: 'TEACHER', division: 'IT' }).length);
 });
+t('HRD can be a peer', () => {
+  const k = { id: 'k1', role: 'KARYAWAN', level: 'SD' }, hrd = { id: 'h', role: 'HRD' };
+  assert.equal(evaluatorErrors('KARYAWAN', 'PEER', k, hrd).length, 0);
+  assert.ok(evaluatorErrors('KARYAWAN', 'SUPERVISOR', k, hrd).length); // but not the karyawan's leader
+  assert.equal(evaluatorErrors('SCHOOL_TEACHERS', 'PEER', { id: 't', role: 'TEACHER', level: 'SMP' }, hrd).length, 0); // any school
+  assert.ok(evaluatorErrors('SCHOOL_TEACHERS', 'SUPERVISOR', { id: 't', role: 'TEACHER', level: 'SMP' }, hrd).length);
+  assert.equal(evaluatorErrors('PRINCIPAL_VP', 'PEER', { id: 'v', role: 'VICE_PRINCIPAL_KURIKULUM', level: 'SMA' }, hrd).length, 0);
+});
 t('director chooses the head; peers are the same team', () => {
   const w = { id: 'w', role: 'STAFF', division: 'IT' };
   const a = { id: 'a', role: 'STAFF', division: 'IT' }, b = { id: 'b', role: 'IT' };

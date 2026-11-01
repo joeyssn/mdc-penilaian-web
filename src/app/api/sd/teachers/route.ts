@@ -13,14 +13,15 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const g = await requireRole([...new Set([...SD_VIEW_ROLES, ...GROUP_MANAGE_ROLES])]); if (g.error) return g.error;
   const users = await prisma.user.findMany({
-    where: { role: { in: ['TEACHER', 'STUDENT', 'STAFF', 'KARYAWAN', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'] } },
+    where: { role: { in: ['TEACHER', 'STUDENT', 'STAFF', 'KARYAWAN', 'HRD', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'] } },
     select: { id: true, name: true, role: true, level: true, className: true },
     orderBy: { name: 'asc' },
   });
   const scope = scopeOf(g.session);
   const sd = users.filter(u => isSdUser(u) && inScope(scope, u.level));
   const teachers = sd.filter(u => u.role === 'TEACHER');
-  const peers = sd.filter(u => PEER_ACCOUNT_ROLES.includes(u.role)); // peers may also be staff, karyawan or vice principals
+  // peers may also be staff, karyawan or vice principals; HRD is shared by every school, so HRD accounts can always be peers
+  const peers = [...sd.filter(u => PEER_ACCOUNT_ROLES.includes(u.role)), ...users.filter(u => u.role === 'HRD')];
   return NextResponse.json({
     teachers,
     leaders: teachers,

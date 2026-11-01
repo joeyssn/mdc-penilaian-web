@@ -66,7 +66,7 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
   switch (mode) {
     case 'PRINCIPAL_VP':
       // Peers of a vice principal are other vice principals (any school); the principal evaluator is of the same school.
-      if (role === 'PEER') { if (!VPS.includes(evaluator.role)) errs.push('A peer of a vice principal must be a vice principal.'); break; }
+      if (role === 'PEER') { if (!VPS.includes(evaluator.role) && evaluator.role !== 'HRD') errs.push('A peer of a vice principal must be a vice principal or HRD.'); break; }
       if (evaluator.role !== 'PRINCIPAL') errs.push('Only a principal can evaluate a vice principal.');
       else if (normLevel(evaluator.level) !== normLevel(target.level)) errs.push('The principal must be from the same school as the vice principal.');
       break;
@@ -78,11 +78,11 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
     case 'SCHOOL_TEACHERS': {
       const allowed = role === 'PEER' ? PEER_ACCOUNT_ROLES : LEADER_ACCOUNT_ROLES;
       if (!allowed.includes(evaluator.role)) errs.push(`This account cannot be a ${role.toLowerCase()}.`);
-      else if (normLevel(evaluator.level) !== normLevel(target.level)) errs.push('The evaluator must be from the same school.');
+      else if (evaluator.role !== 'HRD' && normLevel(evaluator.level) !== normLevel(target.level)) errs.push('The evaluator must be from the same school.'); // HRD is shared by every school
       break;
     }
     case 'KARYAWAN':
-      if (evaluator.role !== 'KARYAWAN') errs.push(`Only a karyawan can be the ${role === 'SUPERVISOR' ? 'leader' : 'peer'} of a karyawan.`);
+      if (evaluator.role !== 'KARYAWAN' && !(role === 'PEER' && evaluator.role === 'HRD')) errs.push(role === 'SUPERVISOR' ? 'Only a karyawan can be the leader of a karyawan.' : 'Only a karyawan or HRD can be a peer of a karyawan.');
       break;
   }
   return errs;

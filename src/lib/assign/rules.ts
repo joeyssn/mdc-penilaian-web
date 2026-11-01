@@ -3,7 +3,7 @@
 //  PRINCIPAL_VP     the Director picks which principal evaluates each vice principal (same school)
 //  HEAD_WORKERS     the Director picks the head of a division (a Head Management account, or any admin / staff of that team) to evaluate each worker of the same division
 //  SCHOOL_TEACHERS  an SMP / SMA principal or vice principal picks supervisor / peer / koordinator for the teachers of their own school
-//  KARYAWAN         HRD picks which karyawan evaluate each karyawan
+//  KARYAWAN         HRD picks the leader and the peers (all karyawan) of each karyawan
 import { normLevel } from '../levelScopeCore.ts';
 import { PEER_ACCOUNT_ROLES, LEADER_ACCOUNT_ROLES, type EvaluatorRole } from '../sd/rules.ts';
 
@@ -30,7 +30,7 @@ export const MODE_ROLES: Record<Mode, EvaluatorRole[]> = {
   PRINCIPAL_VP: ['SUPERVISOR', 'PEER'],
   HEAD_WORKERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
   SCHOOL_TEACHERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
-  KARYAWAN: ['SUPERVISOR', 'PEER'],
+  KARYAWAN: ['SUPERVISOR', 'PEER'], // SUPERVISOR = the leader of the karyawan
 };
 
 type U = { id?: string; role: string; level?: string | null; division?: string | null };
@@ -82,7 +82,7 @@ export function evaluatorErrors(mode: Mode, role: EvaluatorRole, target: U & { i
       break;
     }
     case 'KARYAWAN':
-      if (evaluator.role !== 'KARYAWAN') errs.push('Only a karyawan can evaluate a karyawan.');
+      if (evaluator.role !== 'KARYAWAN') errs.push(`Only a karyawan can be the ${role === 'SUPERVISOR' ? 'leader' : 'peer'} of a karyawan.`);
       break;
   }
   return errs;

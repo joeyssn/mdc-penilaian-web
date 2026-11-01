@@ -17,7 +17,7 @@ const ROLE_TITLE: Record<string, Record<string, string>> = {
   SCHOOL_TEACHERS: { SUPERVISOR: 'Supervisor', PEER: 'Peers', KOORDINATOR: 'Koordinator' },
 };
 const ROLE_HINT: Record<string, string> = {
-  SUPERVISOR: 'Who leads / supervises this person?',
+  SUPERVISOR: 'Who leads / supervises this person? (for a karyawan: the karyawan who leads them)',
   PEER: 'Who evaluates this person as a peer? Colleagues of the same team (for a vice principal: other vice principals).',
   KOORDINATOR: 'Who is the koordinator?',
 };

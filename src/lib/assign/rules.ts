@@ -30,7 +30,7 @@ export const MODE_ROLES: Record<Mode, EvaluatorRole[]> = {
   PRINCIPAL_VP: ['SUPERVISOR', 'PEER'],
   HEAD_WORKERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
   SCHOOL_TEACHERS: ['SUPERVISOR', 'PEER', 'KOORDINATOR'],
-  KARYAWAN: ['PEER'],
+  KARYAWAN: ['SUPERVISOR', 'PEER'],
 };
 
 type U = { id?: string; role: string; level?: string | null; division?: string | null };

@@ -13,7 +13,7 @@ const pretty = (r: string) => r.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g
 const ROLE_TITLE: Record<string, Record<string, string>> = {
   HEAD_WORKERS: { SUPERVISOR: 'Head', PEER: 'Peers', KOORDINATOR: 'Koordinator' },
   PRINCIPAL_VP: { SUPERVISOR: 'Principal', PEER: 'Peers' },
-  KARYAWAN: { PEER: 'Evaluators' },
+  KARYAWAN: { SUPERVISOR: 'Leader', PEER: 'Peers' },
   SCHOOL_TEACHERS: { SUPERVISOR: 'Supervisor', PEER: 'Peers', KOORDINATOR: 'Koordinator' },
 };
 const ROLE_HINT: Record<string, string> = {

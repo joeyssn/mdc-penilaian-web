@@ -68,6 +68,8 @@ t('HRD: karyawan evaluate karyawan, any school', () => {
   const k = { id: 'k1', role: 'KARYAWAN', level: 'SD' };
   assert.equal(evaluatorErrors('KARYAWAN', 'PEER', k, { id: 'k2', role: 'KARYAWAN', level: 'SMA' }).length, 0);
   assert.ok(evaluatorErrors('KARYAWAN', 'PEER', k, { id: 't', role: 'TEACHER' }).length);
-  assert.ok(evaluatorErrors('KARYAWAN', 'SUPERVISOR', k, { id: 'k2', role: 'KARYAWAN' }).length);
+  assert.equal(evaluatorErrors('KARYAWAN', 'SUPERVISOR', k, { id: 'k2', role: 'KARYAWAN' }).length, 0); // HRD also picks a leader
+  assert.ok(evaluatorErrors('KARYAWAN', 'KOORDINATOR', k, { id: 'k2', role: 'KARYAWAN' }).length);
+  assert.ok(evaluatorErrors('KARYAWAN', 'SUPERVISOR', k, { id: 't', role: 'TEACHER' }).length);
   assert.equal(candidatesFor('KARYAWAN', 'PEER', k, [{ id: 'k1', role: 'KARYAWAN' }, { id: 'k2', role: 'KARYAWAN' }, { id: 't', role: 'TEACHER' }]).length, 1);
 });

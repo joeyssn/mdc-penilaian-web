@@ -142,7 +142,7 @@ export default function HRDDashboard() {
   let activeRubric = loggedInUser && selectedTarget ? rubrics.find(r => r.evaluators?.includes('Staff') && r.evaluatees?.includes(getNormalizedRole(selectedTarget.role)) && !isSelfReflectionRule(r)) || null : null;
 
   return (
-    <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
+    <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20 text-gray-900 [color-scheme:light] [&_input]:text-gray-900 [&_input]:placeholder:text-gray-500 [&_select]:text-gray-900 [&_select]:bg-white [&_option]:text-gray-900 [&_table]:text-gray-900 [&_label]:text-gray-800 [&_th]:text-gray-800">
       <RoleNav />
       <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-8 md:space-y-10">
         {loggedInUser && <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50] text-center md:text-left">Hi, Welcome {loggedInUser.name}</h1>}
@@ -165,7 +165,7 @@ export default function HRDDashboard() {
               <h2 className="text-xl font-bold mb-4">Input Skor Kehadiran</h2>
               <form onSubmit={submitAbsence} className="space-y-6">
                 <div>
-                  <label className="text-sm font-bold text-gray-700">Pilih Karyawan</label>
+                  <label className="text-base font-bold text-gray-900">Pilih Karyawan</label>
                   <select suppressHydrationWarning value={absTargetId} onChange={(e) => setAbsTargetId(e.target.value)} required className="w-full mt-2 border border-gray-300 rounded-lg p-3 bg-gray-50 outline-none focus:ring-2 focus:ring-[#008c99]/50">
                     <option value="">-- Pilih Target --</option>
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.role.replace('_', ' ')})</option>)}
@@ -173,7 +173,7 @@ export default function HRDDashboard() {
                 </div>
                 
                 <div>
-                  <label className="text-sm font-bold text-gray-700 block mb-2">Input Skor (1.0 - 4.0)</label>
+                  <label className="text-base font-bold text-gray-900 block mb-2">Input Skor (1.0 - 4.0)</label>
                   <input 
                     suppressHydrationWarning
                     type="number" 

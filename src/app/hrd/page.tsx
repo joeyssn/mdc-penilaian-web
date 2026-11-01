@@ -143,7 +143,7 @@ export default function HRDDashboard() {
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
       <RoleNav />
-      <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6"><MyTeamScores /></div>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6"><MyTeamScores always /></div>
 
       <div className="max-w-5xl mx-auto px-6 pt-12 space-y-8">
         <h1 className="text-3xl font-extrabold text-[#053b50]">Welcome, HRD {loggedInUser?.name}</h1>

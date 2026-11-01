@@ -17,11 +17,14 @@ export default function MyTeamScores({ always = false, selfReflection = true, cl
   const [results, setResults] = useState<any>(null);
   useEffect(() => { (async () => { try { const r = await fetch('/api/assign/results'); if (r.ok) setResults(await r.json()); } catch {} })(); }, []);
 
-  if (!results?.period) return null;
-  const any = results.sources.some((s: any) => s.assigned || s.submitted);
+  if (!results) return null;
+  // No evaluation period exists yet: show an empty rating (when `always`) instead of nothing.
+  const noPeriod = !results.period;
+  const sources: any[] = noPeriod ? ['SUPERVISOR', 'PEER', 'KOORDINATOR'].map(type => ({ type, assigned: 0, submitted: 0, average: null })) : results.sources;
+  const any = sources.some((s: any) => s.assigned || s.submitted);
   if (!any && !always) return null;
 
-  const withScore = results.sources.filter((s: any) => s.average != null);
+  const withScore = sources.filter((s: any) => s.average != null);
   const overall = withScore.length ? (withScore.reduce((a: number, s: any) => a + s.average, 0) / withScore.length).toFixed(2) : '-.-';
 
   return (
@@ -31,7 +34,7 @@ export default function MyTeamScores({ always = false, selfReflection = true, cl
           <div className="bg-[#053b50] rounded-2xl px-6 py-6 md:px-8 md:py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 shadow-md border border-gray-800">
             <div>
               <h2 className="text-xl md:text-2xl font-bold tracking-wide">Final Evaluation Rating</h2>
-              <p className="text-sm font-medium mt-1 text-gray-300">Your overall score from your leader, peers and koordinator · {results.period.name}</p>
+              <p className="text-sm font-medium mt-1 text-gray-300">Your overall score from your leader, peers and koordinator · {results.period?.name ?? 'no evaluation period yet'}</p>
             </div>
             <div className="text-center md:text-right">
               <div className="text-5xl font-extrabold tracking-tight text-[#e99a24]">{overall}</div>
@@ -40,7 +43,7 @@ export default function MyTeamScores({ always = false, selfReflection = true, cl
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {results.sources.map((s: any) => {
+            {sources.map((s: any) => {
               const v = SOURCES[s.type];
               return (
                 <div key={s.type} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">

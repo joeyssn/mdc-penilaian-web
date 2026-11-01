@@ -137,17 +137,28 @@ export default function HRDDashboard() {
     }
   };
 
+  const myAttendance = absences.find(a => a.userId === loggedInUser?.id)?.attendanceScore ?? null;
   const filteredTeachers = teachers.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) && t.id !== loggedInUser?.id && t.role !== 'STUDENT' && t.role !== 'ADMIN');
   let activeRubric = loggedInUser && selectedTarget ? rubrics.find(r => r.evaluators?.includes('Staff') && r.evaluatees?.includes(getNormalizedRole(selectedTarget.role)) && !isSelfReflectionRule(r)) || null : null;
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
       <RoleNav />
-      <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6"><MyTeamScores always /></div>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-8 md:space-y-10">
+        {loggedInUser && <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50] text-center md:text-left">Hi, Welcome {loggedInUser.name}</h1>}
 
-      <div className="max-w-5xl mx-auto px-6 pt-12 space-y-8">
-        <h1 className="text-3xl font-extrabold text-[#053b50]">Welcome, HRD {loggedInUser?.name}</h1>
+        {/* Same dashboard as the other roles: my rating from leader, peers and koordinator, plus my attendance. */}
+        <MyTeamScores always />
+        {myAttendance != null && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 max-w-sm">
+            <h3 className="text-lg font-extrabold text-black">Attendance</h3>
+            <p className="text-gray-500 font-medium mb-4 text-xs">Score entered by HRD</p>
+            <div className="text-3xl font-extrabold text-teal-600 tracking-tight mb-3">{Number(myAttendance).toFixed(1)}</div>
+            <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-teal-600 h-3 rounded-full" style={{ width: `${(Number(myAttendance) / 4) * 100}%` }}></div></div>
+          </div>
+        )}
 
+        <h2 className="text-2xl font-extrabold text-[#053b50] pt-2">HRD Tools</h2>
         {activeTab === 'absences' && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">

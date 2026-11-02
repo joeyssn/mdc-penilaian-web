@@ -81,3 +81,17 @@ t('HRD: karyawan evaluate karyawan, any school', () => {
   assert.ok(evaluatorErrors('KARYAWAN', 'SUPERVISOR', k, { id: 't', role: 'TEACHER' }).length);
   assert.equal(candidatesFor('KARYAWAN', 'PEER', k, [{ id: 'k1', role: 'KARYAWAN' }, { id: 'k2', role: 'KARYAWAN' }, { id: 't', role: 'TEACHER' }]).length, 1);
 });
+
+// Each school assigns its own teachers: SMP and SMA never see each other's, and TK / SD are handled by the SD module only.
+t('schools stay separate', () => {
+  const smpPrincipal = { role: 'PRINCIPAL', level: 'SMP' };
+  assert.ok(isTarget('SCHOOL_TEACHERS', smpPrincipal, { role: 'TEACHER', level: 'SMP' }));
+  assert.ok(!isTarget('SCHOOL_TEACHERS', smpPrincipal, { role: 'TEACHER', level: 'SMA' }));
+  assert.ok(!isTarget('SCHOOL_TEACHERS', smpPrincipal, { role: 'TEACHER', level: 'SD' }));
+  assert.ok(!isTarget('SCHOOL_TEACHERS', smpPrincipal, { role: 'TEACHER', level: 'TK' }));
+  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'SD' }), []);
+  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'TK' }), []);
+  const tgt = { id: 't', role: 'TEACHER', level: 'SMP' };
+  assert.ok(evaluatorErrors('SCHOOL_TEACHERS', 'PEER', tgt, { id: 'x', role: 'TEACHER', level: 'SMA' }).length);
+  assert.ok(evaluatorErrors('SCHOOL_TEACHERS', 'PEER', tgt, { id: 'x', role: 'TEACHER', level: 'SD' }).length);
+});

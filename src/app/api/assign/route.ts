@@ -48,6 +48,7 @@ async function handleGet(req: Request) {
       include: { teacher: { select: { id: true, name: true } }, evaluator: { select: { id: true, name: true } } },
     }) : [];
     return NextResponse.json({
+      me: { level: session.level ?? null },
       heads,
       headCandidates: Object.fromEntries(DIVISIONS.map(d => [d, headCandidates(d, everyone)])),
       modes: allowed.map(m => ({ mode: m, label: MODE_LABEL[m], roles: MODE_ROLES[m] })),

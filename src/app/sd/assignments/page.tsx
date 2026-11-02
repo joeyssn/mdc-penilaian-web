@@ -181,7 +181,7 @@ export default function SdAssignmentsPage() {
                         </button>
                       );
                     })}
-                    {shown.length === 0 && <p className="text-sm text-gray-400">No SD / TK teachers found.</p>}
+                    {shown.length === 0 && <p className="text-sm text-gray-400">No {String(me?.level || 'TK / SD').toUpperCase()} teachers found.</p>}
                   </div>
                 ) : (
                   <>
@@ -237,7 +237,7 @@ export default function SdAssignmentsPage() {
                       <td className="text-right"><button className="text-[#008c99] font-bold" onClick={() => { pick(t, 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{editable ? 'Edit' : 'View'}</button></td>
                     </tr>
                   ))}
-                  {teachers.length === 0 && <tr><td colSpan={5} className="py-4 text-gray-400">No SD / TK teachers yet.</td></tr>}
+                  {teachers.length === 0 && <tr><td colSpan={5} className="py-4 text-gray-400">No {String(me?.level || 'TK / SD').toUpperCase()} teachers yet.</td></tr>}
                 </tbody>
               </table>
             </div>

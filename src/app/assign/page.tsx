@@ -126,7 +126,7 @@ export default function AssignPage() {
       <RoleNav />
       <div className="max-w-5xl mx-auto px-4 md:px-6 pt-8 pb-20 space-y-6">
         <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Evaluators</h1>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-[#053b50]">Assign Evaluators{mode === 'SCHOOL_TEACHERS' && info?.me?.level ? <span className="text-[#e99a24]"> · {String(info.me.level).toUpperCase()}</span> : null}</h1>
           <p className="text-gray-700 mt-1">Follow the steps: pick a {noun}, then choose who evaluates them.</p>
         </div>
 

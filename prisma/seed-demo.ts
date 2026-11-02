@@ -7,14 +7,14 @@
 // TK-/SD-/SMP-/SMA-KS- or -WK-) and by this script (DM-), plus their scores, evaluations, assignments, absences and observations.
 // Real accounts, rubrics, weights and settings are never touched. Do NOT use `prisma db seed` (it deletes rubrics).
 //
-// Everyone logs in by typing the short name (before the @) with the password demo123, e.g. demo.sd.principal
+// Everyone logs in by typing the short name (before the @) with the password 123, e.g. demo.sd.principal
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const DRY = process.argv.includes('--dry');
 const YES = process.argv.includes('--yes');
-const PASSWORD = 'demo123';
+const PASSWORD = '123';
 const PERIOD = 'Demo Semester';
 const OLD = [/^SD-(T|P|V|S|K)-/, /^MG-/, /^(TK|SD|SMP|SMA)-(KS|WK)-/, /^DM-/];
 
@@ -61,6 +61,7 @@ const one = (user: string) => people.find(p => p.user === user)!;
 
 async function main() {
   console.log(`Erases old dummy accounts matching: ${OLD.map(r => r.source).join('  ')}`);
+  if (process.argv.includes('--list')) { for (const p of people) console.log(`${p.role.padEnd(26)} ${(p.level ?? '').padEnd(4)} ${email(p).padEnd(36)} ${PASSWORD}  ${p.name}`); return; }
   console.log(`Creates ${people.length} accounts (${by(p => p.role === 'STUDENT').length} students). Password for everyone: ${PASSWORD}\n`);
   console.log('Management : demo.director  demo.hrd  demo.admin');
   console.log('Workers    : demo.it1-3  demo.pr1-3  demo.acc1-3  demo.staff.admin1-2   Karyawan: demo.karyawan1-4');

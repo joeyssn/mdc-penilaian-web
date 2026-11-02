@@ -38,12 +38,6 @@ export async function GET() {
     (isDone(a.role, a.teacherId) ? out[a.role].submitted : out[a.role].pending).push(row);
   }
 
-  // Who evaluates me (teachers only)
-  if (session.role === 'TEACHER') {
-    const about = await prisma.teacherAssignment.findMany({ where: { periodId: period.id, teacherId: session.id, active: true }, include: { evaluator: { select: { name: true } } } });
-    for (const a of about) out.myEvaluators[a.role].push(a.evaluator.name);
-  }
-
   // Students: their class teachers (added automatically) plus any the Vice Principal assigned
   if (session.role === 'STUDENT') {
     // Class teachers follow the student's CURRENT class (same school, same class name), so changing a class updates the list.

@@ -67,15 +67,6 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
 
   const body = (
     <>
-      {t && ['SUPERVISOR', 'PEER', 'KOORDINATOR'].some(k => t.myEvaluators?.[k]?.length) && (
-        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 text-sm space-y-1">
-          <h2 className="text-lg font-extrabold text-[#053b50]">Who evaluates you</h2>
-          {t.myEvaluators.SUPERVISOR.length > 0 && <p>Supervisor: {t.myEvaluators.SUPERVISOR.join(', ')}</p>}
-          {t.myEvaluators.PEER.length > 0 && <p>Peers: {t.myEvaluators.PEER.join(', ')}</p>}
-          {t.myEvaluators.KOORDINATOR.length > 0 && <p>Koordinator: {t.myEvaluators.KOORDINATOR.join(', ')}</p>}
-        </section>
-      )}
-
       {t && (t.PEER.pending.length + t.PEER.submitted.length > 0) && <Card type="PEER" title="Peer evaluations" hint="Teachers the principal asked you to evaluate as a peer." pending={t.PEER.pending} done={t.PEER.submitted} />}
       {t && (t.SUPERVISOR.pending.length + t.SUPERVISOR.submitted.length > 0) && <Card type="SUPERVISOR" title="Supervisor evaluations" hint="Teachers assigned to you as supervisor." pending={t.SUPERVISOR.pending} done={t.SUPERVISOR.submitted} />}
       {t && (t.KOORDINATOR.pending.length + t.KOORDINATOR.submitted.length > 0) && <Card type="KOORDINATOR" title="Koordinator evaluations" hint="Teachers assigned to you as koordinator." pending={t.KOORDINATOR.pending} done={t.KOORDINATOR.submitted} />}

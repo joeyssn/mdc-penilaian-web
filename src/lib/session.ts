@@ -16,7 +16,7 @@ export const SCORE_VIEWER_ROLES = ['ADMIN', 'DIRECTOR'];
 // Roles that may create / edit / delete rubric content and weights.
 export const RUBRIC_EDITOR_ROLES = ['ADMIN', 'DIRECTOR'];
 // Roles that may only assign rubrics (evaluators / evaluatees).
-export const SCHOOL_ASSIGNER_ROLES = ['PRINCIPAL'];
+export const SCHOOL_ASSIGNER_ROLES = ['PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'];
 export const RUBRIC_ASSIGNER_ROLES = ['ADMIN', 'DIRECTOR', ...SCHOOL_ASSIGNER_ROLES];
 
 // Returns an error response if the caller isn't logged in or lacks one of the roles, otherwise null.

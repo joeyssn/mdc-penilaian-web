@@ -25,6 +25,12 @@ export default function RubricPage() {
   const [editingRubric, setEditingRubric] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [vpPerm, setVpPerm] = useState<Record<string, boolean>>({});
+  useEffect(() => { fetch('/api/rubric/permissions').then(r => r.json()).then(d => d?.schools && setVpPerm(d.schools)).catch(() => {}); }, []);
+  const setVpAllowed = async (level: string, allowed: boolean) => {
+    const r = await fetch('/api/rubric/permissions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level, allowed }) });
+    if (r.ok) setVpPerm(p => ({ ...p, [level]: allowed })); else alert((await r.json().catch(() => null))?.error || 'Could not save.');
+  };
   const [levelFilter, setLevelFilter] = useState<"SMP_SMA" | "SD">("SMP_SMA");
   const [editSchoolLevel, setEditSchoolLevel] = useState("SMP_SMA");
   const [editIsSelfReflection, setEditIsSelfReflection] = useState(false); // 🚀 ADDED STATE
@@ -151,6 +157,16 @@ export default function RubricPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto py-10 px-6">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 mb-8">
+          <h2 className="font-extrabold text-[#053b50]">Vice principals may assign rubrics</h2>
+          <p className="text-sm text-gray-700 mb-3">Tick a school to let its vice principals decide who evaluates whom (for their own school only). Rubric content stays with the admin. Off by default.</p>
+          <div className="flex flex-wrap gap-6">
+            {(['TK', 'SD', 'SMP', 'SMA'] as const).map(l => (
+              <label key={l} className="flex items-center gap-2 font-bold text-[#053b50]"><input type="checkbox" className="w-5 h-5" checked={!!vpPerm[l]} onChange={e => setVpAllowed(l, e.target.checked)} /> {l}</label>
+            ))}
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
             <h1 className="text-4xl font-extrabold text-[#053b50] tracking-tight">Manage Rubrics</h1>

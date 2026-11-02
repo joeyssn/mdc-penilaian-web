@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSdGroupLevel } from "@/lib/weights";
 import { normLevel } from "@/lib/levelScopeCore";
+import { vpMayAssignRubrics } from "@/lib/vpRubric";
 import { denyUnlessRole, getSession, RUBRIC_ASSIGNER_ROLES, RUBRIC_EDITOR_ROLES, SCHOOL_ASSIGNER_ROLES } from "@/lib/session";
 
 export const dynamic = 'force-dynamic'; 
@@ -127,6 +128,10 @@ export async function PUT(req: Request) {
     // A principal can only assign rubrics that belong to their own school level
     if (!editsContent) {
       const session = (await getSession())!;
+      // Vice principals only when the admin has allowed it for their school
+      if (session.role.startsWith('VICE_PRINCIPAL') && !(await vpMayAssignRubrics(session.level))) {
+        return NextResponse.json({ error: "The admin has not allowed vice principals to assign rubrics for your school." }, { status: 403 });
+      }
       if (SCHOOL_ASSIGNER_ROLES.includes(session.role)) {
         const target = await prisma.rubric.findUnique({ where: { id }, select: { schoolLevel: true } });
         const myLevel = isSdGroupLevel(session.level) ? 'SD' : 'SMP_SMA';

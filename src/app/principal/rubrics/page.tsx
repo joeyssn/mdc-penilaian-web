@@ -33,6 +33,7 @@ export default function PrincipalRubricAssignmentPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [levelName, setLevelName] = useState('');
   const [home, setHome] = useState('/principal');
+  const [blocked, setBlocked] = useState(false); // a vice principal whose school has not been allowed by the admin
   const [group, setGroup] = useState<'SD' | 'SMP_SMA'>('SMP_SMA');
   const [lockedGroup, setLockedGroup] = useState(false); // a principal only works in their own school group
   const inGroup = (r: Rubric, g: 'SD' | 'SMP_SMA') => (r.schoolLevel === 'SD' ? 'SD' : 'SMP_SMA') === g;
@@ -41,8 +42,12 @@ export default function PrincipalRubricAssignmentPage() {
     const meRes = await fetch('/api/me');
     if (!meRes.ok) return router.push('/login');
     const me = await meRes.json();
-    if (!['PRINCIPAL', 'DIRECTOR', 'ADMIN'].includes(me.role)) return router.push('/login');
+    if (!['PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'DIRECTOR', 'ADMIN'].includes(me.role)) return router.push('/login');
 
+    if (String(me.role).startsWith('VICE')) {
+      const pr = await fetch('/api/rubric/permissions').then(r => r.json()).catch(() => null);
+      if (!pr?.mine) { setBlocked(true); setIsLoading(false); return; }
+    }
     setHome(String(me.role).startsWith('VICE') ? '/vice-principal' : me.role === 'ADMIN' ? '/admin' : '/principal');
     setLevelName(String(me.level || '').toUpperCase() || 'All schools');
     const res = await fetch('/api/rubric', { cache: 'no-store' });
@@ -106,6 +111,8 @@ export default function PrincipalRubricAssignmentPage() {
     : false;
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500">Loading rubrics...</div>;
+
+  if (blocked) return <div className="min-h-screen flex items-center justify-center p-8 text-center font-bold text-gray-700">The admin has not allowed vice principals to assign rubrics for your school yet.</div>;
 
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">

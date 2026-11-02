@@ -30,11 +30,11 @@ export async function GET() {
   // Assigned by the principal: supervisor / peer / koordinator
   const mine = await prisma.teacherAssignment.findMany({
     where: { periodId: period.id, evaluatorId: session.id, active: true },
-    include: { teacher: { select: { id: true, name: true, level: true } } },
+    include: { teacher: { select: { id: true, name: true, level: true, role: true } } },
   });
   for (const a of mine) {
     // school = which system the teacher belongs to, so TK / SD and SMP / SMA evaluations never mix on one screen
-    const row = { teacherId: a.teacher.id, name: a.teacher.name, school: schoolGroup(a.teacher.level) };
+    const row = { teacherId: a.teacher.id, name: a.teacher.name, role: a.teacher.role, school: schoolGroup(a.teacher.level) };
     (isDone(a.role, a.teacherId) ? out[a.role].submitted : out[a.role].pending).push(row);
   }
 
@@ -63,7 +63,7 @@ export async function GET() {
       skipDuplicates: true,
     });
     const st = await prisma.studentAssignment.findMany({ where: { periodId: period.id, studentId: session.id }, include: { teacher: { select: { id: true, name: true } } } });
-    for (const a of st) (isDone('STUDENT', a.teacherId) ? out.STUDENT.submitted : out.STUDENT.pending).push({ teacherId: a.teacher.id, name: a.teacher.name });
+    for (const a of st) (isDone('STUDENT', a.teacherId) ? out.STUDENT.submitted : out.STUDENT.pending).push({ teacherId: a.teacher.id, name: a.teacher.name, role: 'TEACHER' });
   }
   return NextResponse.json(out);
 }

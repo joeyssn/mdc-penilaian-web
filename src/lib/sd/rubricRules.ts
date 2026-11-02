@@ -11,11 +11,32 @@ export type SdType = 'PEER' | 'SUPERVISOR' | 'KOORDINATOR' | 'STUDENT';
 const SPECIAL = ['peer', 'supervisor', 'koordinator'];
 
 const tags = (evaluators: string[] | string | null | undefined): string[] =>
-  (Array.isArray(evaluators) ? evaluators : (evaluators ?? '').split(',')).map(s => s.trim().toLowerCase()).filter(Boolean);
+  (Array.isArray(evaluators) ? evaluators : (evaluators ?? '').split(',')).flatMap(s => (s.trim().toLowerCase() === 'director/principal' ? ['director', 'principal'] : [s.trim().toLowerCase()])).filter(Boolean);
 
-type R = { id: string; evaluators?: string[] | string | null };
+// The name Manage Rubrics uses for an account role.
+export const roleLabel = (role?: string | null): string => {
+  const r = String(role ?? '').toUpperCase();
+  if (r.startsWith('VICE_PRINCIPAL')) return 'Vice-Principal';
+  return ({ TEACHER: 'Teacher', STAFF: 'Staff', KARYAWAN: 'Karyawan', PRINCIPAL: 'Principal', DIRECTOR: 'Director', HRD: 'HRD', IT: 'IT', PR: 'PR', ACC: 'ACC', ADMIN: 'Admin', STUDENT: 'Student' } as Record<string, string>)[r] ?? r;
+};
+export type RoleCtx = { evaluatorRole?: string | null; targetRole?: string | null };
 
-export function eligibleRubrics<T extends R>(type: SdType, rubrics: T[]): T[] {
+type R = { id: string; evaluators?: string[] | string | null; evaluatees?: string[] | string | null };
+
+export function eligibleRubrics<T extends R>(type: SdType, rubrics: T[], ctx?: RoleCtx): T[] {
+  // 1. The rubric the admin assigned in Manage Rubrics to this evaluator role scoring this target role
+  //    (e.g. a teacher scoring a teacher = peer assessment uses the Teacher -> Teacher rubric), whoever assigned the evaluator.
+  if (ctx?.evaluatorRole && ctx?.targetRole) {
+    const ev = roleLabel(ctx.evaluatorRole).toLowerCase(), tg = roleLabel(ctx.targetRole).toLowerCase();
+    const pair = rubrics.filter(r => tags(r.evaluators).includes(ev) && tags(r.evaluatees).includes(tg));
+    if (pair.length) {
+      const own = type.toLowerCase();
+      const tagged = pair.filter(r => tags(r.evaluators).includes(own));
+      if (tagged.length) return tagged;
+      const plain = pair.filter(r => !tags(r.evaluators).some(t => SPECIAL.includes(t)));
+      return plain.length ? plain : pair;
+    }
+  }
   if (type === 'STUDENT') return rubrics.filter(r => tags(r.evaluators).includes('student'));
   const own = type.toLowerCase();
   const usable = rubrics.filter(r => !tags(r.evaluators).includes('student'));
@@ -28,4 +49,4 @@ export function eligibleRubrics<T extends R>(type: SdType, rubrics: T[]): T[] {
   return peer.length ? peer : usable;
 }
 
-export const isRubricAllowed = (type: SdType, rubricId: string, rubrics: R[]) => eligibleRubrics(type, rubrics).some(r => r.id === rubricId);
+export const isRubricAllowed = (type: SdType, rubricId: string, rubrics: R[], ctx?: RoleCtx) => eligibleRubrics(type, rubrics, ctx).some(r => r.id === rubricId);

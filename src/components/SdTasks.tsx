@@ -35,8 +35,8 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
     load();
   })(); }, []);
 
-  const rubricFor = (type: string) => eligibleRubrics(type as any, rubrics)[0];
-  const rubric = open ? rubricFor(open.type) : null;
+  const rubricFor = (type: string, target?: any) => eligibleRubrics(type as any, rubrics, { evaluatorRole: me?.role, targetRole: target?.role })[0];
+  const rubric = open ? rubricFor(open.type, open.target) : null;
   const indicators = rubric ? rubric.sections.flatMap((s: any) => s.categories.flatMap((c: any) => c.indicators)) : [];
   const unanswered = indicators.filter((i: any) => !answers[i.id]).length;
 

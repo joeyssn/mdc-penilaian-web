@@ -73,3 +73,21 @@ console.log(`\n${n} tests passed`);
   assert.deepEqual(eligibleRubrics('KOORDINATOR', R2 as any).map((r: any) => r.id), ['peer']);
   console.log('ok peer rubric applies to other roles');
 }
+
+// Peer assessment: a teacher scoring a teacher uses the rubric Manage Rubrics assigned to Teacher -> Teacher.
+{
+  const R = [
+    { id: 'tt', evaluators: 'Teacher', evaluatees: 'Teacher' },
+    { id: 'ss', evaluators: 'Staff', evaluatees: 'Staff' },
+    { id: 'vpTeacher', evaluators: 'Vice-Principal,Supervisor', evaluatees: 'Teacher' },
+    { id: 'stu', evaluators: 'Student', evaluatees: 'Teacher' },
+  ];
+  const pick = (type: any, e: string, t: string) => eligibleRubrics(type, R as any, { evaluatorRole: e, targetRole: t }).map((r: any) => r.id);
+  assert.deepEqual(pick('PEER', 'TEACHER', 'TEACHER'), ['tt']);
+  assert.deepEqual(pick('PEER', 'STAFF', 'STAFF'), ['ss']);
+  assert.deepEqual(pick('SUPERVISOR', 'VICE_PRINCIPAL_KURIKULUM', 'TEACHER'), ['vpTeacher']);
+  assert.deepEqual(pick('STUDENT', 'STUDENT', 'TEACHER'), ['stu']);
+  assert.ok(isRubricAllowed('PEER', 'tt', R as any, { evaluatorRole: 'TEACHER', targetRole: 'TEACHER' }));
+  assert.ok(!isRubricAllowed('PEER', 'ss', R as any, { evaluatorRole: 'TEACHER', targetRole: 'TEACHER' }));
+  console.log('ok role-pair rubric (peer assessment)');
+}

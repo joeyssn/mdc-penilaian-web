@@ -37,8 +37,8 @@ export async function POST(req: Request) {
       include: { rubricsection: { include: { rubriccategory: { include: { rubricindicator: { select: { id: true } } } } } } },
     });
     if (!rubric || rubric.schoolLevel === 'SD' || rubric.isSelfReflection) return fail('That rubric cannot be used for this evaluation.');
-    const candidates = await prisma.rubric.findMany({ where: { schoolLevel: { not: 'SD' }, isSelfReflection: false }, select: { id: true, evaluators: true } });
-    if (!isRubricAllowed(type, rubricId, candidates)) return fail(`This rubric is not the one set for ${type.toLowerCase()} evaluations.`);
+    const candidates = await prisma.rubric.findMany({ where: { schoolLevel: { not: 'SD' }, isSelfReflection: false }, select: { id: true, evaluators: true, evaluatees: true } });
+    if (!isRubricAllowed(type, rubricId, candidates, { evaluatorRole: session.role, targetRole: target.role })) return fail(`This rubric is not the one set for ${type.toLowerCase()} evaluations.`);
 
     const indicatorIds = new Set(rubric.rubricsection.flatMap(s => s.rubriccategory.flatMap(c => c.rubricindicator.map(i => i.id))));
     const answers = new Map<string, number>();

@@ -76,9 +76,9 @@ export default function AddRubricModal({ defaultLevel = "SMP_SMA", open, onClose
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white focus:ring-2 focus:ring-[#008397]/50 focus:outline-none"
             >
               <option value="SMP_SMA">SMP / SMA</option>
-              <option value="SD">SD</option>
+              <option value="SD">TK / SD</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">SD staff only see SD rubrics. Everyone else sees SMP / SMA rubrics.</p>
+            <p className="text-xs text-gray-500 mt-1">TK / SD staff only see TK / SD rubrics. Everyone else sees SMP / SMA rubrics.</p>
           </div>
           <div>
             <label className="block font-bold text-[#053b50] text-sm mb-2">Description (Optional)</label>

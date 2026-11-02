@@ -46,7 +46,10 @@ export default function RoleNav() {
   // TK / SD principals and vice principals use the SD screens for teachers, so the generic screen is only for SMP / SMA (and Director, HRD, heads).
   // SD / TK teachers use My Evaluations instead of Team Evaluations. Principals keep it at every school: a principal can be assigned to evaluate vice principals.
   const sdGroup = level === 'SD' || level === 'TK';
-  const tabs = (TABS[role] ?? []).filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
+  // Principals and vice principals of TK / SMP / SMA assign their teachers in a folder of their own school (SD keeps /sd/assignments).
+  const ownFolder = ['TK', 'SMP', 'SMA'].includes(level) && (role === 'PRINCIPAL' || role.startsWith('VICE_PRINCIPAL')) ? `/${level.toLowerCase()}/assignments` : null;
+  const base = (TABS[role] ?? []).flatMap(t => (ownFolder && t.label === 'Assign Evaluators' ? [{ ...t, href: ownFolder }] : [t]));
+  const tabs = base.filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
   return (
     <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 print:hidden">
       <div className="flex items-center">

@@ -1,3 +1,4 @@
+import { normLevel } from '@/lib/levelScope';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
@@ -36,6 +37,9 @@ async function handleGet(req: Request) {
   const url = new URL(req.url);
   const mode = url.searchParams.get('mode') as Mode | null;
   const allowed = modesFor(session);
+  // The /tk, /smp and /sma folders each work for one school only.
+  const school = url.searchParams.get('school');
+  if (school && normLevel(session.level) !== school) return err(`This page is only for ${school} accounts.`, 403);
 
   const periods = await prisma.evalPeriod.findMany({ where: { status: { in: ['OPEN', 'DRAFT'] } }, orderBy: { createdAt: 'desc' }, select: { id: true, name: true, status: true } });
 

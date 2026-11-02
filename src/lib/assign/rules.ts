@@ -35,14 +35,14 @@ export const MODE_ROLES: Record<Mode, EvaluatorRole[]> = {
 
 type U = { id?: string; role: string; level?: string | null; division?: string | null };
 const VPS = ['VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'];
-const SMP_SMA = ['SMP', 'SMA'];
+const SCHOOLS = ['TK', 'SD', 'SMP', 'SMA']; // every school has its own copy of the teacher wizard
 
-// The modes a logged-in user may use. TK and SD keep using the SD module for teachers.
+// The modes a logged-in user may use. TK, SD, SMP and SMA each get the same teacher wizard, limited to their own school.
 export function modesFor(viewer: U): Mode[] {
   const lvl = normLevel(viewer.level);
   if (viewer.role === 'DIRECTOR') return ['PRINCIPAL_VP', 'HEAD_WORKERS'];
   if (viewer.role === 'HRD') return ['KARYAWAN'];
-  if ((viewer.role === 'PRINCIPAL' || VPS.includes(viewer.role)) && lvl && SMP_SMA.includes(lvl)) return ['SCHOOL_TEACHERS'];
+  if ((viewer.role === 'PRINCIPAL' || VPS.includes(viewer.role)) && lvl && SCHOOLS.includes(lvl)) return ['SCHOOL_TEACHERS'];
   return [];
 }
 

@@ -10,7 +10,7 @@ import { Rubric } from "./types";
 
 // Added "Vice-Principal" to the available roles
 // Find your roles array in your rubric manager and add 'Karyawan' to it
-const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan", "Student"];
+const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director", "Principal", "Karyawan", "HRD", "IT", "PR", "ACC", "Admin", "Student"];
 // SD evaluators can also be tagged by assignment: a rubric tagged Supervisor / Koordinator / Peer is the one those evaluators score with
 const EVALUATOR_ROLES = [...AVAILABLE_ROLES, "Peer", "Supervisor", "Koordinator"];
 export default function RubricPage() {
@@ -127,7 +127,7 @@ export default function RubricPage() {
   // you need to add `isSelfReflection?: boolean;` inside your ./types.ts file!
   const levelOf = (r: any) => (r.schoolLevel === "SD" ? "SD" : "SMP_SMA");
   const visibleRubrics = rubrics.filter((r: any) => levelOf(r) === levelFilter);
-  const levelName = levelFilter === "SD" ? "SD" : "SMP / SMA";
+  const levelName = levelFilter === "SD" ? "TK / SD" : "SMP / SMA";
   const rubric = rubrics.find((r: any) => r.id === selectedRubricId);
 
   return (
@@ -154,7 +154,7 @@ export default function RubricPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
             <h1 className="text-4xl font-extrabold text-[#053b50] tracking-tight">Manage Rubrics</h1>
-            <p className="text-gray-500 mt-2 text-sm">SD and SMP / SMA have separate rubrics. Pick a school level, then configure its evaluation criteria and access permissions.</p>
+            <p className="text-gray-500 mt-2 text-sm">TK / SD and SMP / SMA have separate rubrics. Pick a school level, then configure its evaluation criteria and access permissions.</p>
           </div>
           <button onClick={() => setShowAddRubric(true)} className="bg-[#053b50] hover:bg-[#032838] text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition shadow-sm">
             + Create New {levelName} Rubric
@@ -162,7 +162,7 @@ export default function RubricPage() {
         </div>
 
         <div className="mb-6 inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
-          {([["SMP_SMA", "SMP / SMA"], ["SD", "SD"]] as const).map(([key, label]) => (
+          {([["SMP_SMA", "SMP / SMA"], ["SD", "TK / SD"]] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => {
@@ -213,7 +213,7 @@ export default function RubricPage() {
                        <label className="text-sm font-bold text-[#053b50]">School level:</label>
                        <select value={editSchoolLevel} onChange={(e) => setEditSchoolLevel(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-semibold bg-white">
                          <option value="SMP_SMA">SMP / SMA</option>
-                         <option value="SD">SD</option>
+                         <option value="SD">TK / SD</option>
                        </select>
                      </div>
 
@@ -228,7 +228,7 @@ export default function RubricPage() {
                     <div className="flex items-center gap-3">
                       <h2 className="text-2xl font-bold text-[#053b50]">{rubric.title}</h2>
                       <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider ${levelOf(rubric) === "SD" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
-                        {levelOf(rubric) === "SD" ? "SD" : "SMP / SMA"}
+                        {levelOf(rubric) === "SD" ? "TK / SD" : "SMP / SMA"}
                       </span>
                       {/* 🚀 THE ADDED BADGE */}
                       {rubric.isSelfReflection && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">Self-Reflection</span>}
@@ -258,7 +258,7 @@ export default function RubricPage() {
                 <div className="px-8 py-6 bg-white border-b border-gray-100">
                   <h3 className="font-bold text-[#053b50] mb-1 text-sm uppercase tracking-wide">Assignment & Access Rules</h3>
                   <p className="text-xs text-gray-500 mb-4">
-                    These rules apply only to <b>{levelFilter === "SD" ? "SD" : "SMP / SMA"}</b> rubrics, so the same role can have a different rubric in each school.
+                    These rules apply only to <b>{levelFilter === "SD" ? "TK / SD" : "SMP / SMA"}</b> rubrics, so the same role can have a different rubric in each school.
                     {(() => {
                       const clash = rubrics.filter((r: any) => r.id !== selectedRubricId && levelOf(r) === levelFilter && !r.isSelfReflection
                         && (r.evaluators || []).some((e: string) => evaluators.includes(e)) && (r.evaluatees || []).some((t: string) => evaluatees.includes(t)));
@@ -289,7 +289,7 @@ export default function RubricPage() {
                         <label className="block text-sm font-bold text-[#053b50]">Who receives the score? (Target)</label>
                         <div className="flex gap-2">
                            {/* Added Vice-Principal to the Target All action */}
-                           <button onClick={() => setEvaluatees(["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Student"])} className="text-[10px] bg-[#e99a24]/10 text-[#e99a24] px-2 py-1.5 rounded font-bold hover:bg-[#e99a24]/20 transition">Target All (Except Admin)</button>
+                           <button onClick={() => setEvaluatees(["Teacher", "Staff", "Vice-Principal", "Director", "Principal", "Student"])} className="text-[10px] bg-[#e99a24]/10 text-[#e99a24] px-2 py-1.5 rounded font-bold hover:bg-[#e99a24]/20 transition">Target All (Except Admin)</button>
                            <button onClick={() => setEvaluatees([])} className="text-[10px] bg-white border border-gray-300 text-gray-600 px-2 py-1.5 rounded font-bold hover:bg-gray-100 transition">Clear</button>
                         </div>
                       </div>

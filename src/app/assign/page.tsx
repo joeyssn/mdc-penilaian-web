@@ -118,7 +118,7 @@ export default function AssignPage() {
   const editable = !locked && !!periodId;
 
   const pool: any[] = cur.key === 'PERSON' ? targets : (cands[cur.key] ?? []);
-  const shown = pool.filter(x => x.name.toLowerCase().includes(q.toLowerCase()));
+  const shown = pool;
   const sub = (p: Person) => `${pretty(p.role)}${p.level ? ` · ${p.level}` : ''}${p.division ? ` · ${p.division}` : ''}`;
 
   return (
@@ -228,18 +228,18 @@ export default function AssignPage() {
                     <h2 className="text-xl font-extrabold text-[#053b50]">{cur.hint}</h2>
                     {cur.key !== 'PERSON' && <p className="text-sm text-gray-700">For <b>{sel?.name}</b>. Click names to select or unselect. {(draft[cur.key] ?? []).length} selected.</p>}
                   </div>
-                  <input className={`${input} w-full`} placeholder="Search by name…" value={q} onChange={e => setQ(e.target.value)} autoFocus />
 
                   {cur.key === 'PERSON' ? (
                     <div className="grid sm:grid-cols-2 gap-2 max-h-[55vh] overflow-y-auto">
                       {shown.map((t: Target) => {
-                        const counts = roles.map(r => `${(title(r)[0])} ${(t.assigned[r] ?? []).length}`).join(' · ');
                         const n = roles.reduce((a, r) => a + (t.assigned[r] ?? []).length, 0);
                         return (
                           <button key={t.id} onClick={() => pick(t)} className="text-left rounded-xl border border-gray-100 p-3 hover:border-[#008c99] hover:bg-[#e6f4f5] transition-all">
                             <div className="font-bold text-[#053b50]">{t.name}</div>
                             <div className="text-xs text-gray-700">{sub(t)}</div>
-                            <div className="text-xs text-gray-600 mt-1">{n ? counts : 'Nobody assigned yet'}</div>
+                            {n ? roles.filter(r => (t.assigned[r] ?? []).length > 0).map(r => (
+                              <div key={r} className="text-xs text-gray-700 mt-1"><b>{title(r)}:</b> {(t.assigned[r] ?? []).map(a => a.name).join(', ')}</div>
+                            )) : <div className="text-xs text-gray-600 mt-1">Nobody assigned yet</div>}
                           </button>
                         );
                       })}

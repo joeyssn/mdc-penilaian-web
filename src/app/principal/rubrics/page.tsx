@@ -13,12 +13,13 @@ type Rubric = {
   title: string;
   description?: string | null;
   isSelfReflection?: boolean;
+  schoolLevel?: string;
   evaluators: string[];
   evaluatees: string[];
   sections: Section[];
 };
 
-const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan', 'Student'];
+const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director', 'Principal', 'Karyawan', 'HRD', 'IT', 'PR', 'ACC', 'Admin', 'Student'];
 const EVALUATOR_ROLES = [...ROLES, 'Peer', 'Supervisor', 'Koordinator'];
 
 // Principal view: can assign who evaluates whom, but the rubric content itself is read-only.
@@ -32,6 +33,9 @@ export default function PrincipalRubricAssignmentPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [levelName, setLevelName] = useState('');
   const [home, setHome] = useState('/principal');
+  const [group, setGroup] = useState<'SD' | 'SMP_SMA'>('SMP_SMA');
+  const [lockedGroup, setLockedGroup] = useState(false); // a principal only works in their own school group
+  const inGroup = (r: Rubric, g: 'SD' | 'SMP_SMA') => (r.schoolLevel === 'SD' ? 'SD' : 'SMP_SMA') === g;
 
   const load = async (keepSelection = false) => {
     const meRes = await fetch('/api/me');
@@ -45,7 +49,12 @@ export default function PrincipalRubricAssignmentPage() {
     const data = await res.json();
     if (Array.isArray(data)) {
       setRubrics(data);
-      const active = data.find((r: Rubric) => keepSelection && r.id === selectedId) || data[0];
+      const myGroup: 'SD' | 'SMP_SMA' = /^(TK|SD)/i.test(String(me.level || '')) ? 'SD' : 'SMP_SMA';
+      const own = me.role === 'PRINCIPAL' || String(me.role).startsWith('VICE');
+      const g = own ? myGroup : (keepSelection ? group : myGroup);
+      setLockedGroup(own); setGroup(g);
+      const pool = data.filter((r: Rubric) => inGroup(r, g));
+      const active = pool.find((r: Rubric) => keepSelection && r.id === selectedId) || pool[0];
       if (active) {
         setSelectedId(active.id);
         setEvaluators(active.evaluators || []);
@@ -56,6 +65,12 @@ export default function PrincipalRubricAssignmentPage() {
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const switchGroup = (g: 'SD' | 'SMP_SMA') => {
+    setGroup(g);
+    const first = rubrics.find(x => inGroup(x, g));
+    setSelectedId(first?.id || ''); setEvaluators(first?.evaluators || []); setEvaluatees(first?.evaluatees || []);
+  };
 
   const selectRubric = (id: string) => {
     const r = rubrics.find(x => x.id === id);
@@ -84,7 +99,7 @@ export default function PrincipalRubricAssignmentPage() {
     setIsSaving(false);
   };
 
-  const rubric = rubrics.find(r => r.id === selectedId);
+  const rubric = rubrics.find(r => r.id === selectedId && inGroup(r, group));
   const changed = rubric
     ? [...evaluators].sort().join() !== [...(rubric.evaluators || [])].sort().join() ||
       [...evaluatees].sort().join() !== [...(rubric.evaluatees || [])].sort().join()
@@ -105,12 +120,21 @@ export default function PrincipalRubricAssignmentPage() {
           <p className="text-gray-500 mt-2 font-medium">Choose which roles evaluate which roles for your school only. Other schools keep their own assignments. Rubric content can only be edited by the admin.</p>
         </div>
 
-        {rubrics.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center text-gray-500 font-bold">No rubrics have been created yet.</div>
+        <div className="inline-flex bg-white border border-gray-200 rounded-xl p-1 shadow-sm gap-1">
+          {([['SD', 'TK / SD'], ['SMP_SMA', 'SMP / SMA']] as const).map(([key, label]) => (
+            <button key={key} disabled={lockedGroup && key !== group} onClick={() => switchGroup(key)}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition ${group === key ? (key === 'SD' ? 'bg-[#e99a24] text-white' : 'bg-[#008397] text-white') : 'text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {rubrics.filter(r => inGroup(r, group)).length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center text-gray-500 font-bold">No {group === 'SD' ? 'TK / SD' : 'SMP / SMA'} rubrics have been created yet.</div>
         ) : (
           <>
             <select value={selectedId} onChange={(e) => selectRubric(e.target.value)} className="w-full md:w-auto border-2 border-[#008c99] text-[#053b50] font-bold rounded-xl px-4 py-3 bg-blue-50 outline-none">
-              {rubrics.map(r => <option key={r.id} value={r.id}>{r.title}{r.isSelfReflection ? ' (Self-Reflection)' : ''}</option>)}
+              {rubrics.filter(r => inGroup(r, group)).map(r => <option key={r.id} value={r.id}>{r.title}{r.isSelfReflection ? ' (Self-Reflection)' : ''}</option>)}
             </select>
 
             {rubric && (

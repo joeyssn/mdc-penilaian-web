@@ -6,6 +6,8 @@ import { normLevel } from '@/lib/levelScopeCore';
 
 export const dynamic = 'force-dynamic';
 
+const schoolGroup = (level?: string | null) => { const l = normLevel(level); return l === 'TK' || l === 'SD' ? 'SD' : 'SMP_SMA'; };
+
 // Everything the logged-in user may evaluate right now, split by source. Each person sees only their own tasks.
 export async function GET() {
   const session = await getSession();
@@ -28,10 +30,11 @@ export async function GET() {
   // Assigned by the principal: supervisor / peer / koordinator
   const mine = await prisma.teacherAssignment.findMany({
     where: { periodId: period.id, evaluatorId: session.id, active: true },
-    include: { teacher: { select: { id: true, name: true } } },
+    include: { teacher: { select: { id: true, name: true, level: true } } },
   });
   for (const a of mine) {
-    const row = { teacherId: a.teacher.id, name: a.teacher.name };
+    // school = which system the teacher belongs to, so TK / SD and SMP / SMA evaluations never mix on one screen
+    const row = { teacherId: a.teacher.id, name: a.teacher.name, school: schoolGroup(a.teacher.level) };
     (isDone(a.role, a.teacherId) ? out[a.role].submitted : out[a.role].pending).push(row);
   }
 

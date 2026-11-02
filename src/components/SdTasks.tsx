@@ -5,7 +5,7 @@ import SdShell from '@/components/SdShell';
 import { eligibleRubrics } from '@/lib/sd/rubricRules';
 
 const SCALE = [[1, 'Kurang'], [2, 'Cukup'], [3, 'Baik'], [4, 'Sangat Baik']] as const;
-type Target = { teacherId: string; name: string; className?: string; subject?: string; category?: string; isPartner?: boolean };
+type Target = { teacherId: string; name: string; className?: string; subject?: string; category?: string; isPartner?: boolean; school?: string };
 type EvalKind = 'PEER' | 'SUPERVISOR' | 'KOORDINATOR' | 'STUDENT';
 type Open = { type: EvalKind; target: Target } | null;
 
@@ -21,7 +21,14 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
 
-  const load = async () => { const r = await fetch('/api/sd/my-tasks'); if (r.ok) setT(await r.json()); };
+  // TK / SD teachers are evaluated in the SD flow, everyone else in the SMP / SMA flow; the two never mix on one screen.
+  const keep = (rows: Target[]) => rows.filter(x => (general ? x.school !== 'SD' : x.school ? x.school === 'SD' : true));
+  const load = async () => {
+    const r = await fetch('/api/sd/my-tasks'); if (!r.ok) return;
+    const d = await r.json();
+    for (const k of ['PEER', 'SUPERVISOR', 'KOORDINATOR']) if (d[k]) d[k] = { pending: keep(d[k].pending), submitted: keep(d[k].submitted) };
+    setT(d);
+  };
   useEffect(() => { (async () => {
     setMe(await (await fetch('/api/me')).json());
     const r = await fetch('/api/rubric'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => (general ? x.schoolLevel !== 'SD' : x.schoolLevel === 'SD') && !x.isSelfReflection));

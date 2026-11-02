@@ -47,14 +47,14 @@ export default function SdAssignmentsPage() {
   }, []);
   const loadTeachers = useCallback(async (id: string) => {
     if (!id) return;
-    const a = await fetch(`/api/sd/assignments?periodId=${id}`);
+    const a = await fetch(`/api/sd/assignments?periodId=${id}&school=SD`);
     if (a.ok) setTeachers((await a.json()).teachers ?? []);
   }, []);
 
   useEffect(() => { (async () => {
     setMe(await (await fetch('/api/me')).json());
     loadPeriods();
-    const t = await fetch('/api/sd/teachers'); if (t.ok) setCand(await t.json());
+    const t = await fetch('/api/sd/teachers?school=SD'); if (t.ok) setCand(await t.json());
     const p = await fetch('/api/sd/permissions'); if (p.ok) setPerms(await p.json());
   })(); }, [loadPeriods]);
   useEffect(() => { loadTeachers(periodId); reset(); }, [periodId, loadTeachers]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -181,7 +181,7 @@ export default function SdAssignmentsPage() {
                         </button>
                       );
                     })}
-                    {shown.length === 0 && <p className="text-sm text-gray-400">No {String(me?.level || 'TK / SD').toUpperCase()} teachers found.</p>}
+                    {shown.length === 0 && <p className="text-sm text-gray-400">No {String(me?.level || 'SD').toUpperCase()} teachers found.</p>}
                   </div>
                 ) : (
                   <>
@@ -237,7 +237,7 @@ export default function SdAssignmentsPage() {
                       <td className="text-right"><button className="text-[#008c99] font-bold" onClick={() => { pick(t, 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{editable ? 'Edit' : 'View'}</button></td>
                     </tr>
                   ))}
-                  {teachers.length === 0 && <tr><td colSpan={5} className="py-4 text-gray-400">No {String(me?.level || 'TK / SD').toUpperCase()} teachers yet.</td></tr>}
+                  {teachers.length === 0 && <tr><td colSpan={5} className="py-4 text-gray-400">No {String(me?.level || 'SD').toUpperCase()} teachers yet.</td></tr>}
                 </tbody>
               </table>
             </div>

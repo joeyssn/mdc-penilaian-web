@@ -18,7 +18,7 @@ type Rubric = {
   sections: Section[];
 };
 
-const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director/Principal', 'Karyawan', 'HRD', 'IT', 'PR', 'ACC', 'Admin', 'Student'];
+const ROLES = ['Teacher', 'Staff', 'Vice-Principal', 'Director', 'Principal', 'Karyawan', 'HRD', 'IT', 'PR', 'ACC', 'Admin', 'Student'];
 const EVALUATOR_ROLES = [...ROLES, 'Peer', 'Supervisor', 'Koordinator'];
 
 // Principal view: can assign who evaluates whom, but the rubric content itself is read-only.

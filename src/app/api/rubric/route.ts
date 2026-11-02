@@ -7,6 +7,8 @@ import { denyUnlessRole, getSession, RUBRIC_ASSIGNER_ROLES, RUBRIC_EDITOR_ROLES,
 export const dynamic = 'force-dynamic'; 
 
 const SCHOOL_LEVELS = ['SD', 'SMP_SMA'];
+// Older rubrics were tagged with the combined "Director/Principal"; they now count as both separate roles.
+const splitRoles = (v?: string | null) => (v ? v.split(',').flatMap(r => (r.trim() === 'Director/Principal' ? ['Director', 'Principal'] : [r])) : []);
 
 // 1. READ ALL RUBRICS
 export async function GET(req: Request) {
@@ -55,8 +57,8 @@ export async function GET(req: Request) {
       return {
       ...rubric,
       // 🚀 The spread operator automatically includes isSelfReflection
-      evaluators: rubric.evaluators ? rubric.evaluators.split(',') : [],
-      evaluatees: rubric.evaluatees ? rubric.evaluatees.split(',') : [],
+      evaluators: splitRoles(rubric.evaluators),
+      evaluatees: splitRoles(rubric.evaluatees),
       sections: rubric.rubricsection.map((section) => ({
         ...section,
         categories: section.rubriccategory.map((category) => ({

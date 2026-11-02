@@ -113,14 +113,15 @@ export default function KaryawanDashboard() {
     if (upper === 'TEACHER') return 'Teacher';
     if (upper === 'STAFF' || upper === 'HRD') return 'Staff';
     if (upper === 'KARYAWAN') return 'Karyawan'; 
-    if (upper === 'PRINCIPAL' || upper === 'DIRECTOR') return 'Director/Principal';
+    if (upper === 'PRINCIPAL') return 'Principal';
+    if (upper === 'DIRECTOR') return 'Director';
     if (upper === 'VICE_PRINCIPAL' || upper === 'VICE-PRINCIPAL' || upper === 'VICE_PRINCIPAL_KURIKULUM' || upper === 'VICE_PRINCIPAL_KESISWAAN') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
     return 'Staff';
   };
 
   const isSelfReflectionRule = (r: Rubric) => {
-    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"];
+    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director", "Principal", "Karyawan"];
     const excludedRoles = ["Admin", "Student"];
     const hasRequired = requiredRoles.every(role => r.evaluators?.includes(role) && r.evaluatees?.includes(role));
     const hasExcluded = excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));

@@ -10,7 +10,7 @@ import { Rubric } from "./types";
 
 // Added "Vice-Principal" to the available roles
 // Find your roles array in your rubric manager and add 'Karyawan' to it
-const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan", "HRD", "IT", "PR", "ACC", "Admin", "Student"];
+const AVAILABLE_ROLES = ["Teacher", "Staff", "Vice-Principal", "Director", "Principal", "Karyawan", "HRD", "IT", "PR", "ACC", "Admin", "Student"];
 // SD evaluators can also be tagged by assignment: a rubric tagged Supervisor / Koordinator / Peer is the one those evaluators score with
 const EVALUATOR_ROLES = [...AVAILABLE_ROLES, "Peer", "Supervisor", "Koordinator"];
 export default function RubricPage() {
@@ -289,7 +289,7 @@ export default function RubricPage() {
                         <label className="block text-sm font-bold text-[#053b50]">Who receives the score? (Target)</label>
                         <div className="flex gap-2">
                            {/* Added Vice-Principal to the Target All action */}
-                           <button onClick={() => setEvaluatees(["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Student"])} className="text-[10px] bg-[#e99a24]/10 text-[#e99a24] px-2 py-1.5 rounded font-bold hover:bg-[#e99a24]/20 transition">Target All (Except Admin)</button>
+                           <button onClick={() => setEvaluatees(["Teacher", "Staff", "Vice-Principal", "Director", "Principal", "Student"])} className="text-[10px] bg-[#e99a24]/10 text-[#e99a24] px-2 py-1.5 rounded font-bold hover:bg-[#e99a24]/20 transition">Target All (Except Admin)</button>
                            <button onClick={() => setEvaluatees([])} className="text-[10px] bg-white border border-gray-300 text-gray-600 px-2 py-1.5 rounded font-bold hover:bg-gray-100 transition">Clear</button>
                         </div>
                       </div>

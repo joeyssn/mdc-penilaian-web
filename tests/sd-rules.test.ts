@@ -59,3 +59,17 @@ test('rubrics: dedicated Supervisor / Koordinator rubrics are used when they exi
   assert.equal(isRubricAllowed('STUDENT', 'g', [generic, student]), false);
 });
 console.log(`\n${n} tests passed`);
+
+// The rubric assigned to Peer is used by the other roles when they have none of their own.
+{
+  const R = [{ id: 'peerOnly', evaluators: 'Peer' }, { id: 'stu', evaluators: 'Student' }];
+  const ids = (t: any) => eligibleRubrics(t, R as any).map((r: any) => r.id);
+  assert.deepEqual(ids('SUPERVISOR'), ['peerOnly']);
+  assert.deepEqual(ids('KOORDINATOR'), ['peerOnly']);
+  assert.deepEqual(ids('PEER'), ['peerOnly']);
+  assert.deepEqual(ids('STUDENT'), ['stu']);
+  const R2 = [{ id: 'peer', evaluators: 'Peer' }, { id: 'sup', evaluators: 'Supervisor' }];
+  assert.deepEqual(eligibleRubrics('SUPERVISOR', R2 as any).map((r: any) => r.id), ['sup']);
+  assert.deepEqual(eligibleRubrics('KOORDINATOR', R2 as any).map((r: any) => r.id), ['peer']);
+  console.log('ok peer rubric applies to other roles');
+}

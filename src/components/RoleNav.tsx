@@ -30,7 +30,6 @@ export default function RoleNav() {
   const path = usePathname();
   const [role, setRole] = useState<string>('');
   const [level, setLevel] = useState<string>('');
-  const [mayRubric, setMayRubric] = useState(false); // vice principals: did the admin allow rubric assignment for their school?
 
   useEffect(() => {
     try { setRole(sessionStorage.getItem('navRole') || ''); setLevel(sessionStorage.getItem('navLevel') || ''); } catch {}   // remembered, so the bar does not flicker between pages
@@ -42,8 +41,6 @@ export default function RoleNav() {
     })();
   }, []);
 
-  useEffect(() => { if (role.startsWith('VICE_PRINCIPAL')) fetch('/api/rubric/permissions').then(r => r.json()).then(d => setMayRubric(!!d?.mine)).catch(() => {}); }, [role]);
-
   // The SD teacher evaluation screens exist only for TK and SD; SMP / SMA people never see them.
   const noSd = level === 'SMP' || level === 'SMA';
   // TK / SD principals and vice principals use the SD screens for teachers, so the generic screen is only for SMP / SMA (and Director, HRD, heads).
@@ -52,7 +49,7 @@ export default function RoleNav() {
   // Principals and vice principals of TK / SMP / SMA assign their teachers in a folder of their own school (SD keeps /sd/assignments).
   const ownFolder = (level === 'TK' && role === 'PRINCIPAL') || ((level === 'SMP' || level === 'SMA') && (role === 'PRINCIPAL' || role.startsWith('VICE_PRINCIPAL'))) ? `/${level.toLowerCase()}/assignments` : null;
   const base = (TABS[role] ?? []).flatMap(t => (ownFolder && t.label === 'Assign Evaluators' ? [{ ...t, href: ownFolder }] : [t]));
-  const tabs = base.filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/principal/rubrics' && role.startsWith('VICE_PRINCIPAL') && !mayRubric) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
+  const tabs = base.filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
   return (
     <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 print:hidden">
       <div className="flex items-center">

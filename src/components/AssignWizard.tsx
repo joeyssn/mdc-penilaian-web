@@ -119,6 +119,13 @@ export default function AssignWizard({ school }: { school?: School }) {
   const ghost = 'px-5 py-3 rounded-xl text-sm font-bold border border-gray-200 bg-white text-[#053b50] hover:bg-gray-50';
   const input = 'border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white';
   const editable = !locked && !!periodId;
+  const isVp = String(info?.me?.role ?? '').startsWith('VICE_PRINCIPAL');
+  const supervisorLocked = mode === 'SCHOOL_TEACHERS' && isVp && !info?.vpSupervisor; // the principal has not allowed vice principals to assign supervisors
+  const setVpSup = async (allowed: boolean) => {
+    const r = await fetch('/api/assign', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'setVpSupervisor', allowed }) });
+    const d = await json(r); if (!r.ok) return setHeadMsg(d.error || 'Could not save.');
+    setInfo((i: any) => ({ ...i, vpSupervisor: allowed })); setHeadMsg(allowed ? 'Vice principals can now assign supervisors.' : 'Only you can assign supervisors now.');
+  };
 
   const pool: any[] = cur.key === 'PERSON' ? targets : (cands[cur.key] ?? []);
   const shown = pool;
@@ -172,6 +179,17 @@ export default function AssignWizard({ school }: { school?: School }) {
               {info.periods.length === 0 && <p className="text-sm text-[#b45309] font-semibold">There is no open or draft evaluation period. Ask the principal or admin to create one first.</p>}
               {locked && <p className="text-sm text-red-600 font-semibold">This period is closed. Assignments are read-only.</p>}
             </section>
+
+            {mode === 'SCHOOL_TEACHERS' && info.me?.role === 'PRINCIPAL' && (
+              <section className={`${card} space-y-2`}>
+                <label className="flex items-center gap-3 font-bold text-[#053b50]">
+                  <input type="checkbox" className="w-5 h-5" checked={!!info.vpSupervisor} onChange={e => setVpSup(e.target.checked)} />
+                  Let my vice principals assign supervisors
+                </label>
+                <p className="text-sm text-gray-700">Vice principals always assign peers and koordinators of the teachers. Supervisors stay with you unless you tick this box.</p>
+                {headMsg && <p className="text-sm font-semibold text-green-700">{headMsg}</p>}
+              </section>
+            )}
 
             {mode === 'HEAD_WORKERS' && info.headCandidates && (
               <section className={`${card} space-y-3`}>
@@ -229,6 +247,7 @@ export default function AssignWizard({ school }: { school?: School }) {
                 <>
                   <div>
                     <h2 className="text-xl font-extrabold text-[#053b50]">{cur.hint}</h2>
+                    {supervisorLocked && cur.key === 'SUPERVISOR' && <p className="text-sm font-semibold text-[#b45309]">Only the principal can assign supervisors. Ask your principal to allow vice principals if you need to.</p>}
                     {cur.key !== 'PERSON' && <p className="text-sm text-gray-700">For <b>{sel?.name}</b>. Click names to select or unselect. {(draft[cur.key] ?? []).length} selected.</p>}
                   </div>
 
@@ -253,7 +272,7 @@ export default function AssignWizard({ school }: { school?: School }) {
                       {(draft[cur.key] ?? []).length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {draft[cur.key].map(id => (
-                            <button key={id} disabled={!editable} onClick={() => toggle(cur.key, id)} className="px-3 py-1 rounded-full bg-[#008c99] text-white text-sm font-semibold">{nameOf(id)} ✕</button>
+                            <button key={id} disabled={!editable || (supervisorLocked && cur.key === 'SUPERVISOR')} onClick={() => toggle(cur.key, id)} className="px-3 py-1 rounded-full bg-[#008c99] text-white text-sm font-semibold">{nameOf(id)} ✕</button>
                           ))}
                         </div>
                       )}
@@ -262,7 +281,7 @@ export default function AssignWizard({ school }: { school?: School }) {
                           const on = (draft[cur.key] ?? []).includes(x.id);
                           const submitted = sel?.assigned[cur.key]?.some(a => a.evaluatorId === x.id && a.submitted);
                           return (
-                            <button key={x.id} disabled={!editable} onClick={() => toggle(cur.key, x.id)}
+                            <button key={x.id} disabled={!editable || (supervisorLocked && cur.key === 'SUPERVISOR')} onClick={() => toggle(cur.key, x.id)}
                               className={`text-left rounded-xl border p-3 transition-all ${on ? 'border-[#008c99] bg-[#e6f4f5]' : 'border-gray-100 hover:bg-gray-50'} disabled:opacity-60`}>
                               <span className="font-semibold text-[#053b50]">{on ? '✓ ' : ''}{x.name}</span>
                               <span className="text-xs text-gray-700"> · {sub(x)}</span>

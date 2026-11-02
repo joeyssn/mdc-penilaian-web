@@ -8,7 +8,7 @@ t('who gets which screen', () => {
   assert.deepEqual(modesFor({ role: 'HRD' }), ['KARYAWAN']);
   assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'SMP' }), ['SCHOOL_TEACHERS']);
   assert.deepEqual(modesFor({ role: 'VICE_PRINCIPAL_KURIKULUM', level: 'SMA' }), ['SCHOOL_TEACHERS']);
-  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'SD' }), ['SCHOOL_TEACHERS']); // every school has the wizard
+  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'SD' }), []); // SD uses the SD module
   assert.deepEqual(modesFor({ role: 'TEACHER', level: 'SMP' }), []);
 });
 t('principal evaluates vice principal of the same school only', () => {
@@ -89,11 +89,10 @@ t('schools stay separate', () => {
   assert.ok(!isTarget('SCHOOL_TEACHERS', smpPrincipal, { role: 'TEACHER', level: 'SMA' }));
   assert.ok(!isTarget('SCHOOL_TEACHERS', smpPrincipal, { role: 'TEACHER', level: 'SD' }));
   assert.ok(!isTarget('SCHOOL_TEACHERS', smpPrincipal, { role: 'TEACHER', level: 'TK' }));
-  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'SD' }), ['SCHOOL_TEACHERS']);
-  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'TK' }), ['SCHOOL_TEACHERS']);
-  assert.ok(isTarget('SCHOOL_TEACHERS', { role: 'PRINCIPAL', level: 'TK' }, { role: 'TEACHER', level: 'TK' }));
-  assert.ok(!isTarget('SCHOOL_TEACHERS', { role: 'PRINCIPAL', level: 'TK' }, { role: 'TEACHER', level: 'SD' }));
-  assert.ok(!isTarget('SCHOOL_TEACHERS', { role: 'PRINCIPAL', level: 'SD' }, { role: 'TEACHER', level: 'TK' }));
+  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'SD' }), []);
+  assert.deepEqual(modesFor({ role: 'PRINCIPAL', level: 'TK' }), []);
+  assert.deepEqual(modesFor({ role: 'VICE_PRINCIPAL_KURIKULUM', level: 'TK' }), []);
+  assert.deepEqual(modesFor({ role: 'VICE_PRINCIPAL_KESISWAAN', level: 'SMA' }), ['SCHOOL_TEACHERS']);
   const tgt = { id: 't', role: 'TEACHER', level: 'SMP' };
   assert.ok(evaluatorErrors('SCHOOL_TEACHERS', 'PEER', tgt, { id: 'x', role: 'TEACHER', level: 'SMA' }).length);
   assert.ok(evaluatorErrors('SCHOOL_TEACHERS', 'PEER', tgt, { id: 'x', role: 'TEACHER', level: 'SD' }).length);

@@ -47,7 +47,7 @@ export default function RoleNav() {
   // SD / TK teachers use My Evaluations instead of Team Evaluations. Principals keep it at every school: a principal can be assigned to evaluate vice principals.
   const sdGroup = level === 'SD' || level === 'TK';
   // Principals and vice principals of TK / SMP / SMA assign their teachers in a folder of their own school (SD keeps /sd/assignments).
-  const ownFolder = ['TK', 'SMP', 'SMA'].includes(level) && (role === 'PRINCIPAL' || role.startsWith('VICE_PRINCIPAL')) ? `/${level.toLowerCase()}/assignments` : null;
+  const ownFolder = (level === 'TK' && role === 'PRINCIPAL') || ((level === 'SMP' || level === 'SMA') && (role === 'PRINCIPAL' || role.startsWith('VICE_PRINCIPAL'))) ? `/${level.toLowerCase()}/assignments` : null;
   const base = (TABS[role] ?? []).flatMap(t => (ownFolder && t.label === 'Assign Evaluators' ? [{ ...t, href: ownFolder }] : [t]));
   const tabs = base.filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
   return (

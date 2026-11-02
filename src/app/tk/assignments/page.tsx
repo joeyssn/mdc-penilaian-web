@@ -1,6 +1,6 @@
-import AssignWizard from '@/components/AssignWizard';
+import SdAssignments from '@/components/SdAssignments';
 
-// Assign evaluators for the teachers of TK only.
+// TK assigns its teachers in the same module as SD (principal / admin), limited to TK teachers.
 export default function TKAssignmentsPage() {
-  return <AssignWizard school="TK" />;
+  return <SdAssignments school="TK" />;
 }

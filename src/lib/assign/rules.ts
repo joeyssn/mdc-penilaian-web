@@ -35,9 +35,9 @@ export const MODE_ROLES: Record<Mode, EvaluatorRole[]> = {
 
 type U = { id?: string; role: string; level?: string | null; division?: string | null };
 const VPS = ['VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'];
-const SCHOOLS = ['TK', 'SD', 'SMP', 'SMA']; // every school has its own copy of the teacher wizard
+const SCHOOLS = ['SMP', 'SMA']; // TK and SD assign their teachers in the SD module (principal / admin only)
 
-// The modes a logged-in user may use. TK, SD, SMP and SMA each get the same teacher wizard, limited to their own school.
+// The modes a logged-in user may use. SMP and SMA principals and vice principals use the teacher wizard; TK and SD keep the SD module.
 export function modesFor(viewer: U): Mode[] {
   const lvl = normLevel(viewer.level);
   if (viewer.role === 'DIRECTOR') return ['PRINCIPAL_VP', 'HEAD_WORKERS'];

@@ -50,6 +50,8 @@ export async function GET(req: Request) {
       ? await prisma.rubricLevelAssignment.findMany({ where: { level: myLevel, rubricId: { in: rubrics.map(r => r.id) } } }).catch(() => [])
       : [];
     const overrideOf = new Map(overrides.map(o => [o.rubricId, o]));
+    // The admin also sees every school's own assignment, so a stale one set by a principal is never hidden.
+    const allOverrides = seesAll ? await prisma.rubricLevelAssignment.findMany({ where: { rubricId: { in: rubrics.map(r => r.id) } } }).catch(() => []) : [];
 
     const formattedRubrics = rubrics.map((base) => {
       const o = overrideOf.get(base.id);
@@ -67,6 +69,7 @@ export async function GET(req: Request) {
         }))
       })),
       levelSpecific: !!o,
+      schoolOverrides: allOverrides.filter(x => x.rubricId === base.id).map(x => ({ level: x.level, evaluators: splitRoles(x.evaluators), evaluatees: splitRoles(x.evaluatees) })),
       };
     });
 
@@ -110,7 +113,16 @@ export async function POST(req: Request) {
 // 3. UPDATE A RUBRIC 
 export async function PUT(req: Request) {
   try {
-    const { id, title, description, evaluators, evaluatees, isSelfReflection, schoolLevel } = await req.json();
+    const { id, title, description, evaluators, evaluatees, isSelfReflection, schoolLevel, clearSchoolOverrides } = await req.json();
+
+    // Admin / director: remove the school-specific assignment(s) of a rubric (all, or one level) so the shared assignment applies again.
+    if (clearSchoolOverrides) {
+      const deniedClear = await denyUnlessRole(RUBRIC_EDITOR_ROLES);
+      if (deniedClear) return deniedClear;
+      const lvl = normLevel(typeof clearSchoolOverrides === 'string' ? clearSchoolOverrides : null);
+      const r = await prisma.rubricLevelAssignment.deleteMany({ where: { rubricId: id, ...(lvl ? { level: lvl } : {}) } });
+      return NextResponse.json({ ok: true, removed: r.count });
+    }
 
     // Assigning a rubric (who evaluates whom) is open to the principal; changing the rubric itself is not.
     const editsContent = title !== undefined || description !== undefined || isSelfReflection !== undefined || schoolLevel !== undefined;

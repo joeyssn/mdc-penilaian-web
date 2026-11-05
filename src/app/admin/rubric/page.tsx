@@ -314,6 +314,19 @@ export default function RubricPage() {
                  </div>
               )}
 
+              {(rubric.schoolOverrides?.length ?? 0) > 0 && (
+                <div className="px-8 py-4 bg-amber-50 border-b border-amber-200 space-y-2">
+                  <p className="text-sm font-bold text-amber-900">School-specific assignments set by a principal. They replace the assignment above for that school, so the rubric can still show up there.</p>
+                  {rubric.schoolOverrides.map((o: any) => (
+                    <div key={o.level} className="flex flex-wrap items-center gap-3 text-sm text-gray-900">
+                      <b className="w-12">{o.level}</b>
+                      <span>Evaluators: {o.evaluators.length ? o.evaluators.join(", ") : "none"} · Targets: {o.evaluatees.length ? o.evaluatees.join(", ") : "none"}</span>
+                      <button onClick={async () => { const r = await fetch("/api/rubric", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: selectedRubricId, clearSchoolOverrides: o.level }) }); if (r.ok) fetchRubrics(true); else alert("Could not remove it."); }} className="ml-auto text-red-700 font-bold border border-red-300 rounded-lg px-3 py-1 hover:bg-red-50">Remove for {o.level}</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="p-8 space-y-6 bg-[#fafbfc]">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-bold text-gray-600 uppercase tracking-wide text-sm">Rubric Sections</h3>

@@ -27,6 +27,14 @@ export default function DirectorReports() {
   const [type, setType] = useState('ALL');
   const [school, setSchool] = useState('ALL');
   const [q, setQ] = useState('');
+  const [only, setOnly] = useState<string | null>(null); // person being printed alone
+  useEffect(() => {
+    if (only === null) return;
+    const done = () => setOnly(null);
+    window.addEventListener('afterprint', done);
+    const t = setTimeout(() => window.print(), 50);
+    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
+  }, [only]);
 
   useEffect(() => {
     fetch('/api/director/rubric-report').then(async r => {
@@ -88,16 +96,17 @@ export default function DirectorReports() {
         {state === 'ok' && sections.length === 0 && <p className="text-gray-500 font-bold">No data for this filter.</p>}
 
         {sections.map(sec => (
-          <div key={sec.school} className="space-y-4" style={{ breakBefore: 'page' }}>
-            <div className="bg-[#053b50] text-white rounded-xl px-5 py-3 flex flex-wrap justify-between items-center">
+          <div key={sec.school} className={`space-y-4 ${only !== null && !sec.people.some(g => g.target.name + '|' + g.target.role === only) ? 'print:hidden' : ''}`} style={only === null ? { breakBefore: 'page' } : undefined}>
+            <div className={`bg-[#053b50] text-white rounded-xl px-5 py-3 flex flex-wrap justify-between items-center ${only !== null ? 'print:hidden' : ''}`}>
               <h2 className="text-2xl font-extrabold">{SCHOOL_NAME[sec.school]}</h2>
               <span className="text-sm opacity-80">{sec.people.length} people evaluated · {sec.obs.length} observation(s)</span>
             </div>
         {sec.people.map(g => (
-          <section key={g.target.name + g.target.role} className="brk bg-white border border-gray-300 rounded-xl p-5">
+          <section key={g.target.name + g.target.role} className={`brk bg-white border border-gray-300 rounded-xl p-5 ${only !== null && only !== g.target.name + '|' + g.target.role ? 'print:hidden' : ''}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2 mb-3">
               <h2 className="text-xl font-extrabold">{g.target.name}</h2>
               <span className="text-sm text-gray-600">{pretty(g.target.role)}{g.target.level ? ` · ${g.target.level}` : ''}</span>
+              <button onClick={() => setOnly(g.target.name + '|' + g.target.role)} className="noprint bg-[#008c99] hover:bg-[#007b87] text-white px-3 py-1.5 rounded font-bold text-sm">Print this report</button>
             </div>
             {Object.keys(TYPES).filter(t => g.evs.some(e => e.type === t)).map(t => {
               const list = g.evs.filter(e => e.type === t);
@@ -125,11 +134,21 @@ export default function DirectorReports() {
                 </div>
               );
             })}
+            {sec.obs.some(o => o.target === g.target.name) && (
+              <div className="mb-2">
+                <div className="flex items-center gap-3 mb-1">{show('OBSERVATION')}</div>
+                <table className="w-full text-sm border-collapse">
+                  <thead><tr className="bg-gray-100 text-left"><th className="p-2">Date</th><th className="p-2">Observer</th><th className="p-2">Class / subject</th><th className="p-2">Status</th><th className="p-2 text-right">Score</th></tr></thead>
+                  <tbody>{sec.obs.filter(o => o.target === g.target.name).map(o => (
+                    <tr key={o.id} className="border-t"><td className="p-2">{o.date}</td><td className="p-2">{o.observer}</td><td className="p-2">{o.kelas} · {o.subject}</td><td className="p-2">{o.approved ? 'Approved' : 'Pending'}</td><td className="p-2 text-right font-bold">{o.finalScore.toFixed(2)}</td></tr>))}</tbody>
+                </table>
+              </div>
+            )}
           </section>
         ))}
 
         {sec.obs.length > 0 && (
-          <section className="brk bg-white border border-gray-300 rounded-xl p-5">
+          <section className={`brk bg-white border border-gray-300 rounded-xl p-5 ${only !== null ? 'print:hidden' : ''}`}>
             <div className="flex items-center gap-3 border-b pb-2 mb-3"><h2 className="text-xl font-extrabold">Class observations</h2>{show('OBSERVATION')}</div>
             <table className="w-full text-sm border-collapse">
               <thead><tr className="bg-gray-100 text-left"><th className="p-2">Date</th><th className="p-2">Teacher</th><th className="p-2">Observer</th><th className="p-2">Class / subject</th><th className="p-2">Status</th><th className="p-2 text-right">Score</th></tr></thead>

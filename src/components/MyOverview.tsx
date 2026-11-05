@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import SelfRatingCard from '@/components/SelfRatingCard';
 import Link from 'next/link';
 import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
@@ -101,6 +102,7 @@ export default function MyOverview() {
               <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div></div>
             </div>
           )}
+          <SelfRatingCard />
           {myWeights.observationWeight > 0 && (
             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
               <div>

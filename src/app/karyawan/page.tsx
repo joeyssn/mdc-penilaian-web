@@ -1,6 +1,7 @@
 'use client';
 
 import SdTasks from '@/components/SdTasks';
+import SelfRatingCard from '@/components/SelfRatingCard';
 import MyTeamScores from '@/components/MyTeamScores';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
@@ -259,6 +260,7 @@ export default function KaryawanDashboard() {
                     <div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div>
                   </div>
                 </div>
+                <SelfRatingCard />
 
                 {/* OBSERVATION SCORE (FROM PRINCIPAL) */}
                 <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-gray-100">

@@ -2,6 +2,7 @@
 
 import SdTasks from '@/components/SdTasks';
 import RoleNav from '@/components/RoleNav';
+import SelfRatingCard from '@/components/SelfRatingCard';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -333,6 +334,7 @@ export default function UnifiedDirectorDashboard() {
                       <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div></div>
                     </div>
                   )}
+                  <SelfRatingCard />
                   {myWeights.observationWeight > 0 && (
                     <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                       <div>

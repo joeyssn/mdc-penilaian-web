@@ -66,8 +66,8 @@ export default function DirectorReports() {
   const show = (t: string) => <span className={`inline-block border rounded px-2 py-0.5 text-xs font-bold ${TYPES[t]?.cls ?? ''}`}>{TYPES[t]?.label ?? t}</span>;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-[#053b50]">
-      <style>{`@media print{.noprint{display:none!important}.brk{break-inside:avoid;page-break-inside:avoid}body{background:#fff}}`}</style>
+    <div className={`min-h-screen bg-gray-50 text-[#053b50] ${only !== null ? 'solo' : ''}`}>
+      <style>{`@media print{.noprint{display:none!important}html,body{display:block!important;height:auto!important;min-height:0!important;overflow:visible!important;background:#fff!important}.brk{break-inside:auto}.brk tr{break-inside:avoid;page-break-inside:avoid}.school+.school{break-before:page;page-break-before:always}.solo .school+.school{break-before:auto;page-break-before:auto}}`}</style>
       <div className="noprint"><RoleNav /></div>
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -96,7 +96,7 @@ export default function DirectorReports() {
         {state === 'ok' && sections.length === 0 && <p className="text-gray-500 font-bold">No data for this filter.</p>}
 
         {sections.map(sec => (
-          <div key={sec.school} className={`space-y-4 ${only !== null && !sec.people.some(g => g.target.name + '|' + g.target.role === only) ? 'print:hidden' : ''}`} style={only === null ? { breakBefore: 'page' } : undefined}>
+          <div key={sec.school} className={`school space-y-4 ${only !== null && !sec.people.some(g => g.target.name + '|' + g.target.role === only) ? 'print:hidden' : ''}`} >
             <div className={`bg-[#053b50] text-white rounded-xl px-5 py-3 flex flex-wrap justify-between items-center ${only !== null ? 'print:hidden' : ''}`}>
               <h2 className="text-2xl font-extrabold">{SCHOOL_NAME[sec.school]}</h2>
               <span className="text-sm opacity-80">{sec.people.length} people evaluated · {sec.obs.length} observation(s)</span>

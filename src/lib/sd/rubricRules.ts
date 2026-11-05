@@ -23,7 +23,11 @@ export type RoleCtx = { evaluatorRole?: string | null; targetRole?: string | nul
 
 type R = { id: string; evaluators?: string[] | string | null; evaluatees?: string[] | string | null };
 
-export function eligibleRubrics<T extends R>(type: SdType, rubrics: T[], ctx?: RoleCtx): T[] {
+// A rubric nobody was assigned to in Manage Rubrics (no evaluator roles, or no target roles) is never offered to anyone.
+export const isAssigned = (r: R) => tags(r.evaluators).length > 0 && tags(r.evaluatees).length > 0;
+
+export function eligibleRubrics<T extends R>(type: SdType, all: T[], ctx?: RoleCtx): T[] {
+  const rubrics = all.filter(isAssigned);
   // 1. The rubric the admin assigned in Manage Rubrics to this evaluator role scoring this target role
   //    (e.g. a teacher scoring a teacher = peer assessment uses the Teacher -> Teacher rubric), whoever assigned the evaluator.
   if (ctx?.evaluatorRole && ctx?.targetRole) {

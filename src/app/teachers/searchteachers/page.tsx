@@ -116,7 +116,7 @@ export default function TeacherEvaluationPage() {
     t.id !== loggedInUser?.id
   );
 
-  const activeRubric = rubrics[0];
+  const activeRubric = rubrics.find((r: any) => (r.evaluators?.length ?? 0) > 0 && (r.evaluatees?.length ?? 0) > 0);
 
   return (
     <div className="min-h-screen bg-[#f4f6f8] font-sans">

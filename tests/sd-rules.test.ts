@@ -45,10 +45,10 @@ test('Leaders = average of the leader inputs that exist', () => {
   assert.ok(Number.isNaN(leaderScore(NaN, NaN)));
 });
 test('rubrics: dedicated Supervisor / Koordinator rubrics are used when they exist, the generic one otherwise', () => {
-  const generic = { id: 'g', evaluators: 'Teacher,Vice-Principal,Director/Principal' };
-  const student = { id: 's', evaluators: 'Student' };
-  const sup = { id: 'sup', evaluators: 'Supervisor' };
-  const koor = { id: 'koor', evaluators: ['Koordinator'] };
+  const generic = { id: 'g', evaluators: 'Teacher,Vice-Principal,Director/Principal', evaluatees: 'Teacher' };
+  const student = { id: 's', evaluators: 'Student', evaluatees: 'Teacher' };
+  const sup = { id: 'sup', evaluators: 'Supervisor', evaluatees: 'Teacher' };
+  const koor = { id: 'koor', evaluators: ['Koordinator'], evaluatees: 'Teacher' };
   assert.deepEqual(eligibleRubrics('SUPERVISOR', [generic, student]).map(r => r.id), ['g'], 'fallback to generic');
   assert.deepEqual(eligibleRubrics('SUPERVISOR', [generic, student, sup, koor]).map(r => r.id), ['sup']);
   assert.deepEqual(eligibleRubrics('KOORDINATOR', [generic, sup, koor]).map(r => r.id), ['koor']);
@@ -62,13 +62,13 @@ console.log(`\n${n} tests passed`);
 
 // The rubric assigned to Peer is used by the other roles when they have none of their own.
 {
-  const R = [{ id: 'peerOnly', evaluators: 'Peer' }, { id: 'stu', evaluators: 'Student' }];
+  const R = [{ id: 'peerOnly', evaluators: 'Peer', evaluatees: 'Teacher' }, { id: 'stu', evaluators: 'Student', evaluatees: 'Teacher' }];
   const ids = (t: any) => eligibleRubrics(t, R as any).map((r: any) => r.id);
   assert.deepEqual(ids('SUPERVISOR'), ['peerOnly']);
   assert.deepEqual(ids('KOORDINATOR'), ['peerOnly']);
   assert.deepEqual(ids('PEER'), ['peerOnly']);
   assert.deepEqual(ids('STUDENT'), ['stu']);
-  const R2 = [{ id: 'peer', evaluators: 'Peer' }, { id: 'sup', evaluators: 'Supervisor' }];
+  const R2 = [{ id: 'peer', evaluators: 'Peer', evaluatees: 'Teacher' }, { id: 'sup', evaluators: 'Supervisor', evaluatees: 'Teacher' }];
   assert.deepEqual(eligibleRubrics('SUPERVISOR', R2 as any).map((r: any) => r.id), ['sup']);
   assert.deepEqual(eligibleRubrics('KOORDINATOR', R2 as any).map((r: any) => r.id), ['peer']);
   console.log('ok peer rubric applies to other roles');
@@ -90,4 +90,12 @@ console.log(`\n${n} tests passed`);
   assert.ok(isRubricAllowed('PEER', 'tt', R as any, { evaluatorRole: 'TEACHER', targetRole: 'TEACHER' }));
   assert.ok(!isRubricAllowed('PEER', 'ss', R as any, { evaluatorRole: 'TEACHER', targetRole: 'TEACHER' }));
   console.log('ok role-pair rubric (peer assessment)');
+}
+
+// A rubric with no evaluator roles or no target roles in Manage Rubrics is never offered.
+{
+  const unassigned = [{ id: 'none', evaluators: '', evaluatees: '' }, { id: 'noTarget', evaluators: 'Teacher', evaluatees: '' }, { id: 'noEvaluator', evaluators: '', evaluatees: 'Teacher' }];
+  for (const type of ['PEER', 'SUPERVISOR', 'KOORDINATOR', 'STUDENT'] as const) assert.deepEqual(eligibleRubrics(type, unassigned as any, { evaluatorRole: 'TEACHER', targetRole: 'TEACHER' }), []);
+  assert.ok(!isRubricAllowed('PEER', 'none', unassigned as any));
+  console.log('ok unassigned rubrics are never offered');
 }

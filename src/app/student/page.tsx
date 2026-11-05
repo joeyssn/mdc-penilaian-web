@@ -107,9 +107,10 @@ export default function StudentDashboard() {
 
   const activeRubric = rubrics.find((rubric) => {
     if (!rubric.evaluators) return false;
+    if (!rubric.evaluatees || !String(rubric.evaluatees).trim() || String(rubric.evaluatees) === '[]') return false; // not assigned to any target role
     const validEvaluators = String(rubric.evaluators).toLowerCase();
     return validEvaluators.includes('student') || validEvaluators.includes('siswa');
-  }) || rubrics[0];
+  });
   
     return (
         <div className="min-h-screen bg-[#f7f8f9] font-sans">

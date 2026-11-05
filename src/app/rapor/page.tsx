@@ -3,7 +3,7 @@ import { Fragment, Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import RoleNav from '@/components/RoleNav';
 import { buildMasterRows } from '@/lib/masterReport';
-import { cardWeights, resolveProfile } from '@/lib/weights';
+import { profileIdFor, resolveProfile, SD_DEFAULT_WEIGHTS, SMP_DEFAULT_WEIGHTS, TK_DEFAULT_WEIGHTS } from '@/lib/weights';
 
 // Teacher / staff report card ("Rapor"), modelled on Format_Rapor_Guru_SMP.xlsx:
 // Student rating + main rating (grouped by competency) + attendance (+ observation when it has a weight) -> Indeks -> Kategori.
@@ -39,9 +39,15 @@ function Rapor() {
         const cfg: any = {}; (Array.isArray(weights) ? weights : []).forEach((x: any) => { cfg[x.id] = x; });
         const approved = (Array.isArray(observations) ? observations : []).filter((o: any) => o.isApproved && o.targetId === id);
         const grouped = approved.length ? [{ targetId: id, averageScore: approved.reduce((s: number, o: any) => s + o.finalScore, 0) / approved.length }] : [];
+        // Use the saved weight profile; when none is saved for this school yet, use that school's default so the student share is never dropped.
+        const lvl = String(base.user.level || '').toUpperCase();
+        let prof: any = resolveProfile(Object.values(cfg) as any, row?.roleKey || base.user.role, base.user.level);
+        if (!prof) {
+          prof = { id: profileIdFor(row?.roleKey || base.user.role, base.user.level), ...(lvl === 'TK' ? TK_DEFAULT_WEIGHTS : lvl === 'SD' ? SD_DEFAULT_WEIGHTS : SMP_DEFAULT_WEIGHTS) };
+          cfg[prof.id] = prof;
+        }
         const master = row ? buildMasterRows([row], cfg, grouped, Array.isArray(absences) ? absences : [])[0] : null;
-        const prof = cardWeights(resolveProfile(Object.values(cfg) as any, row?.roleKey || base.user.role, base.user.level) as any);
-        setD({ ...base, master, w: prof || {}, row });
+        setD({ ...base, master, w: prof, row });
       } catch { setErr('Could not load the report.'); }
     })();
   }, [id]);

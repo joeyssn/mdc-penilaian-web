@@ -41,14 +41,24 @@ t('dashboard cards: peers get main x peer share', () => {
 });
 
 import { profileIdFor, resolveProfile, WEIGHT_PROFILES, profileLabel } from '../src/lib/weights.ts';
-t('TK has its own profiles and starts from SD', () => {
+t('TK has its own profiles', () => {
   assert.equal(profileIdFor('TEACHER', 'TK'), 'TK_TEACHER');
   assert.equal(profileIdFor('TEACHER', 'SD'), 'SD_TEACHER');
   assert.equal(profileIdFor('TEACHER', 'SMP'), 'TEACHER');
   assert.ok(WEIGHT_PROFILES.includes('TK_PRINCIPAL'));
   assert.equal(profileLabel('TK_TEACHER'), 'TK · Teacher');
   const sd = { id: 'SD_TEACHER', mainWeight: 79 }, tk = { id: 'TK_TEACHER', mainWeight: 60 };
-  assert.equal(resolveProfile([sd], 'TEACHER', 'TK')?.id, 'SD_TEACHER'); // not saved yet -> SD
+  assert.equal(resolveProfile([sd], 'TEACHER', 'TK')?.id, 'TK_TEACHER'); // not saved yet -> TK defaults, never the SD profile
+  assert.equal((resolveProfile([sd], 'TEACHER', 'TK') as any).studentWeight, 0);
   assert.equal(resolveProfile([sd, tk], 'TEACHER', 'TK')?.id, 'TK_TEACHER');
   assert.equal(resolveProfile([sd, tk], 'TEACHER', 'SD')?.id, 'SD_TEACHER');
+});
+
+import { TK_DEFAULT_WEIGHTS } from '../src/lib/weights.ts';
+t('TK has no student evaluation', () => {
+  assert.equal(validateSdWeights(TK_DEFAULT_WEIGHTS, true), null);
+  assert.ok(validateSdWeights({ ...TK_DEFAULT_WEIGHTS, studentWeight: 10, mainWeight: 80 }, true));
+  const r = computeFinal('TK_TEACHER', { ...TK_DEFAULT_WEIGHTS }, { student: NaN, peer: 3, self: 3, supervisor: 3, leader: 3, observation: NaN, attendance: 2 });
+  assert.equal(r.incomplete, false);
+  near(r.final, (3 * 90 + 2 * 10) / 100);
 });

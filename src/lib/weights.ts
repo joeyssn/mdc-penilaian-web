@@ -73,7 +73,6 @@ export function fallbackIds(id: string): string[] {
   const role = baseRole(id);
   const ids: string[] = [];
   if (isSdProfile(id)) {
-    if (isTkProfile(id)) ids.push(SD_PREFIX + role); // TK starts from SD
     if (role === 'TEACHER') ids.push('TEACHER_SD');
     ids.push(role);
   }
@@ -100,6 +99,8 @@ export function resolveProfile<T extends { id: string }>(
     const found = profiles.find(p => p.id === candidate);
     if (found) return found;
   }
+  // TK never borrows the SD profile (it has a student share); an unsaved TK profile uses the TK defaults.
+  if (isTkProfile(id)) return { id, ...TK_DEFAULT_WEIGHTS } as unknown as T;
   return null;
 }
 
@@ -125,6 +126,12 @@ export const SD_DEFAULT_WEIGHTS: FullWeights = {
   observationWeight: 0,
 };
 
+// TK is scored like SD but has no student evaluation: Student is always 0% (its share goes to Main), and no student score is needed.
+export const TK_DEFAULT_WEIGHTS: FullWeights = {
+  studentWeight: 0, attendanceWeight: 10, mainWeight: 90, observationWeight: 0,
+  peerWeight: 10, selfWeight: 10, supervisorWeight: 20, leaderWeight: 60,
+};
+
 // SMP / SMA now use the same layout as SD / TK, with Observation (the result of the observation rubric) as its own share of the overall score.
 // Start: Main 69 + Student 11 + HRD 10 + Observation 10 = 100, and 10 / 10 / 20 / 60 inside the main evaluation.
 export const SMP_DEFAULT_WEIGHTS: FullWeights = {
@@ -144,9 +151,11 @@ export function cardWeights<T extends Partial<FullWeights> | null | undefined>(w
 export const isSdLayout = (w: { mainWeight?: number }) => Number(w.mainWeight) > 0;
 
 // Check a profile in the main layout (SD / TK and SMP / SMA). Returns an error message, or null when valid.
-export function validateSdWeights(w: Partial<FullWeights>): string | null {
+// `noStudent` = TK: it has no student evaluation, so the Student share must be 0.
+export function validateSdWeights(w: Partial<FullWeights>, noStudent = false): string | null {
   const n = (v: unknown) => Number(v) || 0;
   const overall = n(w.mainWeight) + n(w.studentWeight) + n(w.attendanceWeight) + n(w.observationWeight);
+  if (noStudent && n(w.studentWeight)) return 'TK has no student evaluation, so Student must be 0%.';
   const inner = n(w.peerWeight) + n(w.selfWeight) + n(w.supervisorWeight) + n(w.leaderWeight);
   if (overall !== 100) return `Main + Student + HRD + Observation must total 100%. Currently: ${overall}%`;
   if (inner !== 100) return `Peer + Self + Supervisor + Leaders must total 100% of the main evaluation. Currently: ${inner}%`;
@@ -175,7 +184,7 @@ export function computeFinal(
       ['Supervisor', s.supervisor, w.supervisorWeight || 0], ['Leaders', s.leader, w.leaderWeight || 0],
     ];
     const missing = parts.filter(([, v]) => !present(v)).map(([name]) => name);
-    if (!present(s.student)) missing.push('Student');
+    if ((w.studentWeight || 0) > 0 && !present(s.student)) missing.push('Student'); // TK has no student evaluation (0%)
     if (!present(s.attendance)) missing.push('HRD');
     const obsWeight = w.observationWeight || 0;
     if (obsWeight > 0 && !present(s.observation)) missing.push('Observation');
@@ -188,7 +197,7 @@ export function computeFinal(
     const mainWeight = w.mainWeight || 0;
     const overallTotal = mainWeight + w.studentWeight + w.attendanceWeight + obsWeight;
     if (missing.length > 0 || main === null || overallTotal <= 0) return { final: null, incomplete: true, main, missing };
-    const final = (main * mainWeight + s.student * w.studentWeight + s.attendance * w.attendanceWeight + (obsWeight > 0 ? s.observation * obsWeight : 0)) / overallTotal;
+    const final = (main * mainWeight + (w.studentWeight > 0 ? s.student * w.studentWeight : 0) + s.attendance * w.attendanceWeight + (obsWeight > 0 ? s.observation * obsWeight : 0)) / overallTotal;
     return { final, incomplete: false, main, missing };
   }
 

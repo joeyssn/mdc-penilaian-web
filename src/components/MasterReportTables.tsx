@@ -21,6 +21,9 @@ const SD_COLS: Col[] = [
   { key: 'hrd', label: 'HRD', color: 'text-teal-600', value: r => r.attendance },
 ];
 
+// TK has no student evaluation
+const TK_COLS: Col[] = SD_COLS.filter(c => c.key !== 'student');
+
 function ReportTable({ title, subtitle, fileTag, cols, rows }: {
   title: string; subtitle: string; fileTag: string; cols: Col[]; rows: MasterRow[];
 }) {
@@ -114,9 +117,9 @@ export default function MasterReportTables({ rows, loading = false }: { rows: Ma
       />
       <ReportTable
         title="TK"
-        subtitle="Same layout, with the TK weight profiles (they start from the SD ones)"
+        subtitle="Same layout as SD, without the student evaluation (TK has none)"
         fileTag="TK"
-        cols={SD_COLS}
+        cols={TK_COLS}
         rows={rows.filter(r => r.group === 'TK')}
       />
       <ReportTable

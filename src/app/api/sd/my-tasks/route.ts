@@ -39,7 +39,7 @@ export async function GET() {
   }
 
   // Students: their class teachers (added automatically) plus any the Vice Principal assigned
-  if (session.role === 'STUDENT') {
+  if (session.role === 'STUDENT' && String((await prisma.user.findUnique({ where: { id: session.id }, select: { level: true } }))?.level ?? '').toUpperCase() !== 'TK') { // TK has no student evaluation
     // Class teachers follow the student's CURRENT class (same school, same class name), so changing a class updates the list.
     // Only rows created here (assignedById = 'AUTO-CLASS') are added or removed; ones the Vice Principal set by hand are never touched,
     // and a teacher whose evaluation was already submitted is never removed.

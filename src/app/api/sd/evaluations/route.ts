@@ -31,6 +31,7 @@ export async function POST(req: Request) {
   if (session.id === targetId) return fail('You cannot evaluate yourself.', 403);
   if (type === 'STUDENT') {
     if (session.role !== 'STUDENT') return fail('Only students can submit student evaluations.', 403);
+    if (String(session.level ?? '').toUpperCase() === 'TK') return fail('TK has no student evaluation.', 403);
     const a = await prisma.studentAssignment.findUnique({ where: { periodId_studentId_teacherId: { periodId: period.id, studentId: session.id, teacherId: targetId } } });
     if (!a) return fail('This teacher was not assigned to you.', 403);
     studentAssignmentId = a.id;

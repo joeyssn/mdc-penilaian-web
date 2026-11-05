@@ -8,7 +8,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import ScoreVisibilityToggle from '@/components/ScoreVisibilityToggle';
 import MasterReportTables from '@/components/MasterReportTables';
 import { buildMasterRows } from '@/lib/masterReport';
-import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, SMP_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, isTkProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
+import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, SMP_DEFAULT_WEIGHTS, TK_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, isTkProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
 
 type ReportRow = { 
   id: string; 
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
     leaderWeight: Number(w.leaderWeight) || 0,
   });
   // Valid = totals exactly 100 (SD / TK: overall split AND the split inside the main evaluation)
-  const isValidProfile = (_id: string, w: FullWeights) => validateSdWeights(w) === null;
+  const isValidProfile = (id: string, w: FullWeights) => validateSdWeights(w, isTkProfile(id)) === null;
   
   const [weightsConfig, setWeightsConfig] = useState<Record<string, FullWeights>>({});
   const [selectedRoleWeight, setSelectedRoleWeight] = useState('');
@@ -108,7 +108,8 @@ export default function AdminDashboard() {
           ordered[id] = toFull(source || defaultWeights);
           // SD / TK profiles use the main/student/HRD layout. One without it (an old profile or a copy
           // of SMP / SMA) starts from 79 / 11 / 10 and 10 / 10 / 20 / 60; nothing changes until Save.
-          if (!isSdLayout(ordered[id])) ordered[id] = isSdProfile(id) ? { ...SD_DEFAULT_WEIGHTS } : { ...SMP_DEFAULT_WEIGHTS };
+          if (!isSdLayout(ordered[id])) ordered[id] = isTkProfile(id) ? { ...TK_DEFAULT_WEIGHTS } : isSdProfile(id) ? { ...SD_DEFAULT_WEIGHTS } : { ...SMP_DEFAULT_WEIGHTS };
+          if (isTkProfile(id) && ordered[id].studentWeight) ordered[id] = { ...ordered[id], mainWeight: ordered[id].mainWeight + ordered[id].studentWeight, studentWeight: 0 }; // TK: no student share
           byId[id] = ordered[id];
         });
         loadedConfig = ordered;
@@ -189,7 +190,7 @@ export default function AdminDashboard() {
 
   const handleAddProfile = () => {
     if (!newProfileId || weightsConfig[newProfileId]) return;
-    setWeightsConfig(prev => ({ ...prev, [newProfileId]: isSdProfile(newProfileId) ? { ...SD_DEFAULT_WEIGHTS } : { ...SMP_DEFAULT_WEIGHTS } }));
+    setWeightsConfig(prev => ({ ...prev, [newProfileId]: isTkProfile(newProfileId) ? { ...TK_DEFAULT_WEIGHTS } : isSdProfile(newProfileId) ? { ...SD_DEFAULT_WEIGHTS } : { ...SMP_DEFAULT_WEIGHTS } }));
     setSelectedRoleWeight(newProfileId);
     setNewProfileId('');
   };
@@ -467,7 +468,8 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-2">
                   <label className="font-bold text-gray-700 flex justify-between">Student Evaluation <span className="text-[#008c99]">{currentW.studentWeight}%</span></label>
-                  <input type="range" min="0" max="100" value={currentW.studentWeight} onChange={(e) => updateWeight('studentWeight', Number(e.target.value))} className="w-full accent-[#008c99]" />
+                  <input type="range" min="0" max="100" value={currentW.studentWeight} disabled={isTkProfile(selectedRoleWeight)} onChange={(e) => updateWeight('studentWeight', Number(e.target.value))} className="w-full accent-[#008c99] disabled:opacity-40" />
+                  {isTkProfile(selectedRoleWeight) && <p className="text-xs text-gray-600">TK has no student evaluation, so this stays at 0%.</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="font-bold text-gray-700 flex justify-between">Observation (observation rubric result) <span className="text-green-600">{currentW.observationWeight}%</span></label>

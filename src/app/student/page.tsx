@@ -103,6 +103,7 @@ export default function StudentDashboard() {
 
   // SD / TK students evaluate their teachers right here on Home.
   const isSdStudent = ['SD', 'TK'].includes(String(loggedInUser?.level || '').toUpperCase());
+  const isTkStudent = String(loggedInUser?.level || '').toUpperCase() === 'TK'; // TK has no student evaluation
 
   const activeRubric = rubrics.find((rubric) => {
     if (!rubric.evaluators) return false;
@@ -139,7 +140,7 @@ export default function StudentDashboard() {
                     </div>
                 </div>
 
-                {isSdStudent ? <SdTasks embedded /> : (
+                {isTkStudent ? <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center font-bold text-gray-700">There is no teacher evaluation for TK students.</div> : isSdStudent ? <SdTasks embedded /> : (
                 <div className="pt-4">
                     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200 mt-6">
                         <div className="flex items-center px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 bg-gray-50">

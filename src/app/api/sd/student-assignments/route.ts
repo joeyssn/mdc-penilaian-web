@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   if (!periodId) return fail('periodId is required.');
   const scope = scopeOf(g.session);
   const people = await prisma.user.findMany({ where: { role: { in: ['STUDENT', 'TEACHER'] } }, select: { id: true, name: true, role: true, className: true, level: true }, orderBy: { name: 'asc' } });
-  const visible = people.filter(u => isSdUser(u) && inScope(scope, u.level));
+  const visible = people.filter(u => isSdUser(u) && inScope(scope, u.level) && String(u.level ?? '').toUpperCase() !== 'TK'); // TK has no student evaluation
   const allStudents = visible.filter(u => u.role === 'STUDENT');
   const classes = [...new Set(allStudents.map(s => s.className).filter(Boolean) as string[])].sort();
   if (!className) return NextResponse.json({ classes });

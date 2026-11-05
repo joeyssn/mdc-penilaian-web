@@ -362,7 +362,7 @@ export default function UnifiedDirectorDashboard() {
                 </div>
 
                 <div className="mt-6">
-                  <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+                  
                 </div>
               </>
             )}

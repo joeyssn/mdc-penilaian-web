@@ -180,7 +180,7 @@ export default function PrincipalDashboard() {
             <>
               <ScoresLockedNotice />
               <div className="mt-6">
-                <Link href="/self-reflection" className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+                
               </div>
             </>
           )}
@@ -250,7 +250,7 @@ export default function PrincipalDashboard() {
               </div>
 
               <div className="mt-6 flex flex-col sm:flex-row gap-4">
-                <Link href="/self-reflection" className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+                
                 
                 {/* 🚀 ONLY PRINCIPAL AND VP KURIKULUM CAN SEE THIS BUTTON */}
                 {loggedInUser && (loggedInUser.role.toUpperCase() === 'PRINCIPAL' || loggedInUser.role.toUpperCase() === 'VICE_PRINCIPAL_KURIKULUM') && (

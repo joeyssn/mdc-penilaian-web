@@ -32,6 +32,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Every score must be a number from 1 to 4." }, { status: 400 });
     }
 
+    // Self-reflection can only be submitted once
+    if (targetId === graderId) {
+      const already = await prisma.score.count({ where: { graderId, targetId: graderId, indicatorId: { in: scores.map((s: any) => s.indicatorId) } } });
+      if (already > 0) return NextResponse.json({ error: "You have already submitted your self-reflection." }, { status: 409 });
+    }
+
     // 2. Loop through every question (indicator) answered and save it to the database
     const savedScores = await Promise.all(
       scores.map(async (score) => {

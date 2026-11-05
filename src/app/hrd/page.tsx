@@ -226,7 +226,7 @@ export default function HRDDashboard() {
         {/* EVALUATIONS TAB */}
         {activeTab === 'evaluations' && (
           <div className="space-y-8">
-            <Link href="/self-reflection" className="block w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center">Complete HRD Self-Reflection</Link>
+            
             
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
               <div className="px-8 py-5 border-b border-gray-100 bg-gray-50 flex items-center">

@@ -6,7 +6,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
-import { resolveProfile } from '@/lib/weights';
+import { resolveProfile, cardWeights } from '@/lib/weights';
 import MasterReportTables from '@/components/MasterReportTables';
 import { buildMasterRows } from '@/lib/masterReport';
 
@@ -96,7 +96,7 @@ export default function UnifiedDirectorDashboard() {
           'PRINCIPAL': 'Director/Principal', 'DIRECTOR': 'Director/Principal',
           'VICE_PRINCIPAL': 'Vice-Principal', 'VICE_PRINCIPAL_KURIKULUM': 'Vice-Principal', 'VICE_PRINCIPAL_KESISWAAN': 'Vice-Principal'
         };
-        const myW = resolveProfile(wData, meData!.role, (meData as any).level);
+        const myW = cardWeights(resolveProfile(wData, meData!.role, (meData as any).level));
         if (myW) setMyWeights({ studentWeight: Number(myW.studentWeight), peerWeight: Number(myW.peerWeight), observationWeight: Number(myW.observationWeight), attendanceWeight: Number(myW.attendanceWeight) });
       }
     }

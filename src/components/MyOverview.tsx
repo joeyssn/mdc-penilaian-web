@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { resolveProfile } from '@/lib/weights';
+import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 type ScoreStats = { average: number; totalEvaluations: number; letterGrade: string };
@@ -26,7 +26,7 @@ export default function MyOverview() {
 
       const wRes = await fetch('/api/settings/weights'); const wData = await wRes.json().catch(() => null);
       if (Array.isArray(wData)) {
-        const w = resolveProfile(wData, meData.role, meData.level);
+        const w = cardWeights(resolveProfile(wData, meData.role, meData.level));
         if (w) setMyWeights({ studentWeight: Number(w.studentWeight) || 0, peerWeight: Number(w.peerWeight) || 0, observationWeight: Number(w.observationWeight) || 0, attendanceWeight: Number(w.attendanceWeight) || 0 });
       }
 

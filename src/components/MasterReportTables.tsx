@@ -17,14 +17,8 @@ const SD_COLS: Col[] = [
   { key: 'supervisor', label: 'Supervisor', color: 'text-green-600', value: r => r.supervisor },
   { key: 'leader', label: 'Leaders', color: 'text-rose-600', value: r => r.leader },
   { key: 'main', label: 'Main', color: 'text-[#053b50]', value: r => r.main },
-  { key: 'hrd', label: 'HRD', color: 'text-teal-600', value: r => r.attendance },
-];
-const SMP_COLS: Col[] = [
-  { key: 'student', label: 'Student', color: 'text-[#008c99]', value: r => r.student },
-  { key: 'peer', label: 'Peer', color: 'text-[#f39c12]', value: r => r.peer },
-  { key: 'self', label: 'Self', color: 'text-purple-600', value: r => r.self },
   { key: 'observation', label: 'Observation', color: 'text-green-600', value: r => r.observation },
-  { key: 'attendance', label: 'Attendance (HRD)', color: 'text-teal-600', value: r => r.attendance },
+  { key: 'hrd', label: 'HRD', color: 'text-teal-600', value: r => r.attendance },
 ];
 
 function ReportTable({ title, subtitle, fileTag, cols, rows }: {
@@ -113,16 +107,16 @@ export default function MasterReportTables({ rows, loading = false }: { rows: Ma
     <div className="space-y-8">
       <ReportTable
         title="SD / TK"
-        subtitle="Main (Peer, Self, Supervisor, Leaders) + Student + HRD"
+        subtitle="Main (Peer, Self, Supervisor, Leaders) + Student + HRD + Observation (when it has a weight)"
         fileTag="SD-TK"
         cols={SD_COLS}
         rows={rows.filter(r => r.group === 'SD')}
       />
       <ReportTable
         title="SMP / SMA"
-        subtitle="Student, Peer, Self, Observation and Attendance (people without a school level are listed here)"
+        subtitle="Same layout: Main (Peer, Self, Supervisor, Leaders) + Student + HRD + Observation (people without a school level are listed here)"
         fileTag="SMP-SMA"
-        cols={SMP_COLS}
+        cols={SD_COLS}
         rows={rows.filter(r => r.group === 'SMP')}
       />
     </div>

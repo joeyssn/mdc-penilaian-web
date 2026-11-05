@@ -8,7 +8,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import ScoreVisibilityToggle from '@/components/ScoreVisibilityToggle';
 import MasterReportTables from '@/components/MasterReportTables';
 import { buildMasterRows } from '@/lib/masterReport';
-import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
+import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, SMP_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
 
 type ReportRow = { 
   id: string; 
@@ -64,10 +64,7 @@ export default function AdminDashboard() {
     leaderWeight: Number(w.leaderWeight) || 0,
   });
   // Valid = totals exactly 100 (SD / TK: overall split AND the split inside the main evaluation)
-  const isValidProfile = (id: string, w: FullWeights) =>
-    isSdProfile(id)
-      ? validateSdWeights(w) === null
-      : (w.studentWeight + w.peerWeight + w.selfWeight + w.observationWeight + w.attendanceWeight) === 100;
+  const isValidProfile = (_id: string, w: FullWeights) => validateSdWeights(w) === null;
   
   const [weightsConfig, setWeightsConfig] = useState<Record<string, FullWeights>>({});
   const [selectedRoleWeight, setSelectedRoleWeight] = useState('');
@@ -111,7 +108,7 @@ export default function AdminDashboard() {
           ordered[id] = toFull(source || defaultWeights);
           // SD / TK profiles use the main/student/HRD layout. One without it (an old profile or a copy
           // of SMP / SMA) starts from 79 / 11 / 10 and 10 / 10 / 20 / 60; nothing changes until Save.
-          if (isSdProfile(id) && !isSdLayout(ordered[id])) ordered[id] = { ...SD_DEFAULT_WEIGHTS };
+          if (!isSdLayout(ordered[id])) ordered[id] = isSdProfile(id) ? { ...SD_DEFAULT_WEIGHTS } : { ...SMP_DEFAULT_WEIGHTS };
           byId[id] = ordered[id];
         });
         loadedConfig = ordered;
@@ -148,10 +145,10 @@ export default function AdminDashboard() {
 
   const currentW = weightsConfig[selectedRoleWeight] || defaultWeights;
   const masterRows = buildMasterRows(reportData, weightsConfig, groupedObservations, absences);
-  const sdSelected = isSdProfile(selectedRoleWeight);
+  const sdSelected = true; // every profile (SD / TK and SMP / SMA) uses the main layout
   const currentInner = currentW.peerWeight + currentW.selfWeight + currentW.supervisorWeight + currentW.leaderWeight;
   const currentTotal = sdSelected
-    ? currentW.mainWeight + currentW.studentWeight + currentW.attendanceWeight
+    ? currentW.mainWeight + currentW.studentWeight + currentW.attendanceWeight + currentW.observationWeight
     : currentW.studentWeight + currentW.peerWeight + currentW.selfWeight + currentW.observationWeight + currentW.attendanceWeight;
   const currentValid = isValidProfile(selectedRoleWeight, currentW);
 
@@ -192,7 +189,7 @@ export default function AdminDashboard() {
 
   const handleAddProfile = () => {
     if (!newProfileId || weightsConfig[newProfileId]) return;
-    setWeightsConfig(prev => ({ ...prev, [newProfileId]: isSdProfile(newProfileId) ? { ...SD_DEFAULT_WEIGHTS } : { ...defaultWeights } }));
+    setWeightsConfig(prev => ({ ...prev, [newProfileId]: isSdProfile(newProfileId) ? { ...SD_DEFAULT_WEIGHTS } : { ...SMP_DEFAULT_WEIGHTS } }));
     setSelectedRoleWeight(newProfileId);
     setNewProfileId('');
   };
@@ -453,10 +450,9 @@ export default function AdminDashboard() {
 
             {/* WEIGHT SLIDERS (5 CRITERIA) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {isSdProfile(selectedRoleWeight) ? (
               <>
               <div className="md:col-span-2 text-sm font-medium text-orange-800 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                SD / TK master report. The overall score is split between the <b>Main evaluation</b>, <b>Student</b> and <b>HRD</b>. The Main evaluation is itself made of Peer, Self, Supervisor and Leaders. Observation is not used.
+                Master report (same layout for TK, SD, SMP and SMA). The overall score is split between the <b>Main evaluation</b>, <b>Student</b>, <b>HRD</b> and <b>Observation</b> (the result of the observation rubric). The Main evaluation is itself made of Peer, Self, Supervisor and Leaders.
               </div>
               <div className="space-y-6">
                 <h4 className="font-extrabold text-[#053b50] uppercase text-xs tracking-wider">Overall score split</h4>
@@ -467,6 +463,10 @@ export default function AdminDashboard() {
                 <div className="space-y-2">
                   <label className="font-bold text-gray-700 flex justify-between">Student Evaluation <span className="text-[#008c99]">{currentW.studentWeight}%</span></label>
                   <input type="range" min="0" max="100" value={currentW.studentWeight} onChange={(e) => updateWeight('studentWeight', Number(e.target.value))} className="w-full accent-[#008c99]" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-bold text-gray-700 flex justify-between">Observation (observation rubric result) <span className="text-green-600">{currentW.observationWeight}%</span></label>
+                  <input type="range" min="0" max="100" value={currentW.observationWeight} onChange={(e) => updateWeight('observationWeight', Number(e.target.value))} className="w-full accent-green-600" />
                 </div>
                 <div className="space-y-2">
                   <label className="font-bold text-gray-700 flex justify-between">HRD <span className="text-teal-600">{currentW.attendanceWeight}%</span></label>
@@ -488,46 +488,16 @@ export default function AdminDashboard() {
                   <input type="range" min="0" max="100" value={currentW.supervisorWeight} onChange={(e) => updateWeight('supervisorWeight', Number(e.target.value))} className="w-full accent-green-600" />
                 </div>
                 <div className="space-y-2">
-                  <label className="font-bold text-gray-700 flex justify-between">Leaders (Principal / Vice Principal) <span className="text-rose-600">{currentW.leaderWeight}%</span></label>
+                  <label className="font-bold text-gray-700 flex justify-between">Leaders (Koordinator; observation too when it has no weight of its own) <span className="text-rose-600">{currentW.leaderWeight}%</span></label>
                   <input type="range" min="0" max="100" value={currentW.leaderWeight} onChange={(e) => updateWeight('leaderWeight', Number(e.target.value))} className="w-full accent-rose-600" />
                 </div>
               </div>
               </>
-              ) : (
-              <>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 flex justify-between">Student Evaluation <span className="text-[#008c99]">{currentW.studentWeight}%</span></label>
-                  <input type="range" min="0" max="100" value={currentW.studentWeight} onChange={(e) => updateWeight('studentWeight', Number(e.target.value))} className="w-full accent-[#008c99]" />
-                </div>
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 flex justify-between">Peer Evaluation <span className="text-[#f39c12]">{currentW.peerWeight}%</span></label>
-                  <input type="range" min="0" max="100" value={currentW.peerWeight} onChange={(e) => updateWeight('peerWeight', Number(e.target.value))} className="w-full accent-[#f39c12]" />
-                </div>
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 flex justify-between">Self Reflection Evaluation <span className="text-purple-600">{currentW.selfWeight}%</span></label>
-                  <input type="range" min="0" max="100" value={currentW.selfWeight} onChange={(e) => updateWeight('selfWeight', Number(e.target.value))} className="w-full accent-purple-600" />
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 flex justify-between">Principal / VP Observation <span className="text-green-600">{currentW.observationWeight}%</span></label>
-                  <input type="range" min="0" max="100" value={currentW.observationWeight} onChange={(e) => updateWeight('observationWeight', Number(e.target.value))} className="w-full accent-green-600" />
-                </div>
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 flex justify-between">HRD Attendance <span className="text-teal-600">{currentW.attendanceWeight}%</span></label>
-                  <input type="range" min="0" max="100" value={currentW.attendanceWeight} onChange={(e) => updateWeight('attendanceWeight', Number(e.target.value))} className="w-full accent-teal-600" />
-                </div>
-              </div>
-
-              </>
-              )}
 
               <div className={`md:col-span-2 p-4 rounded-xl font-bold text-center text-lg transition-colors ${currentValid ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>
                 {sdSelected ? (
                   <>
-                    Overall (Main + Student + HRD): {currentTotal}% &nbsp;·&nbsp; Inside Main: {currentInner}%
+                    Overall (Main + Student + HRD + Observation): {currentTotal}% &nbsp;·&nbsp; Inside Main: {currentInner}%
                     {!currentValid && <span className="block text-sm font-semibold mt-1">Both totals must equal exactly 100%</span>}
                   </>
                 ) : (

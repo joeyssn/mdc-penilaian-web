@@ -51,7 +51,8 @@ export function buildMasterRows(
 
       const matched = resolveProfile(profiles, r.roleKey || r.role, r.level);
       // Leaders = the average of the leader inputs that exist: principal / vice principal observation and the koordinator evaluation
-      const leader = leaderScore(observation, koordinator);
+      // When Observation has its own weight it is no longer part of Leaders (it would count twice).
+      const leader = (matched?.observationWeight || 0) > 0 ? koordinator : leaderScore(observation, koordinator);
       const result = computeFinal(
         matched ? matched.id : 'DEFAULT',
         matched ? { selfWeight: 0, ...matched } : fallback,

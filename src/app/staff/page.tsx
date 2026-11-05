@@ -7,7 +7,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { resolveProfile } from '@/lib/weights';
+import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 type User = { id: string; name: string; role: string; gender?: string | null; };
@@ -61,7 +61,7 @@ export default function StaffDashboard() {
         'VICE_PRINCIPAL': 'Vice-Principal', 'VICE_PRINCIPAL_KURIKULUM': 'Vice-Principal', 'VICE_PRINCIPAL_KESISWAAN': 'Vice-Principal'
       };
       const mappedRole = roleMap[meData.role.toUpperCase()] || 'Staff';
-      const myWeight = resolveProfile(wData, meData.role, meData.level);
+      const myWeight = cardWeights(resolveProfile(wData, meData.role, meData.level));
       if (myWeight) {
         setMyWeights({
           studentWeight: Number(myWeight.studentWeight) || 0,

@@ -6,7 +6,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { resolveProfile } from '@/lib/weights';
+import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 // --- TYPES ---
@@ -64,7 +64,7 @@ export default function KaryawanDashboard() {
     const wRes = await fetch('/api/settings/weights');
     const wData = await wRes.json();
     if (!wData.error && Array.isArray(wData)) {
-      const kWeight = resolveProfile(wData, 'KARYAWAN', meData.level);
+      const kWeight = cardWeights(resolveProfile(wData, 'KARYAWAN', meData.level));
       if (kWeight) {
         setMyWeights({
           studentWeight: Number(kWeight.studentWeight) || 0,

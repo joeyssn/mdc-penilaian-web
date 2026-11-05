@@ -39,7 +39,7 @@ export async function PUT(request: Request) {
       if (values.some(v => v < 0 || v > 100)) {
         return NextResponse.json({ error: `Weights for "${item.id}" must be between 0 and 100.` }, { status: 400 });
       }
-      if (isSdProfile(item.id)) {
+      if (isSdProfile(item.id) || Number(item.mainWeight) > 0) {
         const sdError = validateSdWeights(item);
         if (sdError) return NextResponse.json({ error: `${item.id}: ${sdError}` }, { status: 400 });
         continue;

@@ -11,8 +11,8 @@ const EVAL: Tab = { href: '/sd/tasks', label: 'My Evaluations' };
 // One top bar for every role, used by the dashboards AND the SD screens, so the header never changes between pages.
 const TABS: Record<string, Tab[]> = {
   ADMIN: [{ href: '/admin', label: 'Live Overview & Weights' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, { href: '/team', label: 'My Dashboard' }],
-  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, EVAL],
-  DIRECTOR: [{ href: '/director', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }],
+  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, { href: '/manage-observasi', label: 'Observations' }, EVAL],
+  DIRECTOR: [{ href: '/director', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, { href: '/director/reports', label: 'Rubric Reports' }],
   HEAD_MANAGEMENT: [{ href: '/assign', label: 'Assign Evaluators' }],
   IT: [{ href: '/team', label: 'My Dashboard' }],
   PR: [{ href: '/team', label: 'My Dashboard' }],

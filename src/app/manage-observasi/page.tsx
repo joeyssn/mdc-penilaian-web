@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,8 @@ export default function ManageObservasiPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState('');
 
+  const [myId, setMyId] = useState('');
+  const [open, setOpen] = useState<string | null>(null);
   useEffect(() => {
     fetchData();
   }, []);
@@ -29,6 +31,7 @@ export default function ManageObservasiPage() {
     const currentUser = await meRes.json();
     const role = (currentUser.role || '').toUpperCase();
     setUserRole(role);
+    setMyId(currentUser.id);
 
     const obsRes = await fetch('/api/observasi');
     if (obsRes.ok) {
@@ -132,7 +135,8 @@ export default function ManageObservasiPage() {
                   <tr><td colSpan={6} className="p-8 text-center text-gray-500 font-bold">Belum ada data observasi.</td></tr>
                 ) : (
                   observations.map(obs => (
-                    <tr key={obs.id} className="hover:bg-gray-50 transition-colors">
+                    <Fragment key={obs.id}>
+                    <tr className="hover:bg-gray-50 transition-colors">
                       <td className="p-4 text-gray-600 font-medium whitespace-nowrap">{obs.date}</td>
                       <td className="p-4 font-bold text-[#053b50]">{obs.targetName}<br/><span className="text-xs text-gray-400 font-normal">{obs.kelas}</span></td>
                       <td className="p-4 text-gray-600 text-sm">{obs.observerName}</td>
@@ -148,7 +152,7 @@ export default function ManageObservasiPage() {
 
                       <td className="p-4 flex justify-end gap-2">
                         {/* 🚀 THE PRINCIPAL CAN APPROVE/UNAPPROVE RIGHT HERE */}
-                        {userRole === 'PRINCIPAL' && (
+                        {(userRole === 'PRINCIPAL' || userRole === 'ADMIN') && (
                           !obs.isApproved ? (
                             <button onClick={() => handleToggleApproval(obs.id, true)} className="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded font-bold text-sm transition-colors">
                               Approve
@@ -159,14 +163,24 @@ export default function ManageObservasiPage() {
                             </button>
                           )
                         )}
-                        <Link href={`/instrumen-observasi?id=${obs.id}`} className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded font-bold text-sm transition-colors">
+                        <button onClick={() => setOpen(open === obs.id ? null : obs.id)} className="text-gray-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded font-bold text-sm">{open === obs.id ? 'Hide' : 'View'}</button>
+                        {(obs.observerId === myId || userRole === 'ADMIN') && <Link href={`/instrumen-observasi?id=${obs.id}`} className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded font-bold text-sm transition-colors">
                           Edit
-                        </Link>
-                        <button onClick={() => handleDelete(obs.id)} className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded font-bold text-sm transition-colors">
+                        </Link>}
+                        {(obs.observerId === myId || userRole === 'ADMIN' || userRole === 'PRINCIPAL') && <button onClick={() => handleDelete(obs.id)} className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded font-bold text-sm transition-colors">
                           Delete
-                        </button>
+                        </button>}
                       </td>
                     </tr>
+                    {open === obs.id && (
+                      <tr className="bg-gray-50"><td colSpan={6} className="p-4 text-sm text-gray-700 space-y-2">
+                        <div><b>Subject:</b> {(obs as any).subject} · <b>Topic:</b> {(obs as any).topic} · <b>Duration:</b> {(obs as any).duration}</div>
+                        <div><b>Scores per item:</b> {Object.entries((obs as any).scores || {}).map(([k, v]) => `${k}: ${v}`).join('  ·  ') || '-'}</div>
+                        <div><b>Positive notes:</b> {(obs as any).notesPositive || '-'}</div>
+                        <div><b>To improve:</b> {(obs as any).notesImprovement || '-'}</div>
+                      </td></tr>
+                    )}
+                    </Fragment>
                   ))
                 )}
               </tbody>

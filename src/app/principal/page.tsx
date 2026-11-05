@@ -1,6 +1,7 @@
 'use client';
 
 import SdTasks from '@/components/SdTasks';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import MyTeamScores from '@/components/MyTeamScores';
 import RoleNav from '@/components/RoleNav';
 import SelfRatingCard from '@/components/SelfRatingCard';
@@ -180,7 +181,7 @@ export default function PrincipalDashboard() {
             <>
               <ScoresLockedNotice />
               <div className="mt-6">
-                
+                <SelfReflectionLink className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
               </div>
             </>
           )}
@@ -250,7 +251,7 @@ export default function PrincipalDashboard() {
               </div>
 
               <div className="mt-6 flex flex-col sm:flex-row gap-4">
-                
+                <SelfReflectionLink className="w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
                 
                 {/* 🚀 ONLY PRINCIPAL AND VP KURIKULUM CAN SEE THIS BUTTON */}
                 {loggedInUser && (loggedInUser.role.toUpperCase() === 'PRINCIPAL' || loggedInUser.role.toUpperCase() === 'VICE_PRINCIPAL_KURIKULUM') && (

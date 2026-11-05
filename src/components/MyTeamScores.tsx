@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 // "Scores from others": what the leader / supervisor, the peers and the koordinator gave the logged-in person in the current period.
@@ -70,7 +71,7 @@ export default function MyTeamScores({ always = false, selfReflection = true, cl
           </div>
         </>
       )}
-      
+      {selfReflection && <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>}
     </div>
   );
 }

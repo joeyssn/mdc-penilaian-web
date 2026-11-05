@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import SelfRatingCard from '@/components/SelfRatingCard';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import Link from 'next/link';
 import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
@@ -59,7 +60,7 @@ export default function MyOverview() {
       <>
         <ScoresLockedNotice />
         <div className="mt-6">
-          
+          <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
         </div>
       </>
     )}
@@ -130,7 +131,7 @@ export default function MyOverview() {
         </div>
   
         <div className="mt-6">
-          
+          <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
         </div>
       </>
     )}

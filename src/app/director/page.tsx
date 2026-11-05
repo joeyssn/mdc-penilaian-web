@@ -1,6 +1,7 @@
 'use client';
 
 import SdTasks from '@/components/SdTasks';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import RoleNav from '@/components/RoleNav';
 import SelfRatingCard from '@/components/SelfRatingCard';
 import { useState, useEffect, FormEvent } from 'react';
@@ -362,7 +363,7 @@ export default function UnifiedDirectorDashboard() {
                 </div>
 
                 <div className="mt-6">
-                  
+                  <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
                 </div>
               </>
             )}

@@ -1,6 +1,7 @@
 'use client';
 
 import SdTasks from '@/components/SdTasks';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import SelfRatingCard from '@/components/SelfRatingCard';
 import MyTeamScores from '@/components/MyTeamScores';
 import { useState, useEffect, FormEvent } from 'react';
@@ -221,7 +222,9 @@ export default function KaryawanDashboard() {
             <>
               <ScoresLockedNotice />
               <div className="mt-6">
-                
+                <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md flex justify-center transition-all text-sm md:text-base text-center">
+                  Complete My Self-Reflection
+                </SelfReflectionLink>
               </div>
             </>
           )}
@@ -291,7 +294,9 @@ export default function KaryawanDashboard() {
               </div>
 
               <div className="mt-6">
-                
+                <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md flex justify-center transition-all text-sm md:text-base text-center">
+                  Complete My Self-Reflection
+                </SelfReflectionLink>
               </div>
             </>
           )}

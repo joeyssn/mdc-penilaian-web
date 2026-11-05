@@ -39,3 +39,16 @@ t('dashboard cards: peers get main x peer share', () => {
   const old = { studentWeight: 25, peerWeight: 25 };
   assert.equal(cardWeights(old), old);
 });
+
+import { profileIdFor, resolveProfile, WEIGHT_PROFILES, profileLabel } from '../src/lib/weights.ts';
+t('TK has its own profiles and starts from SD', () => {
+  assert.equal(profileIdFor('TEACHER', 'TK'), 'TK_TEACHER');
+  assert.equal(profileIdFor('TEACHER', 'SD'), 'SD_TEACHER');
+  assert.equal(profileIdFor('TEACHER', 'SMP'), 'TEACHER');
+  assert.ok(WEIGHT_PROFILES.includes('TK_PRINCIPAL'));
+  assert.equal(profileLabel('TK_TEACHER'), 'TK · Teacher');
+  const sd = { id: 'SD_TEACHER', mainWeight: 79 }, tk = { id: 'TK_TEACHER', mainWeight: 60 };
+  assert.equal(resolveProfile([sd], 'TEACHER', 'TK')?.id, 'SD_TEACHER'); // not saved yet -> SD
+  assert.equal(resolveProfile([sd, tk], 'TEACHER', 'TK')?.id, 'TK_TEACHER');
+  assert.equal(resolveProfile([sd, tk], 'TEACHER', 'SD')?.id, 'SD_TEACHER');
+});

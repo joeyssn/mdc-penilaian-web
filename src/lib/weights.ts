@@ -23,10 +23,12 @@ export const WEIGHT_ROLES = [
 ] as const;
 
 export const SD_PREFIX = 'SD_';
+export const TK_PREFIX = 'TK_'; // TK has its own set of profiles (an unsaved TK profile starts from the SD one)
 
 export const WEIGHT_PROFILES: string[] = [
   ...WEIGHT_ROLES,
   ...WEIGHT_ROLES.map(r => SD_PREFIX + r),
+  ...WEIGHT_ROLES.map(r => TK_PREFIX + r),
 ];
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -40,13 +42,15 @@ export const ROLE_LABELS: Record<string, string> = {
   KARYAWAN: 'Karyawan',
 };
 
-export const isSdProfile = (id: string) => id.startsWith(SD_PREFIX);
-export const baseRole = (id: string) => (isSdProfile(id) ? id.slice(SD_PREFIX.length) : id);
+export const isTkProfile = (id: string) => id.startsWith(TK_PREFIX);
+// SD or TK profile (the primary-school sets, as opposed to the shared SMP / SMA set)
+export const isSdProfile = (id: string) => id.startsWith(SD_PREFIX) || isTkProfile(id);
+export const baseRole = (id: string) => (isSdProfile(id) ? id.slice(SD_PREFIX.length) : id); // both prefixes are 3 characters
 
 // Just the role, e.g. "Principal"
 export const roleLabel = (id: string) => ROLE_LABELS[baseRole(id)] || id;
 // Role plus school level, e.g. "SD · Principal"
-export const profileLabel = (id: string) => `${isSdProfile(id) ? 'SD' : 'SMP / SMA'} · ${roleLabel(id)}`;
+export const profileLabel = (id: string) => `${isTkProfile(id) ? 'TK' : isSdProfile(id) ? 'SD' : 'SMP / SMA'} · ${roleLabel(id)}`;
 
 // Profiles saved by older versions. They are only a starting point / fallback until the admin
 // saves the full set, which replaces them.
@@ -69,6 +73,7 @@ export function fallbackIds(id: string): string[] {
   const role = baseRole(id);
   const ids: string[] = [];
   if (isSdProfile(id)) {
+    if (isTkProfile(id)) ids.push(SD_PREFIX + role); // TK starts from SD
     if (role === 'TEACHER') ids.push('TEACHER_SD');
     ids.push(role);
   }
@@ -81,7 +86,8 @@ export function fallbackIds(id: string): string[] {
 export function profileIdFor(dbRole?: string | null, level?: string | null): string {
   const upper = (dbRole || '').toUpperCase();
   const role = (WEIGHT_ROLES as readonly string[]).includes(upper) ? upper : 'STAFF';
-  return isSdGroupLevel(level) ? SD_PREFIX + role : role;
+  const lvl = String(level || '').toUpperCase();
+  return lvl === 'TK' ? TK_PREFIX + role : lvl === 'SD' ? SD_PREFIX + role : role;
 }
 
 export function resolveProfile<T extends { id: string }>(

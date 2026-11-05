@@ -8,7 +8,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import ScoreVisibilityToggle from '@/components/ScoreVisibilityToggle';
 import MasterReportTables from '@/components/MasterReportTables';
 import { buildMasterRows } from '@/lib/masterReport';
-import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, SMP_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
+import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, SD_DEFAULT_WEIGHTS, SMP_DEFAULT_WEIGHTS, computeFinal, fallbackIds, isSdLayout, isSdProfile, isTkProfile, profileLabel, resolveProfile, roleLabel, validateSdWeights, type FullWeights } from '@/lib/weights';
 
 type ReportRow = { 
   id: string; 
@@ -196,7 +196,7 @@ export default function AdminDashboard() {
 
   const handleDeleteProfile = async () => {
     if (!selectedRoleWeight) return;
-    if (!confirm(`Delete the weight profile for ${profileLabel(selectedRoleWeight)}?\n\n${isSdProfile(selectedRoleWeight) ? 'SD people with this role will use the SMP / SMA profile for the same role.' : 'People with this role will be scored with equal 20% weights.'}`)) return;
+    if (!confirm(`Delete the weight profile for ${profileLabel(selectedRoleWeight)}?\n\n${isTkProfile(selectedRoleWeight) ? 'TK people with this role will use the SD profile for the same role.' : isSdProfile(selectedRoleWeight) ? 'SD people with this role will use the SMP / SMA profile for the same role.' : 'People with this role will be scored with equal 20% weights.'}`)) return;
     const res = await fetch(`/api/settings/weights?id=${encodeURIComponent(selectedRoleWeight)}`, { method: 'DELETE' });
     if (!res.ok) return alert((await res.json().catch(() => null))?.error || 'Failed to delete weight profile.');
     const remaining = { ...weightsConfig };
@@ -410,7 +410,12 @@ export default function AdminDashboard() {
                     ))}
                   </optgroup>
                   <optgroup label="SD">
-                    {Object.keys(weightsConfig).filter(isSdProfile).map(id => (
+                    {Object.keys(weightsConfig).filter(id => isSdProfile(id) && !isTkProfile(id)).map(id => (
+                      <option key={id} value={id}>{roleLabel(id)}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="TK">
+                    {Object.keys(weightsConfig).filter(isTkProfile).map(id => (
                       <option key={id} value={id}>{roleLabel(id)}</option>
                     ))}
                   </optgroup>

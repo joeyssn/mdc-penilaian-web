@@ -106,11 +106,18 @@ export default function MasterReportTables({ rows, loading = false }: { rows: Ma
   return (
     <div className="space-y-8">
       <ReportTable
-        title="SD / TK"
+        title="SD"
         subtitle="Main (Peer, Self, Supervisor, Leaders) + Student + HRD + Observation (when it has a weight)"
-        fileTag="SD-TK"
+        fileTag="SD"
         cols={SD_COLS}
         rows={rows.filter(r => r.group === 'SD')}
+      />
+      <ReportTable
+        title="TK"
+        subtitle="Same layout, with the TK weight profiles (they start from the SD ones)"
+        fileTag="TK"
+        cols={SD_COLS}
+        rows={rows.filter(r => r.group === 'TK')}
       />
       <ReportTable
         title="SMP / SMA"

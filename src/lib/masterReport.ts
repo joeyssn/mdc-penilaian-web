@@ -6,7 +6,7 @@ export type MasterRow = {
   id: string;
   name: string;
   role: string;
-  group: 'SD' | 'SMP'; // SD = SD + TK, SMP = SMP + SMA (and anyone without a school level)
+  group: 'SD' | 'TK' | 'SMP'; // SMP = SMP + SMA (and anyone without a school level)
   student: number;
   peer: number;
   self: number;
@@ -61,7 +61,7 @@ export function buildMasterRows(
 
       return {
         id: r.id, name: r.name, role: r.role,
-        group: isSdGroupLevel(r.level) ? 'SD' : 'SMP',
+        group: String(r.level || '').toUpperCase() === 'TK' ? 'TK' : isSdGroupLevel(r.level) ? 'SD' : 'SMP',
         student, peer, self, supervisor, leader, observation, attendance,
         main: result.main, final: result.final, incomplete: result.incomplete, missing: result.missing,
       } as MasterRow;

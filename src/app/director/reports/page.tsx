@@ -4,17 +4,21 @@ import RoleNav from '@/components/RoleNav';
 
 type Who = { name: string; role: string; level: string | null };
 type Ev = { id: string; type: string; period: string; date: string; rubric: string; average: number; evaluator: Who; target: Who; answers: { text: string; value: number }[] };
-type Obs = { id: string; date: string; kelas: string; subject: string; target: string; observer: string; finalScore: number; approved: boolean; notesPositive: string; notesImprovement: string };
+type Obs = { level: string | null; id: string; date: string; kelas: string; subject: string; target: string; observer: string; finalScore: number; approved: boolean; notesPositive: string; notesImprovement: string };
 
 const TYPES: Record<string, { label: string; cls: string }> = {
   PEER: { label: 'Peer', cls: 'bg-sky-100 text-sky-800 border-sky-300' },
   SUPERVISOR: { label: 'Supervisor', cls: 'bg-purple-100 text-purple-800 border-purple-300' },
   KOORDINATOR: { label: 'Koordinator', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
   STUDENT: { label: 'Student', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  SELF: { label: 'Self', cls: 'bg-gray-100 text-gray-800 border-gray-300' },
+  STAFF: { label: 'Staff / management', cls: 'bg-orange-100 text-orange-800 border-orange-300' },
   OBSERVATION: { label: 'Observation', cls: 'bg-rose-100 text-rose-800 border-rose-300' },
 };
 const pretty = (r: string) => r.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 const SCHOOLS = ['TK', 'SD', 'SMP', 'SMA'];
+const SCHOOL_NAME: Record<string, string> = { TK: 'TK (Kindergarten)', SD: 'SD (Elementary)', SMP: 'SMP (Junior High)', SMA: 'SMA (Senior High)', OTHER: 'Institute-wide / management & staff' };
+const schoolOf = (l: string | null) => { const u = (l || '').toUpperCase(); return SCHOOLS.includes(u) ? u : 'OTHER'; };
 
 export default function DirectorReports() {
   const [ev, setEv] = useState<Ev[]>([]);
@@ -31,20 +35,26 @@ export default function DirectorReports() {
     }).catch(() => setState('error'));
   }, []);
 
-  const groups = useMemo(() => {
-    const m = new Map<string, { target: Who; evs: Ev[] }>();
-    for (const e of ev) {
-      if (type !== 'ALL' && e.type !== type) continue;
-      if (school !== 'ALL' && (e.target.level || '').toUpperCase() !== school) continue;
-      if (q && !e.target.name.toLowerCase().includes(q.toLowerCase())) continue;
-      const k = e.target.name + '|' + e.target.role;
-      if (!m.has(k)) m.set(k, { target: e.target, evs: [] });
-      m.get(k)!.evs.push(e);
+  const sections = useMemo(() => {
+    const out: { school: string; people: { target: Who; evs: Ev[] }[]; obs: Obs[] }[] = [];
+    for (const sc of [...SCHOOLS, 'OTHER']) {
+      if (school !== 'ALL' && school !== sc) continue;
+      const m = new Map<string, { target: Who; evs: Ev[] }>();
+      for (const e of ev) {
+        if (schoolOf(e.target.level) !== sc) continue;
+        if (type !== 'ALL' && e.type !== type) continue;
+        if (q && !e.target.name.toLowerCase().includes(q.toLowerCase())) continue;
+        const k = e.target.name + '|' + e.target.role;
+        if (!m.has(k)) m.set(k, { target: e.target, evs: [] });
+        m.get(k)!.evs.push(e);
+      }
+      const o = (type === 'ALL' || type === 'OBSERVATION') ? obs.filter(x => schoolOf(x.level) === sc && (!q || x.target.toLowerCase().includes(q.toLowerCase()))) : [];
+      const people = [...m.values()].sort((a, b) => a.target.name.localeCompare(b.target.name));
+      if (people.length || o.length) out.push({ school: sc, people, obs: o });
     }
-    return [...m.values()].sort((a, b) => (a.target.level || '').localeCompare(b.target.level || '') || a.target.name.localeCompare(b.target.name));
-  }, [ev, type, school, q]);
+    return out;
+  }, [ev, obs, type, school, q]);
 
-  const obsShown = useMemo(() => (type === 'ALL' || type === 'OBSERVATION') ? obs.filter(o => !q || o.target.toLowerCase().includes(q.toLowerCase())) : [], [obs, type, q]);
   const show = (t: string) => <span className={`inline-block border rounded px-2 py-0.5 text-xs font-bold ${TYPES[t]?.cls ?? ''}`}>{TYPES[t]?.label ?? t}</span>;
 
   return (
@@ -66,18 +76,24 @@ export default function DirectorReports() {
             {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           <select value={school} onChange={e => setSchool(e.target.value)} className="border rounded px-3 py-2 text-sm">
-            <option value="ALL">All schools</option>
+            <option value="ALL">Whole institute</option>
             {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+            <option value="OTHER">Management & staff</option>
           </select>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Filter by evaluated person…" className="border rounded px-3 py-2 text-sm flex-1 min-w-[200px]" />
         </div>
 
         {state === 'loading' && <p>Loading…</p>}
         {state === 'error' && <p className="text-red-600 font-bold">Could not load the report (Director or Admin only).</p>}
+        {state === 'ok' && sections.length === 0 && <p className="text-gray-500 font-bold">No data for this filter.</p>}
 
-        {state === 'ok' && groups.length === 0 && obsShown.length === 0 && <p className="text-gray-500 font-bold">No data for this filter.</p>}
-
-        {groups.map(g => (
+        {sections.map(sec => (
+          <div key={sec.school} className="space-y-4" style={{ breakBefore: 'page' }}>
+            <div className="bg-[#053b50] text-white rounded-xl px-5 py-3 flex flex-wrap justify-between items-center">
+              <h2 className="text-2xl font-extrabold">{SCHOOL_NAME[sec.school]}</h2>
+              <span className="text-sm opacity-80">{sec.people.length} people evaluated · {sec.obs.length} observation(s)</span>
+            </div>
+        {sec.people.map(g => (
           <section key={g.target.name + g.target.role} className="brk bg-white border border-gray-300 rounded-xl p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2 mb-3">
               <h2 className="text-xl font-extrabold">{g.target.name}</h2>
@@ -112,12 +128,12 @@ export default function DirectorReports() {
           </section>
         ))}
 
-        {obsShown.length > 0 && (
+        {sec.obs.length > 0 && (
           <section className="brk bg-white border border-gray-300 rounded-xl p-5">
             <div className="flex items-center gap-3 border-b pb-2 mb-3"><h2 className="text-xl font-extrabold">Class observations</h2>{show('OBSERVATION')}</div>
             <table className="w-full text-sm border-collapse">
               <thead><tr className="bg-gray-100 text-left"><th className="p-2">Date</th><th className="p-2">Teacher</th><th className="p-2">Observer</th><th className="p-2">Class / subject</th><th className="p-2">Status</th><th className="p-2 text-right">Score</th></tr></thead>
-              <tbody>{obsShown.map(o => (
+              <tbody>{sec.obs.map(o => (
                 <tr key={o.id} className="border-t align-top">
                   <td className="p-2 whitespace-nowrap">{o.date}</td><td className="p-2 font-semibold">{o.target}</td><td className="p-2">{o.observer}</td>
                   <td className="p-2">{o.kelas} · {o.subject}</td>
@@ -127,6 +143,8 @@ export default function DirectorReports() {
             </table>
           </section>
         )}
+          </div>
+        ))}
       </div>
     </div>
   );

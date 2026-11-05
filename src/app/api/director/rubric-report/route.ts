@@ -36,7 +36,28 @@ export async function GET() {
     answers: ((e.answers as any[]) ?? []).map(a => ({ text: text.get(String(a.indicatorId)) ?? 'Question', value: a.value })),
   }));
 
-  const observations = (await prisma.observation.findMany({ orderBy: { createdAt: 'desc' } })).map(o => ({
+  // Staff / management rubrics (IT, PR, ACC, HRD, Karyawan, Admin...) and older scoring live in the score table.
+  const LETTER: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
+  const scoreRows = await prisma.score.findMany({
+    include: { user_score_graderIdTouser: { select: { name: true, role: true, level: true } }, user_score_targetIdTouser: { select: { name: true, role: true, level: true } }, rubricindicator: { select: { text: true, rubriccategory: { select: { rubricsection: { select: { rubric: { select: { title: true } } } } } } } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  const legacy = new Map<string, any>();
+  for (const r of scoreRows as any[]) {
+    const k = r.graderId + '|' + r.targetId + '|' + (r.rubricindicator?.rubriccategory?.rubricsection?.rubric?.title ?? '');
+    if (!legacy.has(k)) legacy.set(k, {
+      id: 'score-' + r.id, type: r.graderId === r.targetId ? 'SELF' : 'STAFF', period: '', date: r.createdAt,
+      rubric: r.rubricindicator?.rubriccategory?.rubricsection?.rubric?.title ?? 'Rubric', average: 0,
+      evaluator: r.user_score_graderIdTouser, target: r.user_score_targetIdTouser, answers: [],
+    });
+    legacy.get(k).answers.push({ text: r.rubricindicator?.text ?? 'Question', value: LETTER[r.value] ?? 0 });
+  }
+  for (const e of legacy.values()) { e.average = e.answers.reduce((s: number, a: any) => s + a.value, 0) / (e.answers.length || 1); evaluations.push(e); }
+
+  const obsRows = await prisma.observation.findMany({ orderBy: { createdAt: 'desc' } });
+  const lv = new Map((await prisma.user.findMany({ where: { id: { in: obsRows.map(o => o.targetId) } }, select: { id: true, level: true } })).map(u => [u.id, u.level]));
+  const observations = obsRows.map(o => ({
+    level: lv.get(o.targetId) ?? null,
     id: o.id, date: o.date, kelas: o.kelas, subject: o.subject, target: o.targetName, observer: o.observerName,
     finalScore: o.finalScore, approved: o.isApproved, notesPositive: o.notesPositive, notesImprovement: o.notesImprovement,
   }));

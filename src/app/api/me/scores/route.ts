@@ -73,4 +73,4 @@ export async function GET() {
     console.error("FAILED TO FETCH USER SCORES:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-}
+}

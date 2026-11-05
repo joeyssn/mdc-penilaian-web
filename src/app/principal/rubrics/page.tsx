@@ -41,7 +41,7 @@ export default function PrincipalRubricAssignmentPage() {
     const meRes = await fetch('/api/me');
     if (!meRes.ok) return router.push('/login');
     const me = await meRes.json();
-    if (!['PRINCIPAL', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN', 'DIRECTOR', 'ADMIN'].includes(me.role)) return router.push('/login');
+    if (!['PRINCIPAL', 'DIRECTOR', 'ADMIN'].includes(me.role)) return router.push('/login');
 
     setHome(String(me.role).startsWith('VICE') ? '/vice-principal' : me.role === 'ADMIN' ? '/admin' : '/principal');
     setLevelName(String(me.level || '').toUpperCase() || 'All schools');

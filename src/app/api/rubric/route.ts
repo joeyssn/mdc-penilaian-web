@@ -73,6 +73,10 @@ export async function GET(req: Request) {
       };
     });
 
+    // ?assigned=1 (evaluation screens): only rubrics somebody was assigned to in Manage Rubrics, so an unassigned rubric is never offered.
+    if (new URL(req.url).searchParams.get('assigned') === '1') {
+      return NextResponse.json(formattedRubrics.filter(r => r.evaluators.some((x: string) => x.trim()) && r.evaluatees.some((x: string) => x.trim())));
+    }
     return NextResponse.json(formattedRubrics);
   } catch (error) {
     console.error("Failed to fetch rubrics:", error);

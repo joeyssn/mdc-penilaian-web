@@ -31,7 +31,7 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
   };
   useEffect(() => { (async () => {
     setMe(await (await fetch('/api/me')).json());
-    const r = await fetch('/api/rubric'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => (general ? x.schoolLevel !== 'SD' : x.schoolLevel === 'SD') && !x.isSelfReflection));
+    const r = await fetch('/api/rubric?assigned=1'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => (general ? x.schoolLevel !== 'SD' : x.schoolLevel === 'SD') && !x.isSelfReflection));
     load();
   })(); }, []);
 

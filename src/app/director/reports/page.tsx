@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import RoleNav from '@/components/RoleNav';
 
 type Who = { name: string; role: string; level: string | null };
-type Ev = { id: string; type: string; period: string; date: string; rubric: string; average: number; evaluator: Who; target: Who; answers: { text: string; value: number }[] };
+type Ev = { id: string; targetId: string; type: string; period: string; date: string; rubric: string; average: number; evaluator: Who; target: Who; answers: { text: string; value: number }[] };
 type Obs = { level: string | null; id: string; date: string; kelas: string; subject: string; target: string; observer: string; finalScore: number; approved: boolean; notesPositive: string; notesImprovement: string };
 
 const TYPES: Record<string, { label: string; cls: string }> = {
@@ -106,6 +106,7 @@ export default function DirectorReports() {
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2 mb-3">
               <h2 className="text-xl font-extrabold">{g.target.name}</h2>
               <span className="text-sm text-gray-600">{pretty(g.target.role)}{g.target.level ? ` · ${g.target.level}` : ''}</span>
+              <a href={`/rapor?id=${g.evs[0].targetId}`} target="_blank" className="noprint bg-[#e99a24] hover:bg-[#d48a1c] text-white px-3 py-1.5 rounded font-bold text-sm">Rapor</a>
               <button onClick={() => setOnly(g.target.name + '|' + g.target.role)} className="noprint bg-[#008c99] hover:bg-[#007b87] text-white px-3 py-1.5 rounded font-bold text-sm">Print this report</button>
             </div>
             {Object.keys(TYPES).filter(t => g.evs.some(e => e.type === t)).map(t => {

@@ -28,7 +28,7 @@ export async function GET() {
   const text = new Map(inds.map(i => [i.id, i.text]));
 
   const evaluations = evals.map(e => ({
-    id: e.id, type: e.type, period: e.period?.name ?? '', date: e.submittedAt,
+    id: e.id, targetId: e.targetId, type: e.type, period: e.period?.name ?? '', date: e.submittedAt,
     rubric: (e.rubricId && title.get(e.rubricId)) || 'Rubric',
     average: e.average,
     evaluator: { name: e.evaluator.name, role: e.evaluator.role, level: e.evaluator.level },
@@ -46,7 +46,7 @@ export async function GET() {
   for (const r of scoreRows as any[]) {
     const k = r.graderId + '|' + r.targetId + '|' + (r.rubricindicator?.rubriccategory?.rubricsection?.rubric?.title ?? '');
     if (!legacy.has(k)) legacy.set(k, {
-      id: 'score-' + r.id, type: r.graderId === r.targetId ? 'SELF' : 'STAFF', period: '', date: r.createdAt,
+      id: 'score-' + r.id, targetId: r.targetId, type: r.graderId === r.targetId ? 'SELF' : 'STAFF', period: '', date: r.createdAt,
       rubric: r.rubricindicator?.rubriccategory?.rubricsection?.rubric?.title ?? 'Rubric', average: 0,
       evaluator: r.user_score_graderIdTouser, target: r.user_score_targetIdTouser, answers: [],
     });

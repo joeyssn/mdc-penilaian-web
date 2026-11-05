@@ -20,6 +20,7 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
   const [open, setOpen] = useState<Open>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
+  const [selfDone, setSelfDone] = useState<boolean | null>(null); // own self-reflection submitted?
 
   // TK / SD teachers are evaluated in the SD flow, everyone else in the SMP / SMA flow; the two never mix on one screen.
   const keep = (rows: Target[]) => rows.filter(x => (general ? x.school !== 'SD' : x.school ? x.school === 'SD' : true));
@@ -30,7 +31,10 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
     setT(d);
   };
   useEffect(() => { (async () => {
-    setMe(await (await fetch('/api/me')).json());
+    const meData = await (await fetch('/api/me')).json(); setMe(meData);
+    if (meData?.id && meData.role !== 'STUDENT') {
+      try { const c = await fetch(`/api/evaluate/completed?graderId=${meData.id}`); setSelfDone(c.ok ? (await c.json()).includes(meData.id) : null); } catch { setSelfDone(null); }
+    }
     const r = await fetch('/api/rubric?assigned=1'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => (general ? x.schoolLevel !== 'SD' : x.schoolLevel === 'SD') && !x.isSelfReflection));
     load();
   })(); }, []);
@@ -67,6 +71,17 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
 
   const body = (
     <>
+      {me && me.role !== 'STUDENT' && (
+        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-3">
+          <div><h2 className="text-lg font-extrabold text-[#053b50]">Self-Reflection</h2><p className="text-sm text-gray-700">Your own assessment of your work. It counts as the Self part of your score and can be submitted once.</p></div>
+          <div className="flex items-center justify-between gap-3 border rounded-xl p-3">
+            <span className="text-sm font-bold">{selfDone ? 'Completed' : 'Not yet completed'}</span>
+            {selfDone
+              ? <span className="text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-full px-3 py-1">Done</span>
+              : <a href="/self-reflection" className="bg-[#008c99] hover:bg-[#007b87] text-white text-sm font-bold rounded-lg px-4 py-2">Complete self-reflection</a>}
+          </div>
+        </section>
+      )}
       {t && (t.PEER.pending.length + t.PEER.submitted.length > 0) && <Card type="PEER" title="Peer evaluations" hint="Teachers the principal asked you to evaluate as a peer." pending={t.PEER.pending} done={t.PEER.submitted} />}
       {t && (t.SUPERVISOR.pending.length + t.SUPERVISOR.submitted.length > 0) && <Card type="SUPERVISOR" title="Supervisor evaluations" hint="Teachers assigned to you as supervisor." pending={t.SUPERVISOR.pending} done={t.SUPERVISOR.submitted} />}
       {t && (t.KOORDINATOR.pending.length + t.KOORDINATOR.submitted.length > 0) && <Card type="KOORDINATOR" title="Koordinator evaluations" hint="Teachers assigned to you as koordinator." pending={t.KOORDINATOR.pending} done={t.KOORDINATOR.submitted} />}

@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 type User = {
   id: string;
@@ -182,6 +183,20 @@ export default function TeacherManagementPage() {
     setSelectedTeacher(null);
   };
 
+  // Downloads the users shown in the table (after the search filter) as an Excel file.
+  // Same column names as the import, so the file can be edited and imported again. Passwords are never exported.
+  const handleExport = () => {
+    const rows = filteredTeachers.map(t => ({
+      'NIP / Staff ID': t.nis_niy, 'Full Name': t.name, 'Email': t.email || '', 'Role': t.role,
+      'Department': t.department || '', 'Gender': t.gender || '', 'School Level': t.level || '', 'Division': t.division || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 30 }, { wch: 26 }, { wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Users');
+    XLSX.writeFile(wb, `users-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const filteredTeachers = teachers.filter(t => {
     if (!t) return false;
     const teacherName = t.name || '';
@@ -247,6 +262,14 @@ export default function TeacherManagementPage() {
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
               {isImporting ? 'Importing...' : 'Import Excel'}
+            </button>
+
+            <button
+              onClick={handleExport}
+              disabled={filteredTeachers.length === 0}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 disabled:opacity-50 font-bold py-2.5 px-5 rounded-xl transition-colors text-sm"
+            >
+              Export Excel
             </button>
 
             <button 

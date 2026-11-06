@@ -17,7 +17,7 @@ export default function LoginPage() {
       {/* Top Left Logo Area - Now visible on mobile but smaller! */}
       <div className="absolute top-6 left-6 z-10 sm:block">
         <Image 
-          src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" 
+          src="/mdc-logo.png" 
           alt="MDC Christian School" 
           width={400} 
           height={90} 

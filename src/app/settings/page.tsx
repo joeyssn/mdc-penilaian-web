@@ -85,7 +85,7 @@ export default function AdminSettingsOverviewPage() {
   return (
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center border-b border-gray-200">
-        <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={200} height={50} className="h-10 w-auto" priority />
+        <Image src="/mdc-logo.png" alt="MDC" width={200} height={50} className="h-10 w-auto" priority />
         <Link href="/admin" className="text-gray-600 font-bold hover:text-black">Back to Admin Dashboard</Link>
       </nav>
 

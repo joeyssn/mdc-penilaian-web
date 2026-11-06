@@ -254,7 +254,7 @@ export default function InstrumenObservasiPage() {
     <div className="min-h-screen bg-[#f7f8f9] font-sans">
       <nav className="bg-white py-4 px-4 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 md:gap-0">
         <div className="flex items-center w-full md:w-auto justify-between">
-           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={200} height={50} className="h-8 md:h-12 w-auto" priority />
+           <Image src="/mdc-logo.png" alt="MDC" width={200} height={50} className="h-8 md:h-12 w-auto" priority />
            <button onClick={() => router.back()} className="md:hidden text-gray-600 font-bold text-sm">Kembali</button>
         </div>
         <div className="hidden md:flex gap-10 text-[15px] font-medium text-gray-800">

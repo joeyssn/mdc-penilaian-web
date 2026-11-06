@@ -68,7 +68,7 @@ export default function EditObservasiTemplatePage() {
     <div className="min-h-screen bg-[#f7f8f9] font-sans pb-20">
       <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex justify-between items-center z-50 relative border-b border-gray-200">
         <div className="flex items-center">
-          <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
+          <Image src="/mdc-logo.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
         </div>
         
         <div className="flex items-center gap-10">

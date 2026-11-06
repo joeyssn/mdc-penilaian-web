@@ -194,7 +194,7 @@ export default function KaryawanDashboard() {
       {/* NAVBAR */}
       <nav className="bg-white py-4 px-4 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 md:gap-0">
         <div className="flex items-center w-full md:w-auto justify-between">
-           <Image src="/mdc-logo.png" alt="MDC" width={200} height={50} className="h-8 md:h-12 w-auto" priority />
+           <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={200} height={50} className="h-8 md:h-12 w-auto" priority />
            <Link href="/login" className="md:hidden text-red-500 font-bold text-sm">Logout</Link>
         </div>
         

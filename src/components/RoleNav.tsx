@@ -53,7 +53,7 @@ export default function RoleNav() {
   return (
     <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 print:hidden">
       <div className="flex items-center">
-        <Image src="/mdc-logo.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
+        <Image src="https://mdc.sch.id/wp-content/uploads/2023/04/website-sekolah-logo-New.png" alt="MDC" width={220} height={55} className="h-10 md:h-12 w-auto" priority />
       </div>
       <div className="flex gap-8 text-[15px] font-bold overflow-x-auto whitespace-nowrap scrollbar-hide min-h-[28px]">
         {tabs.map(t => (

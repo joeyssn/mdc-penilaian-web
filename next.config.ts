@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // blocks them and the hot-reload WebSocket fails. Add your computer's IPv4 from `ipconfig`.
   allowedDevOrigins: ['192.168.56.1', '192.168.*.*', '10.*.*.*'],
   images: {
+    // The browser loads images (e.g. the logo from mdc.sch.id) directly, so the school server itself needs no internet access.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

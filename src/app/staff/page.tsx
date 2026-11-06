@@ -1,13 +1,15 @@
 'use client';
 
 import SdTasks from '@/components/SdTasks';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import MyTeamScores from '@/components/MyTeamScores';
 import RoleNav from '@/components/RoleNav';
+import SelfRatingCard from '@/components/SelfRatingCard';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { resolveProfile } from '@/lib/weights';
+import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 type User = { id: string; name: string; role: string; gender?: string | null; };
@@ -61,7 +63,7 @@ export default function StaffDashboard() {
         'VICE_PRINCIPAL': 'Vice-Principal', 'VICE_PRINCIPAL_KURIKULUM': 'Vice-Principal', 'VICE_PRINCIPAL_KESISWAAN': 'Vice-Principal'
       };
       const mappedRole = roleMap[meData.role.toUpperCase()] || 'Staff';
-      const myWeight = resolveProfile(wData, meData.role, meData.level);
+      const myWeight = cardWeights(resolveProfile(wData, meData.role, meData.level));
       if (myWeight) {
         setMyWeights({
           studentWeight: Number(myWeight.studentWeight) || 0,
@@ -107,7 +109,8 @@ export default function StaffDashboard() {
     if (upper === 'TEACHER') return 'Teacher';
     if (upper === 'STAFF' || upper === 'HRD') return 'Staff';
     if (upper === 'KARYAWAN') return 'Karyawan'; 
-    if (upper === 'PRINCIPAL' || upper === 'DIRECTOR') return 'Director/Principal';
+    if (upper === 'PRINCIPAL') return 'Principal';
+    if (upper === 'DIRECTOR') return 'Director';
     if (upper.includes('VICE_PRINCIPAL') || upper === 'VICE-PRINCIPAL') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
     return 'Staff';
@@ -180,7 +183,7 @@ export default function StaffDashboard() {
             <>
               <ScoresLockedNotice />
               <div className="mt-6">
-                <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+                <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
               </div>
             </>
           )}
@@ -223,6 +226,7 @@ export default function StaffDashboard() {
                     <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div></div>
                   </div>
                 )}
+                <SelfRatingCard />
                 {myWeights.observationWeight > 0 && (
                   <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
                     <div>
@@ -250,7 +254,7 @@ export default function StaffDashboard() {
               </div>
 
               <div className="mt-6">
-                <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+                <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
               </div>
             </>
           )}
@@ -317,4 +321,4 @@ export default function StaffDashboard() {
       </div>
     </div>
   );
-}
+}

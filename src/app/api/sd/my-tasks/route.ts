@@ -6,6 +6,8 @@ import { normLevel } from '@/lib/levelScopeCore';
 
 export const dynamic = 'force-dynamic';
 
+const schoolGroup = (level?: string | null) => { const l = normLevel(level); return l === 'TK' || l === 'SD' ? 'SD' : 'SMP_SMA'; };
+
 // Everything the logged-in user may evaluate right now, split by source. Each person sees only their own tasks.
 export async function GET() {
   const session = await getSession();
@@ -28,21 +30,16 @@ export async function GET() {
   // Assigned by the principal: supervisor / peer / koordinator
   const mine = await prisma.teacherAssignment.findMany({
     where: { periodId: period.id, evaluatorId: session.id, active: true },
-    include: { teacher: { select: { id: true, name: true } } },
+    include: { teacher: { select: { id: true, name: true, level: true, role: true } } },
   });
   for (const a of mine) {
-    const row = { teacherId: a.teacher.id, name: a.teacher.name };
+    // school = which system the teacher belongs to, so TK / SD and SMP / SMA evaluations never mix on one screen
+    const row = { teacherId: a.teacher.id, name: a.teacher.name, role: a.teacher.role, school: schoolGroup(a.teacher.level) };
     (isDone(a.role, a.teacherId) ? out[a.role].submitted : out[a.role].pending).push(row);
   }
 
-  // Who evaluates me (teachers only)
-  if (session.role === 'TEACHER') {
-    const about = await prisma.teacherAssignment.findMany({ where: { periodId: period.id, teacherId: session.id, active: true }, include: { evaluator: { select: { name: true } } } });
-    for (const a of about) out.myEvaluators[a.role].push(a.evaluator.name);
-  }
-
   // Students: their class teachers (added automatically) plus any the Vice Principal assigned
-  if (session.role === 'STUDENT') {
+  if (session.role === 'STUDENT' && String((await prisma.user.findUnique({ where: { id: session.id }, select: { level: true } }))?.level ?? '').toUpperCase() !== 'TK') { // TK has no student evaluation
     // Class teachers follow the student's CURRENT class (same school, same class name), so changing a class updates the list.
     // Only rows created here (assignedById = 'AUTO-CLASS') are added or removed; ones the Vice Principal set by hand are never touched,
     // and a teacher whose evaluation was already submitted is never removed.
@@ -60,7 +57,7 @@ export async function GET() {
       skipDuplicates: true,
     });
     const st = await prisma.studentAssignment.findMany({ where: { periodId: period.id, studentId: session.id }, include: { teacher: { select: { id: true, name: true } } } });
-    for (const a of st) (isDone('STUDENT', a.teacherId) ? out.STUDENT.submitted : out.STUDENT.pending).push({ teacherId: a.teacher.id, name: a.teacher.name });
+    for (const a of st) (isDone('STUDENT', a.teacherId) ? out.STUDENT.submitted : out.STUDENT.pending).push({ teacherId: a.teacher.id, name: a.teacher.name, role: 'TEACHER' });
   }
   return NextResponse.json(out);
 }

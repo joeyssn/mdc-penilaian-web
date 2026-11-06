@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { denyUnlessRole, getSession, RUBRIC_EDITOR_ROLES } from '@/lib/session';
-import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, isSdProfile, validateSdWeights } from '@/lib/weights';
+import { WEIGHT_PROFILES, LEGACY_PROFILE_IDS, isSdProfile, isTkProfile, validateSdWeights } from '@/lib/weights';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +39,8 @@ export async function PUT(request: Request) {
       if (values.some(v => v < 0 || v > 100)) {
         return NextResponse.json({ error: `Weights for "${item.id}" must be between 0 and 100.` }, { status: 400 });
       }
-      if (isSdProfile(item.id)) {
-        const sdError = validateSdWeights(item);
+      if (isSdProfile(item.id) || Number(item.mainWeight) > 0) {
+        const sdError = validateSdWeights(item, isTkProfile(item.id));
         if (sdError) return NextResponse.json({ error: `${item.id}: ${sdError}` }, { status: 400 });
         continue;
       }

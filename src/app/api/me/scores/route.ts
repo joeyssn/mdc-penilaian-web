@@ -59,15 +59,18 @@ export async function GET() {
 
     // Split the scores based on the grader's role
     const studentScores = userScores.filter(s => s.user_score_graderIdTouser.role === 'STUDENT');
-    const peerScores = userScores.filter(s => s.user_score_graderIdTouser.role !== 'STUDENT');
+    // Your own self-reflection is shown on its own card, not mixed into "Scores from Others"
+    const selfScores = userScores.filter(s => s.graderId === user.id);
+    const peerScores = userScores.filter(s => s.user_score_graderIdTouser.role !== 'STUDENT' && s.graderId !== user.id);
 
     return NextResponse.json({
       peer: calculateStats(peerScores),
-      student: calculateStats(studentScores)
+      student: calculateStats(studentScores),
+      self: calculateStats(selfScores)
     });
 
   } catch (error) {
     console.error("FAILED TO FETCH USER SCORES:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-}
+}

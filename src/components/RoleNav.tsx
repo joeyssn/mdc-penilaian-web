@@ -11,8 +11,8 @@ const EVAL: Tab = { href: '/sd/tasks', label: 'My Evaluations' };
 // One top bar for every role, used by the dashboards AND the SD screens, so the header never changes between pages.
 const TABS: Record<string, Tab[]> = {
   ADMIN: [{ href: '/admin', label: 'Live Overview & Weights' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, { href: '/team', label: 'My Dashboard' }],
-  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, EVAL],
-  DIRECTOR: [{ href: '/director', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }],
+  PRINCIPAL: [{ href: '/principal', label: 'My Dashboard' }, { href: '/principal/rubrics', label: 'Assign Rubrics' }, { href: '/sd/assignments', label: 'Assign Evaluators' }, { href: '/assign', label: 'Team Evaluations' }, { href: '/manage-observasi', label: 'Observations' }, EVAL],
+  DIRECTOR: [{ href: '/director', label: 'My Dashboard' }, { href: '/assign', label: 'Assign Evaluators' }, { href: '/director/reports', label: 'Rubric Reports' }],
   HEAD_MANAGEMENT: [{ href: '/assign', label: 'Assign Evaluators' }],
   IT: [{ href: '/team', label: 'My Dashboard' }],
   PR: [{ href: '/team', label: 'My Dashboard' }],
@@ -46,7 +46,10 @@ export default function RoleNav() {
   // TK / SD principals and vice principals use the SD screens for teachers, so the generic screen is only for SMP / SMA (and Director, HRD, heads).
   // SD / TK teachers use My Evaluations instead of Team Evaluations. Principals keep it at every school: a principal can be assigned to evaluate vice principals.
   const sdGroup = level === 'SD' || level === 'TK';
-  const tabs = (TABS[role] ?? []).filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
+  // Principals and vice principals of TK / SMP / SMA assign their teachers in a folder of their own school (SD keeps /sd/assignments).
+  const ownFolder = (level === 'TK' && role === 'PRINCIPAL') || ((level === 'SMP' || level === 'SMA') && (role === 'PRINCIPAL' || role.startsWith('VICE_PRINCIPAL'))) ? `/${level.toLowerCase()}/assignments` : null;
+  const base = (TABS[role] ?? []).flatMap(t => (ownFolder && t.label === 'Assign Evaluators' ? [{ ...t, href: ownFolder }] : [t]));
+  const tabs = base.filter(t => !(noSd && t.href.startsWith('/sd/')) && !(t.href === '/assign' && role === 'TEACHER' && sdGroup));
   return (
     <nav className="bg-white py-4 px-6 md:px-12 shadow-sm flex flex-col md:flex-row justify-between items-center z-50 relative border-b border-gray-200 gap-4 print:hidden">
       <div className="flex items-center">

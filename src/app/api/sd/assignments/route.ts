@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { inScope, scopeOf } from '@/lib/levelScope';
 import { diffAssignments, EVALUATOR_ROLES, validateAssignment, type EvaluatorRole } from '@/lib/sd/rules';
-import { fail, GROUP_MANAGE_ROLES, isSdUser, openPeriod, requirePermission, requireRole, SD_VIEW_ROLES } from '@/lib/sd/access';
+import { fail, pinnedSchool, GROUP_MANAGE_ROLES, isSdUser, openPeriod, requirePermission, requireRole, SD_VIEW_ROLES } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,8 @@ export async function GET(req: Request) {
   const g = await requireRole([...new Set([...GROUP_MANAGE_ROLES, ...SD_VIEW_ROLES])]); if (g.error) return g.error;
   const periodId = new URL(req.url).searchParams.get('periodId') || (await openPeriod())?.id;
   if (!periodId) return NextResponse.json({ teachers: [] });
-  const scope = scopeOf(g.session);
+  const pin = pinnedSchool(g.session, req.url); if ('error' in pin) return fail(pin.error as string, 403);
+  const scope = pin.scope;
   const [teachers, rows, done] = await Promise.all([
     prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true, name: true, level: true, className: true }, orderBy: { name: 'asc' } }),
     prisma.teacherAssignment.findMany({ where: { periodId, active: true }, include: { evaluator: { select: { id: true, name: true } }, evaluations: { select: { id: true } } } }),

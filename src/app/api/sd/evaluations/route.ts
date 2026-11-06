@@ -31,6 +31,7 @@ export async function POST(req: Request) {
   if (session.id === targetId) return fail('You cannot evaluate yourself.', 403);
   if (type === 'STUDENT') {
     if (session.role !== 'STUDENT') return fail('Only students can submit student evaluations.', 403);
+    if (String(session.level ?? '').toUpperCase() === 'TK') return fail('TK has no student evaluation.', 403);
     const a = await prisma.studentAssignment.findUnique({ where: { periodId_studentId_teacherId: { periodId: period.id, studentId: session.id, teacherId: targetId } } });
     if (!a) return fail('This teacher was not assigned to you.', 403);
     studentAssignmentId = a.id;
@@ -47,15 +48,16 @@ export async function POST(req: Request) {
     include: { rubricsection: { include: { rubriccategory: { include: { rubricindicator: { select: { id: true } } } } } } },
   });
   if (!rubric || rubric.schoolLevel !== 'SD' || rubric.isSelfReflection) return fail('That rubric cannot be used for this evaluation.');
-  const baseRubrics = await prisma.rubric.findMany({ where: { schoolLevel: 'SD', isSelfReflection: false }, select: { id: true, evaluators: true } });
+  const baseRubrics = await prisma.rubric.findMany({ where: { schoolLevel: 'SD', isSelfReflection: false }, select: { id: true, evaluators: true, evaluatees: true } });
   // Use the evaluator's own school assignment (TK or SD) when one was saved, same as the page shows.
   const lvl = String(session.level || '').toUpperCase();
   const overrides = lvl === 'TK' || lvl === 'SD'
-    ? await prisma.rubricLevelAssignment.findMany({ where: { level: lvl, rubricId: { in: baseRubrics.map(r => r.id) } }, select: { rubricId: true, evaluators: true } }).catch(() => [])
+    ? await prisma.rubricLevelAssignment.findMany({ where: { level: lvl, rubricId: { in: baseRubrics.map(r => r.id) } }, select: { rubricId: true, evaluators: true, evaluatees: true } }).catch(() => [])
     : [];
-  const ov = new Map(overrides.map(o => [o.rubricId, o.evaluators]));
-  const sdRubrics = baseRubrics.map(r => (ov.has(r.id) ? { ...r, evaluators: ov.get(r.id) ?? null } : r));
-  if (!isRubricAllowed(type, rubricId, sdRubrics)) return fail(`This rubric is not the one set for ${String(type).toLowerCase()} evaluations.`);
+  const ov = new Map(overrides.map(o => [o.rubricId, o]));
+  const sdRubrics = baseRubrics.map(r => (ov.has(r.id) ? { ...r, evaluators: ov.get(r.id)!.evaluators ?? null, evaluatees: ov.get(r.id)!.evaluatees ?? r.evaluatees } : r));
+  const targetRow = await prisma.user.findUnique({ where: { id: targetId }, select: { role: true } });
+  if (!isRubricAllowed(type, rubricId, sdRubrics, { evaluatorRole: session.role, targetRole: targetRow?.role })) return fail(`This rubric is not the one set for ${String(type).toLowerCase()} evaluations.`);
   const indicatorIds = new Set(rubric.rubricsection.flatMap(s => s.rubriccategory.flatMap(c => c.rubricindicator.map(i => i.id))));
   const answers = new Map<string, number>();
   for (const s of scores) {

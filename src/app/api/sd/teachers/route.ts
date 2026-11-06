@@ -4,20 +4,21 @@ import { inScope, scopeOf } from '@/lib/levelScope';
 import { writeAudit } from '@/lib/audit';
 import { normLevel } from '@/lib/levelScope';
 import { PEER_ACCOUNT_ROLES } from '@/lib/sd/rules';
-import { fail, requirePermission, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES, isSdUser } from '@/lib/sd/access';
+import { pinnedSchool, fail, requirePermission, requireRole, SD_VIEW_ROLES, GROUP_MANAGE_ROLES, isSdUser } from '@/lib/sd/access';
 
 export const dynamic = 'force-dynamic';
 
 // Who can be picked: SD / TK teachers (for every role) and students by class. Supervisors and koordinators are teachers; peers can also be staff, karyawan or vice principals.
 // `others` = teacher accounts that have no school yet, which the principal can add from the database.
-export async function GET() {
+export async function GET(req: Request) {
   const g = await requireRole([...new Set([...SD_VIEW_ROLES, ...GROUP_MANAGE_ROLES])]); if (g.error) return g.error;
   const users = await prisma.user.findMany({
     where: { role: { in: ['TEACHER', 'STUDENT', 'STAFF', 'KARYAWAN', 'HRD', 'VICE_PRINCIPAL_KURIKULUM', 'VICE_PRINCIPAL_KESISWAAN'] } },
     select: { id: true, name: true, role: true, level: true, className: true },
     orderBy: { name: 'asc' },
   });
-  const scope = scopeOf(g.session);
+  const pin = pinnedSchool(g.session, req.url); if ('error' in pin) return fail(pin.error as string, 403);
+  const scope = pin.scope;
   const sd = users.filter(u => isSdUser(u) && inScope(scope, u.level));
   const teachers = sd.filter(u => u.role === 'TEACHER');
   // peers may also be staff, karyawan or vice principals; HRD is shared by every school, so HRD accounts can always be peers

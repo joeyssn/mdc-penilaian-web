@@ -35,6 +35,7 @@ export async function can(session: SessionUser, p: SdPermission): Promise<boolea
 // The SD teacher evaluation system belongs to TK and SD. A principal / admin of SMP or SMA has no access to it.
 export const SD_SCHOOLS: Level[] = ['TK', 'SD'];
 const wrongSchool = (s: SessionUser) => { const sc = scopeOf(s); return sc !== null && !SD_SCHOOLS.includes(sc); };
+import { normLevel } from '@/lib/levelScope';
 export const schoolOf = (s: SessionUser) => scopeOf(s); // null = sees TK and SD
 
 type Guard = { session: SessionUser; error?: undefined } | { session?: undefined; error: NextResponse };
@@ -63,3 +64,11 @@ export const openPeriod = () => prisma.evalPeriod.findFirst({ where: { status: '
 
 // Members of every PUBLISHED group of a period, keyed by group.
 export const isSdUser = (u: { level?: string | null }) => isSdGroupLevel(u.level);
+
+// The /sd folder shows SD teachers only (TK has its own folder). Accounts that see every school (director, admin without a level) are pinned by ?school=.
+export function pinnedSchool(session: Parameters<typeof scopeOf>[0], url: string) {
+  const scope = scopeOf(session);
+  const asked = normLevel(new URL(url).searchParams.get('school'));
+  if (scope && asked && scope !== asked) return { error: 'This page is only for ' + asked + ' accounts.' } as const;
+  return { scope: scope ?? asked } as const;
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 // "Scores from others": what the leader / supervisor, the peers and the koordinator gave the logged-in person in the current period.
@@ -15,7 +16,14 @@ const SOURCES: Record<string, { title: string; text: string; bar: string }> = {
 
 export default function MyTeamScores({ always = false, selfReflection = true, className = '' }: { always?: boolean; selfReflection?: boolean; className?: string }) {
   const [results, setResults] = useState<any>(null);
-  useEffect(() => { (async () => { try { const r = await fetch('/api/assign/results'); if (r.ok) setResults(await r.json()); } catch {} })(); }, []);
+  const [failed, setFailed] = useState('');
+  useEffect(() => { (async () => {
+    try {
+      const r = await fetch('/api/assign/results');
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) setResults(d); else { setFailed(d.error || 'Could not load your scores.'); setResults({ period: null, sources: [] }); }
+    } catch { setFailed('Could not load your scores.'); setResults({ period: null, sources: [] }); }
+  })(); }, []);
 
   if (!results) return null;
   // No evaluation period exists yet: show an empty rating (when `always`) instead of nothing.
@@ -29,6 +37,7 @@ export default function MyTeamScores({ always = false, selfReflection = true, cl
 
   return (
     <div className={`space-y-6 text-gray-900 [color-scheme:light] ${className}`}>
+      {failed && always && <p className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm font-semibold">{failed} If you just updated the site, run <code>npx prisma db push</code> and <code>npx prisma generate</code>, then restart the server.</p>}
       {results.locked ? <ScoresLockedNotice /> : (
         <>
           <div className="bg-[#053b50] rounded-2xl px-6 py-6 md:px-8 md:py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 shadow-md border border-gray-800">
@@ -62,7 +71,7 @@ export default function MyTeamScores({ always = false, selfReflection = true, cl
           </div>
         </>
       )}
-      {selfReflection && <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>}
+      {selfReflection && <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>}
     </div>
   );
 }

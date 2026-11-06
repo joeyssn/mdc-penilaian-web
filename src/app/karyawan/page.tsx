@@ -1,12 +1,14 @@
 'use client';
 
 import SdTasks from '@/components/SdTasks';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
+import SelfRatingCard from '@/components/SelfRatingCard';
 import MyTeamScores from '@/components/MyTeamScores';
 import { useState, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { resolveProfile } from '@/lib/weights';
+import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 // --- TYPES ---
@@ -64,7 +66,7 @@ export default function KaryawanDashboard() {
     const wRes = await fetch('/api/settings/weights');
     const wData = await wRes.json();
     if (!wData.error && Array.isArray(wData)) {
-      const kWeight = resolveProfile(wData, 'KARYAWAN', meData.level);
+      const kWeight = cardWeights(resolveProfile(wData, 'KARYAWAN', meData.level));
       if (kWeight) {
         setMyWeights({
           studentWeight: Number(kWeight.studentWeight) || 0,
@@ -113,14 +115,15 @@ export default function KaryawanDashboard() {
     if (upper === 'TEACHER') return 'Teacher';
     if (upper === 'STAFF' || upper === 'HRD') return 'Staff';
     if (upper === 'KARYAWAN') return 'Karyawan'; 
-    if (upper === 'PRINCIPAL' || upper === 'DIRECTOR') return 'Director/Principal';
+    if (upper === 'PRINCIPAL') return 'Principal';
+    if (upper === 'DIRECTOR') return 'Director';
     if (upper === 'VICE_PRINCIPAL' || upper === 'VICE-PRINCIPAL' || upper === 'VICE_PRINCIPAL_KURIKULUM' || upper === 'VICE_PRINCIPAL_KESISWAAN') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
     return 'Staff';
   };
 
   const isSelfReflectionRule = (r: Rubric) => {
-    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"];
+    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director", "Principal", "Karyawan"];
     const excludedRoles = ["Admin", "Student"];
     const hasRequired = requiredRoles.every(role => r.evaluators?.includes(role) && r.evaluatees?.includes(role));
     const hasExcluded = excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
@@ -219,9 +222,9 @@ export default function KaryawanDashboard() {
             <>
               <ScoresLockedNotice />
               <div className="mt-6">
-                <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md flex justify-center transition-all text-sm md:text-base text-center">
+                <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md flex justify-center transition-all text-sm md:text-base text-center">
                   Complete My Self-Reflection
-                </Link>
+                </SelfReflectionLink>
               </div>
             </>
           )}
@@ -258,6 +261,7 @@ export default function KaryawanDashboard() {
                     <div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div>
                   </div>
                 </div>
+                <SelfRatingCard />
 
                 {/* OBSERVATION SCORE (FROM PRINCIPAL) */}
                 <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-gray-100">
@@ -290,9 +294,9 @@ export default function KaryawanDashboard() {
               </div>
 
               <div className="mt-6">
-                <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md flex justify-center transition-all text-sm md:text-base text-center">
+                <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md flex justify-center transition-all text-sm md:text-base text-center">
                   Complete My Self-Reflection
-                </Link>
+                </SelfReflectionLink>
               </div>
             </>
           )}
@@ -369,4 +373,4 @@ export default function KaryawanDashboard() {
       </div>
     </div>
   );
-}
+}

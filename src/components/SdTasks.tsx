@@ -5,7 +5,7 @@ import SdShell from '@/components/SdShell';
 import { eligibleRubrics } from '@/lib/sd/rubricRules';
 
 const SCALE = [[1, 'Kurang'], [2, 'Cukup'], [3, 'Baik'], [4, 'Sangat Baik']] as const;
-type Target = { teacherId: string; name: string; className?: string; subject?: string; category?: string; isPartner?: boolean };
+type Target = { teacherId: string; name: string; className?: string; subject?: string; category?: string; isPartner?: boolean; school?: string };
 type EvalKind = 'PEER' | 'SUPERVISOR' | 'KOORDINATOR' | 'STUDENT';
 type Open = { type: EvalKind; target: Target } | null;
 
@@ -21,15 +21,22 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
 
-  const load = async () => { const r = await fetch('/api/sd/my-tasks'); if (r.ok) setT(await r.json()); };
+  // TK / SD teachers are evaluated in the SD flow, everyone else in the SMP / SMA flow; the two never mix on one screen.
+  const keep = (rows: Target[]) => rows.filter(x => (general ? x.school !== 'SD' : x.school ? x.school === 'SD' : true));
+  const load = async () => {
+    const r = await fetch('/api/sd/my-tasks'); if (!r.ok) return;
+    const d = await r.json();
+    for (const k of ['PEER', 'SUPERVISOR', 'KOORDINATOR']) if (d[k]) d[k] = { pending: keep(d[k].pending), submitted: keep(d[k].submitted) };
+    setT(d);
+  };
   useEffect(() => { (async () => {
-    setMe(await (await fetch('/api/me')).json());
-    const r = await fetch('/api/rubric'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => (general ? x.schoolLevel !== 'SD' : x.schoolLevel === 'SD') && !x.isSelfReflection));
+    const meData = await (await fetch('/api/me')).json(); setMe(meData);
+    const r = await fetch('/api/rubric?assigned=1'); const d = await r.json(); if (!r.ok) console.error('Could not load rubrics', d); if (Array.isArray(d)) setRubrics(d.filter((x: any) => (general ? x.schoolLevel !== 'SD' : x.schoolLevel === 'SD') && !x.isSelfReflection));
     load();
   })(); }, []);
 
-  const rubricFor = (type: string) => eligibleRubrics(type as any, rubrics)[0];
-  const rubric = open ? rubricFor(open.type) : null;
+  const rubricFor = (type: string, target?: any) => eligibleRubrics(type as any, rubrics, { evaluatorRole: me?.role, targetRole: target?.role })[0];
+  const rubric = open ? rubricFor(open.type, open.target) : null;
   const indicators = rubric ? rubric.sections.flatMap((s: any) => s.categories.flatMap((c: any) => c.indicators)) : [];
   const unanswered = indicators.filter((i: any) => !answers[i.id]).length;
 
@@ -60,15 +67,6 @@ export default function SdTasks({ embedded = false, general = false }: { embedde
 
   const body = (
     <>
-      {t && ['SUPERVISOR', 'PEER', 'KOORDINATOR'].some(k => t.myEvaluators?.[k]?.length) && (
-        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 text-sm space-y-1">
-          <h2 className="text-lg font-extrabold text-[#053b50]">Who evaluates you</h2>
-          {t.myEvaluators.SUPERVISOR.length > 0 && <p>Supervisor: {t.myEvaluators.SUPERVISOR.join(', ')}</p>}
-          {t.myEvaluators.PEER.length > 0 && <p>Peers: {t.myEvaluators.PEER.join(', ')}</p>}
-          {t.myEvaluators.KOORDINATOR.length > 0 && <p>Koordinator: {t.myEvaluators.KOORDINATOR.join(', ')}</p>}
-        </section>
-      )}
-
       {t && (t.PEER.pending.length + t.PEER.submitted.length > 0) && <Card type="PEER" title="Peer evaluations" hint="Teachers the principal asked you to evaluate as a peer." pending={t.PEER.pending} done={t.PEER.submitted} />}
       {t && (t.SUPERVISOR.pending.length + t.SUPERVISOR.submitted.length > 0) && <Card type="SUPERVISOR" title="Supervisor evaluations" hint="Teachers assigned to you as supervisor." pending={t.SUPERVISOR.pending} done={t.SUPERVISOR.submitted} />}
       {t && (t.KOORDINATOR.pending.length + t.KOORDINATOR.submitted.length > 0) && <Card type="KOORDINATOR" title="Koordinator evaluations" hint="Teachers assigned to you as koordinator." pending={t.KOORDINATOR.pending} done={t.KOORDINATOR.submitted} />}

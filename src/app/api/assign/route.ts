@@ -1,3 +1,4 @@
+import { normLevel } from '@/lib/levelScope';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
@@ -36,6 +37,9 @@ async function handleGet(req: Request) {
   const url = new URL(req.url);
   const mode = url.searchParams.get('mode') as Mode | null;
   const allowed = modesFor(session);
+  // The /tk, /smp and /sma folders each work for one school only.
+  const school = url.searchParams.get('school');
+  if (school && normLevel(session.level) !== school) return err(`This page is only for ${school} accounts.`, 403);
 
   const periods = await prisma.evalPeriod.findMany({ where: { status: { in: ['OPEN', 'DRAFT'] } }, orderBy: { createdAt: 'desc' }, select: { id: true, name: true, status: true } });
 
@@ -48,6 +52,8 @@ async function handleGet(req: Request) {
       include: { teacher: { select: { id: true, name: true } }, evaluator: { select: { id: true, name: true } } },
     }) : [];
     return NextResponse.json({
+      me: { level: session.level ?? null, role: session.role },
+      vpSupervisor: await vpMaySupervise(session.level),
       heads,
       headCandidates: Object.fromEntries(DIVISIONS.map(d => [d, headCandidates(d, everyone)])),
       modes: allowed.map(m => ({ mode: m, label: MODE_LABEL[m], roles: MODE_ROLES[m] })),
@@ -96,6 +102,7 @@ async function handlePut(req: Request) {
   if (!session) return err('Not authenticated', 401);
   const body = await req.json();
   if (body.action === 'setHead') return setHead(session, body);
+  if (body.action === 'setVpSupervisor') return setVpSupervisor(session, body);
   const { mode, periodId, targetId, role, evaluatorIds } = body;
   if (!MODES.includes(mode) || !modesFor(session).includes(mode)) return err('You cannot use this assignment screen.', 403);
   if (!EVALUATOR_ROLES.includes(role) || !MODE_ROLES[mode as Mode].includes(role) || !Array.isArray(evaluatorIds)) return err('mode, periodId, targetId, role and evaluatorIds are required.');
@@ -106,6 +113,8 @@ async function handlePut(req: Request) {
 
   const target = await prisma.user.findUnique({ where: { id: targetId }, select: USER_SELECT });
   if (!target || !isTarget(mode, session, target)) return err('You cannot assign evaluators for this person.', 403);
+  // A vice principal may set the supervisors of teachers only when the principal of the school has allowed it.
+  if (mode === 'SCHOOL_TEACHERS' && role === 'SUPERVISOR' && session.role.startsWith('VICE_PRINCIPAL') && !(await vpMaySupervise(session.level))) return err('Only the principal can assign supervisors, unless the principal allows vice principals to do it.', 403);
 
   const ids = [...new Set<string>(evaluatorIds)];
   const people = await prisma.user.findMany({ where: { id: { in: ids } }, select: USER_SELECT });
@@ -127,6 +136,20 @@ async function handlePut(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
+
+// The principal of an SMP / SMA school decides whether the vice principals of that school may assign supervisors.
+const VP_SUP_KEY = (level?: string | null) => `vpSupervisor:${String(level ?? '').toUpperCase()}`;
+async function vpMaySupervise(level?: string | null) {
+  const row = await prisma.appSetting.findUnique({ where: { key: VP_SUP_KEY(level) } }).catch(() => null);
+  return row?.value === 'true';
+}
+async function setVpSupervisor(session: { id: string; name: string; role: string; level?: string | null }, body: any) {
+  if (session.role !== 'PRINCIPAL' || !modesFor(session).includes('SCHOOL_TEACHERS')) return err('Only the principal of an SMP or SMA school can change this.', 403);
+  const key = VP_SUP_KEY(session.level); const value = String(!!body.allowed);
+  await prisma.appSetting.upsert({ where: { key }, update: { value }, create: { key, value } });
+  await writeAudit(session as any, 'VP_SUPERVISOR_PERMISSION', 'AppSetting', key, { allowed: !!body.allowed });
+  return NextResponse.json({ ok: true, allowed: !!body.allowed });
+}
 
 // The Director chooses the head of a division: { action: 'setHead', division, headId (or null to clear), periodId? }.
 // Workers of that division who have no head evaluator yet in the chosen period get this head added; nobody's existing assignment is removed.

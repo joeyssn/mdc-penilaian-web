@@ -1,6 +1,7 @@
 'use client';
 
 import MyOverview from '@/components/MyOverview';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import MyTeamScores from '@/components/MyTeamScores';
 import RoleNav from '@/components/RoleNav';
 import { useState, useEffect, FormEvent } from 'react';
@@ -69,7 +70,8 @@ export default function HRDDashboard() {
     if (upper === 'TEACHER') return 'Teacher';
     if (upper === 'STAFF' || upper === 'HRD') return 'Staff';
     if (upper === 'KARYAWAN') return 'Karyawan'; // 🚀 Karyawan is now independent!
-    if (upper === 'PRINCIPAL' || upper === 'DIRECTOR') return 'Director/Principal';
+    if (upper === 'PRINCIPAL') return 'Principal';
+    if (upper === 'DIRECTOR') return 'Director';
     if (upper === 'VICE_PRINCIPAL' || upper === 'VICE-PRINCIPAL' || upper === 'VICE_PRINCIPAL_KURIKULUM' || upper === 'VICE_PRINCIPAL_KESISWAAN') return 'Vice-Principal'; 
     if (upper === 'STUDENT') return 'Student';
     return 'Staff';
@@ -77,7 +79,7 @@ export default function HRDDashboard() {
 
   const isSelfReflectionRule = (r: Rubric) => {
     // 🚀 Added Karyawan to requiredRoles so they can use the rubrics
-    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director/Principal", "Karyawan"]; 
+    const requiredRoles = ["Teacher", "Staff", "Vice-Principal", "Director", "Principal", "Karyawan"]; 
     const excludedRoles = ["Admin", "Student"];
     const hasRequired = requiredRoles.every(role => r.evaluators?.includes(role) && r.evaluatees?.includes(role));
     const hasExcluded = excludedRoles.some(role => r.evaluators?.includes(role) || r.evaluatees?.includes(role));
@@ -225,7 +227,7 @@ export default function HRDDashboard() {
         {/* EVALUATIONS TAB */}
         {activeTab === 'evaluations' && (
           <div className="space-y-8">
-            <Link href="/self-reflection" className="block w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center">Complete HRD Self-Reflection</Link>
+            <SelfReflectionLink className="block w-full bg-[#053b50] hover:bg-[#032635] text-white font-bold py-4 rounded-xl shadow-md text-center">Complete HRD Self-Reflection</SelfReflectionLink>
             
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
               <div className="px-8 py-5 border-b border-gray-100 bg-gray-50 flex items-center">

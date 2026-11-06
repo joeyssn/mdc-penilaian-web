@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import SelfRatingCard from '@/components/SelfRatingCard';
+import SelfReflectionLink from '@/components/SelfReflectionLink';
 import Link from 'next/link';
-import { resolveProfile } from '@/lib/weights';
+import { resolveProfile, cardWeights } from '@/lib/weights';
 import ScoresLockedNotice from '@/components/ScoresLockedNotice';
 
 type ScoreStats = { average: number; totalEvaluations: number; letterGrade: string };
@@ -26,7 +28,7 @@ export default function MyOverview() {
 
       const wRes = await fetch('/api/settings/weights'); const wData = await wRes.json().catch(() => null);
       if (Array.isArray(wData)) {
-        const w = resolveProfile(wData, meData.role, meData.level);
+        const w = cardWeights(resolveProfile(wData, meData.role, meData.level));
         if (w) setMyWeights({ studentWeight: Number(w.studentWeight) || 0, peerWeight: Number(w.peerWeight) || 0, observationWeight: Number(w.observationWeight) || 0, attendanceWeight: Number(w.attendanceWeight) || 0 });
       }
 
@@ -58,7 +60,7 @@ export default function MyOverview() {
       <>
         <ScoresLockedNotice />
         <div className="mt-6">
-          <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+          <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
         </div>
       </>
     )}
@@ -101,6 +103,7 @@ export default function MyOverview() {
               <div className="w-full bg-[#e6e6e6] rounded-full h-3"><div className="bg-[#f39c12] h-3 rounded-full transition-all duration-1000" style={{ width: `${(pScore / 4) * 100}%` }}></div></div>
             </div>
           )}
+          <SelfRatingCard />
           {myWeights.observationWeight > 0 && (
             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
               <div>
@@ -128,7 +131,7 @@ export default function MyOverview() {
         </div>
   
         <div className="mt-6">
-          <Link href="/self-reflection" className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</Link>
+          <SelfReflectionLink className="block w-full bg-[#008c99] hover:bg-[#007b87] text-white font-bold py-4 rounded-xl shadow-md text-center transition-all">Complete My Self-Reflection</SelfReflectionLink>
         </div>
       </>
     )}

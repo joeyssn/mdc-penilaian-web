@@ -8,14 +8,14 @@ datasource db {
 }
 
 model evaluationlog {
-  id                                        String   @id @default(uuid())
-  graderId                                  String
-  targetId                                  String
-  rubricId                                  String
-  createdAt                                 DateTime @default(now())
-  user_evaluationlog_graderIdTouser user    @relation("evaluationlog_graderIdTouser", fields: [graderId], references: [id], onDelete: Cascade, map: "EvaluationLog_graderId_fkey")
-  rubric                                    rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "EvaluationLog_rubricId_fkey")
-  user_evaluationlog_targetIdTouser user    @relation("evaluationlog_targetIdTouser", fields: [targetId], references: [id], onDelete: Cascade, map: "EvaluationLog_targetId_fkey")
+  id                                String   @id @default(uuid())
+  graderId                          String
+  targetId                          String
+  rubricId                          String
+  createdAt                         DateTime @default(now())
+  user_evaluationlog_graderIdTouser user     @relation("evaluationlog_graderIdTouser", fields: [graderId], references: [id], onDelete: Cascade, map: "EvaluationLog_graderId_fkey")
+  rubric                            rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "EvaluationLog_rubricId_fkey")
+  user_evaluationlog_targetIdTouser user     @relation("evaluationlog_targetIdTouser", fields: [targetId], references: [id], onDelete: Cascade, map: "EvaluationLog_targetId_fkey")
 
   @@unique([graderId, targetId, rubricId], map: "EvaluationLog_graderId_targetId_rubricId_key")
   @@index([rubricId], map: "EvaluationLog_rubricId_fkey")
@@ -23,33 +23,19 @@ model evaluationlog {
 }
 
 model rubric {
-  id               String          @id @default(uuid())
-  title            String
-  description      String?
-  evaluators       String?
-  evaluatees       String?
-  isSelfReflection Boolean         @default(false) 
-  intendedForRole  String          @default("STUDENT") 
-  schoolLevel      String          @default("SMP_SMA") // SD | SMP_SMA
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  evaluationlog    evaluationlog[]
-  rubricsection    rubricsection[]
-  levelAssignments rubricLevelAssignment[]
-}
-
-// Each school (TK / SD / SMP / SMA) can assign the same rubric to different roles.
-// No row for a level = that level uses the rubric's default evaluators / evaluatees.
-model rubricLevelAssignment {
-  id         String   @id @default(uuid())
-  rubricId   String
-  level      String   // TK | SD | SMP | SMA
-  evaluators String?
-  evaluatees String?
-  updatedAt  DateTime @updatedAt
-  rubric     rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
-
-  @@unique([rubricId, level])
+  id                    String                  @id @default(uuid())
+  title                 String
+  description           String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  evaluatees            String?
+  evaluators            String?
+  intendedForRole       String                  @default("STUDENT")
+  isSelfReflection      Boolean                 @default(false)
+  schoolLevel           String                  @default("SMP_SMA")
+  evaluationlog         evaluationlog[]
+  rubriclevelassignment rubriclevelassignment[]
+  rubricsection         rubricsection[]
 }
 
 model rubriccategory {
@@ -109,33 +95,212 @@ model score {
 }
 
 model user {
-  id                                         String           @id @default(uuid())
-  name                                       String
-  nis_niy                                    String           @unique(map: "User_nis_niy_key")
-  password                                   String
-  role                                       user_role
-  email                                      String?
-  gender                                     String?
-  department                                 user_department? @default(UMUM)
-  
-  grade                                      Int?             // 7, 8, 9, 10, 11, 12
-  level                                      String?          // "SMP" or "SMA"
-  division                                   String?          // IT | HRD | ADMIN | PR: the team a Head Management leads or a worker belongs to
-  className                                  String?          // (e.g., "9A", "10.1")
+  id                                                    String              @id @default(uuid())
+  name                                                  String
+  nis_niy                                               String              @unique(map: "User_nis_niy_key")
+  password                                              String
+  role                                                  user_role
+  email                                                 String?
+  gender                                                String?
+  department                                            user_department?    @default(UMUM)
+  grade                                                 Int?
+  level                                                 String?
+  className                                             String?
+  division                                              String?
+  evaluationlog_evaluationlog_graderIdTouser            evaluationlog[]     @relation("evaluationlog_graderIdTouser")
+  evaluationlog_evaluationlog_targetIdTouser            evaluationlog[]     @relation("evaluationlog_targetIdTouser")
+  score_score_graderIdTouser                            score[]             @relation("score_graderIdTouser")
+  score_score_targetIdTouser                            score[]             @relation("score_targetIdTouser")
+  sdevaluation_sdevaluation_evaluatorIdTouser           sdevaluation[]      @relation("sdevaluation_evaluatorIdTouser")
+  sdevaluation_sdevaluation_targetIdTouser              sdevaluation[]      @relation("sdevaluation_targetIdTouser")
+  studentassignment_studentassignment_studentIdTouser   studentassignment[] @relation("studentassignment_studentIdTouser")
+  studentassignment_studentassignment_teacherIdTouser   studentassignment[] @relation("studentassignment_teacherIdTouser")
+  teacherassignment_teacherassignment_evaluatorIdTouser teacherassignment[] @relation("teacherassignment_evaluatorIdTouser")
+  teacherassignment_teacherassignment_teacherIdTouser   teacherassignment[] @relation("teacherassignment_teacherIdTouser")
 
-  evaluationlog_evaluationlog_graderIdTouser evaluationlog[]  @relation("evaluationlog_graderIdTouser")
-  evaluationlog_evaluationlog_targetIdTouser evaluationlog[]  @relation("evaluationlog_targetIdTouser")
-  score_score_graderIdTouser                 score[]          @relation("score_graderIdTouser")
-  score_score_targetIdTouser                 score[]          @relation("score_targetIdTouser")
+  @@index([role])
+}
 
-  assignmentsAsTeacher        TeacherAssignment[]    @relation("TaTeacher")
-  assignmentsAsEvaluator      TeacherAssignment[]    @relation("TaEvaluator")
-  studentAssignmentsAsStudent StudentAssignment[]    @relation("SaStudent")
-  studentAssignmentsAsTeacher StudentAssignment[]    @relation("SaTeacher")
-  sdEvalsGiven                SdEvaluation[]         @relation("SdEvalEvaluator")
-  sdEvalsReceived             SdEvaluation[]         @relation("SdEvalTarget")
+model absence {
+  id              String   @id
+  userId          String
+  userName        String
+  role            String
+  attendanceScore Float    @default(0)
+  updatedAt       DateTime
+}
 
-  @@index([role]) // 🚀 This makes filtering students on your dedicated page lightning fast!
+model appsetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime
+}
+
+model auditlog {
+  id         String   @id
+  actorId    String
+  actorName  String
+  actorRole  String
+  action     String
+  entityType String
+  entityId   String?
+  detail     String?  @db.LongText
+  createdAt  DateTime @default(now())
+
+  @@index([actorId], map: "AuditLog_actorId_idx")
+  @@index([entityType, entityId], map: "AuditLog_entityType_entityId_idx")
+}
+
+model evalperiod {
+  id                String              @id
+  name              String              @unique(map: "EvalPeriod_name_key")
+  status            evalperiod_status   @default(DRAFT)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  sdevaluation      sdevaluation[]
+  studentassignment studentassignment[]
+  teacherassignment teacherassignment[]
+}
+
+model evaluationweight {
+  id                String   @id
+  studentWeight     Float    @default(20)
+  peerWeight        Float    @default(20)
+  selfWeight        Float    @default(20)
+  observationWeight Float    @default(20)
+  attendanceWeight  Float    @default(20)
+  mainWeight        Float    @default(0)
+  supervisorWeight  Float    @default(0)
+  leaderWeight      Float    @default(0)
+  updatedAt         DateTime
+}
+
+model observation {
+  id               String   @id
+  targetId         String
+  targetName       String
+  observerId       String
+  observerName     String
+  date             String
+  kelas            String
+  subject          String
+  duration         String
+  topic            String
+  scores           String   @db.LongText
+  notesPositive    String   @db.Text
+  notesImprovement String   @db.Text
+  finalScore       Float
+  createdAt        DateTime @default(now())
+  isApproved       Boolean  @default(false)
+}
+
+model observationtemplate {
+  id      String @id
+  content String @db.LongText
+}
+
+model performanceweight {
+  id          String   @id
+  factorKey   String   @unique(map: "PerformanceWeight_factorKey_key")
+  displayName String
+  weight      Float
+  description String?
+  updatedAt   DateTime
+}
+
+model rubriclevelassignment {
+  id         String   @id
+  rubricId   String
+  level      String
+  evaluators String?
+  evaluatees String?
+  updatedAt  DateTime
+  rubric     rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade, map: "rubricLevelAssignment_rubricId_fkey")
+
+  @@unique([rubricId, level], map: "rubricLevelAssignment_rubricId_level_key")
+}
+
+model sdevaluation {
+  id                                  String             @id
+  type                                sdevaluation_type
+  periodId                            String
+  evaluatorId                         String
+  targetId                            String
+  studentAssignmentId                 String?
+  rubricId                            String
+  answers                             String             @db.LongText
+  average                             Float
+  context                             String?            @db.LongText
+  status                              String             @default("SUBMITTED")
+  submittedAt                         DateTime           @default(now())
+  assignmentId                        String?
+  teacherassignment                   teacherassignment? @relation(fields: [assignmentId], references: [id], onDelete: Restrict, map: "SdEvaluation_assignmentId_fkey")
+  user_sdevaluation_evaluatorIdTouser user               @relation("sdevaluation_evaluatorIdTouser", fields: [evaluatorId], references: [id], onDelete: Cascade, map: "SdEvaluation_evaluatorId_fkey")
+  evalperiod                          evalperiod         @relation(fields: [periodId], references: [id], onDelete: Cascade, map: "SdEvaluation_periodId_fkey")
+  studentassignment                   studentassignment? @relation(fields: [studentAssignmentId], references: [id], onDelete: Restrict, map: "SdEvaluation_studentAssignmentId_fkey")
+  user_sdevaluation_targetIdTouser    user               @relation("sdevaluation_targetIdTouser", fields: [targetId], references: [id], onDelete: Cascade, map: "SdEvaluation_targetId_fkey")
+
+  @@unique([type, periodId, evaluatorId, targetId], map: "SdEvaluation_type_periodId_evaluatorId_targetId_key")
+  @@index([assignmentId], map: "SdEvaluation_assignmentId_fkey")
+  @@index([evaluatorId], map: "SdEvaluation_evaluatorId_idx")
+  @@index([periodId, type], map: "SdEvaluation_periodId_type_idx")
+  @@index([studentAssignmentId], map: "SdEvaluation_studentAssignmentId_fkey")
+  @@index([targetId], map: "SdEvaluation_targetId_idx")
+}
+
+model semesterarchive {
+  id               String   @id
+  semester         String
+  targetId         String
+  targetName       String
+  targetRole       String
+  scoresData       String?  @db.LongText
+  evalLogsData     String?  @db.LongText
+  observationsData String?  @db.LongText
+  absenceData      String?  @db.LongText
+  archivedAt       DateTime @default(now())
+  labelsData       String?  @db.LongText
+  sdData           String?  @db.LongText
+
+  @@index([semester], map: "SemesterArchive_semester_idx")
+  @@index([targetId], map: "SemesterArchive_targetId_idx")
+}
+
+model studentassignment {
+  id                                     String         @id
+  periodId                               String
+  studentId                              String
+  teacherId                              String
+  assignedById                           String
+  createdAt                              DateTime       @default(now())
+  sdevaluation                           sdevaluation[]
+  evalperiod                             evalperiod     @relation(fields: [periodId], references: [id], onDelete: Cascade, map: "StudentAssignment_periodId_fkey")
+  user_studentassignment_studentIdTouser user           @relation("studentassignment_studentIdTouser", fields: [studentId], references: [id], onDelete: Cascade, map: "StudentAssignment_studentId_fkey")
+  user_studentassignment_teacherIdTouser user           @relation("studentassignment_teacherIdTouser", fields: [teacherId], references: [id], onDelete: Cascade, map: "StudentAssignment_teacherId_fkey")
+
+  @@unique([periodId, studentId, teacherId], map: "StudentAssignment_periodId_studentId_teacherId_key")
+  @@index([studentId], map: "StudentAssignment_studentId_idx")
+  @@index([teacherId], map: "StudentAssignment_teacherId_idx")
+}
+
+model teacherassignment {
+  id                                       String                 @id
+  periodId                                 String
+  teacherId                                String
+  evaluatorId                              String
+  role                                     teacherassignment_role
+  active                                   Boolean                @default(true)
+  assignedById                             String
+  createdAt                                DateTime               @default(now())
+  updatedAt                                DateTime
+  sdevaluation                             sdevaluation[]
+  user_teacherassignment_evaluatorIdTouser user                   @relation("teacherassignment_evaluatorIdTouser", fields: [evaluatorId], references: [id], onDelete: Cascade, map: "TeacherAssignment_evaluatorId_fkey")
+  evalperiod                               evalperiod             @relation(fields: [periodId], references: [id], onDelete: Cascade, map: "TeacherAssignment_periodId_fkey")
+  user_teacherassignment_teacherIdTouser   user                   @relation("teacherassignment_teacherIdTouser", fields: [teacherId], references: [id], onDelete: Cascade, map: "TeacherAssignment_teacherId_fkey")
+
+  @@unique([periodId, teacherId, evaluatorId, role], map: "TeacherAssignment_periodId_teacherId_evaluatorId_role_key")
+  @@index([evaluatorId], map: "TeacherAssignment_evaluatorId_idx")
+  @@index([teacherId], map: "TeacherAssignment_teacherId_idx")
 }
 
 enum user_department {
@@ -151,218 +316,38 @@ enum score_value {
   D
 }
 
-model Observation {
-  id               String   @id @default(cuid())
-  targetId         String
-  targetName       String
-  observerId       String
-  observerName     String
-  date             String
-  kelas            String
-  subject          String
-  duration         String
-  topic            String
-  scores           Json
-  notesPositive    String   @db.Text
-  notesImprovement String   @db.Text
-  finalScore       Float
-  isApproved       Boolean  @default(false)
-  createdAt        DateTime @default(now())
-}
-
-model ObservationTemplate {
-  id      String @id @default(cuid())
-  content Json
-}
-
 enum user_role {
   ADMIN
   DIRECTOR
   PRINCIPAL
   VICE_PRINCIPAL_KURIKULUM
   VICE_PRINCIPAL_KESISWAAN
-  HEAD_MANAGEMENT // legacy, no longer offered: heads are chosen from the division's own team
+  HEAD_MANAGEMENT
   IT
   PR
   ACC
   TEACHER
   STAFF
-  HRD      
+  HRD
   KARYAWAN
   STUDENT
 }
 
-model Absence {
-  id              String   @id @default(cuid())
-  userId          String   
-  userName        String
-  role            String
-  attendanceScore Float    @default(0) 
-  updatedAt       DateTime @updatedAt
+enum sdevaluation_type {
+  PEER
+  SUPERVISOR
+  KOORDINATOR
+  STUDENT
 }
 
-model EvaluationWeight {
-  id                String   @id // e.g., "Teacher", "Staff", "Karyawan", "Vice-Principal", "Director/Principal"
-  studentWeight     Float    @default(20)
-  peerWeight        Float    @default(20)
-  selfWeight        Float    @default(20)
-  observationWeight Float    @default(20)
-  attendanceWeight Float    @default(20)
-  // SD / TK only: main evaluation (peer, self, supervisor, leaders) and its internal split
-  mainWeight        Float    @default(0)
-  supervisorWeight  Float    @default(0)
-  leaderWeight      Float    @default(0)
-  updatedAt         DateTime @updatedAt
-}
-
-model SemesterArchive {
-  id               String   @id @default(uuid())
-  semester         String   // e.g., "Ganjil 2026/2027"
-  targetId         String
-  targetName       String
-  targetRole       String
-  scoresData       Json?    // Snapshot of all 'score' rows
-  evalLogsData     Json?    // Snapshot of all 'evaluationlog' rows
-  observationsData Json?    // Snapshot of all 'Observation' rows
-  absenceData      Json?    // Snapshot of 'Absence' row
-  sdData           Json?    // Snapshot of SD evaluations received (peer / supervisor / koordinator / student)
-  labelsData       Json?    // Names and indicator texts at archive time, so the archive stays readable if data changes later
-  archivedAt       DateTime @default(now())
-
-  @@index([semester])
-  @@index([targetId])
-}
-
-model PerformanceWeight {
-  id          String   @id @default(uuid())
-  factorKey   String   @unique // e.g., 'STUDENT', 'PEER', 'SELF', 'OBSERVATION', 'ATTENDANCE'
-  displayName String   // e.g., 'Student Evaluation'
-  weight      Float    // e.g., 0.25 (representing 25%)
-  description String?
-  updatedAt   DateTime @updatedAt
-}
-
-model AppSetting {
-  key       String   @id
-  value     String
-  updatedAt DateTime @updatedAt
-}
-
-model AuditLog {
-  id         String   @id @default(uuid())
-  actorId    String
-  actorName  String
-  actorRole  String
-  action     String
-  entityType String
-  entityId   String?
-  detail     Json?
-  createdAt  DateTime @default(now())
-
-  @@index([entityType, entityId])
-  @@index([actorId])
-}
-
-
-// ───────────── SD teacher evaluation system ─────────────
-
-
-enum PeriodStatus {
+enum evalperiod_status {
   DRAFT
   OPEN
   CLOSED
 }
 
-
-enum SdEvalType {
-  PEER
-  SUPERVISOR
-  KOORDINATOR
-  STUDENT
-}
-
-enum EvaluatorRole {
+enum teacherassignment_role {
   SUPERVISOR
   PEER
   KOORDINATOR
-}
-
-// The principal picks a teacher, then who supervises, who is a peer and who is the koordinator.
-model TeacherAssignment {
-  id           String        @id @default(uuid())
-  periodId     String
-  teacherId    String
-  evaluatorId  String
-  role         EvaluatorRole
-  active       Boolean       @default(true)
-  assignedById String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  period       EvalPeriod    @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  teacher      user          @relation("TaTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
-  evaluator    user          @relation("TaEvaluator", fields: [evaluatorId], references: [id], onDelete: Cascade)
-  evaluations  SdEvaluation[]
-
-  @@unique([periodId, teacherId, evaluatorId, role])
-  @@index([evaluatorId])
-  @@index([teacherId])
-}
-
-model EvalPeriod {
-  id          String       @id @default(uuid())
-  name        String       @unique
-  status      PeriodStatus @default(DRAFT)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  assignments TeacherAssignment[]
-  students    StudentAssignment[]
-  evaluations SdEvaluation[]
-}
-
-
-
-
-model StudentAssignment {
-  id           String     @id @default(uuid())
-  periodId     String
-  studentId    String
-  teacherId    String
-  assignedById String
-  createdAt    DateTime   @default(now())
-  period       EvalPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  student      user       @relation("SaStudent", fields: [studentId], references: [id], onDelete: Cascade)
-  teacher      user       @relation("SaTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
-  evaluations  SdEvaluation[]
-
-  @@unique([periodId, studentId, teacherId])
-  @@index([studentId])
-  @@index([teacherId])
-}
-
-// Peer, supervisor and student evaluations live in one table, always distinguished by `type`.
-// `context` is a snapshot of the assignment so later reassignment never rewrites history.
-model SdEvaluation {
-  id                     String       @id @default(uuid())
-  type                   SdEvalType
-  periodId               String
-  evaluatorId            String
-  targetId               String
-  assignmentId           String?
-  studentAssignmentId    String?
-  rubricId               String
-  answers                Json
-  average                Float
-  context                Json?
-  status                 String       @default("SUBMITTED")
-  submittedAt            DateTime     @default(now())
-  period                 EvalPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  evaluator              user         @relation("SdEvalEvaluator", fields: [evaluatorId], references: [id], onDelete: Cascade)
-  target                 user         @relation("SdEvalTarget", fields: [targetId], references: [id], onDelete: Cascade)
-  assignment             TeacherAssignment?    @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
-  studentAssignment      StudentAssignment?    @relation(fields: [studentAssignmentId], references: [id], onDelete: Restrict)
-
-  @@unique([type, periodId, evaluatorId, targetId])
-  @@index([targetId])
-  @@index([evaluatorId])
-  @@index([periodId, type])
 }
